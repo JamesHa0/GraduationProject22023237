@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.jameshao</groupId>
-    <artifactId>nhs-server</artifactId>
+    <artifactId>gp22023237</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>nhs-server</name>
-    <description>nhs-server</description>
+    <name>gp22023237-server</name>
+    <description>gp22023237-server</description>
     <url/>
     <licenses>
         <license/>
