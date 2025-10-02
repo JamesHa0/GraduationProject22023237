@@ -19,7 +19,7 @@
           <el-button type="primary" icon="Cloudy" plain @click="goTarget('https://gitee.com/james-hao/NHS')">访问码云
           </el-button>
 
-          <el-button icon="HomeFilled" plain @click="goTarget('http://47.239.28.73:8088/')">访问主页</el-button>
+          <el-button icon="HomeFilled" plain @click="goTarget('http://47.239.28.73:88/')">访问主页</el-button>
         </p>
       </el-col>
 
@@ -67,7 +67,7 @@
             <p>
               <el-icon>
                 <Guide />
-              </el-icon> 官网：<el-link href="http://47.239.28.73:8088/" target="_blank">http://jameshao.fun/</el-link>
+              </el-icon> 官网：<el-link href="http://47.239.28.73:88/" target="_blank">http://jameshao.fun/</el-link>
             </p>
             <p>
               <svg-icon icon-class="wechat" /> 微信：<a href="javascript:;">James-Hao-</a>

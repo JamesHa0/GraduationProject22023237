@@ -31,19 +31,11 @@ export function register(data) {
   })
 }
 
-// 获取用户详细信息
-export function getInfo(id) {
-  return request({
-    url: '/getInfo',
-    method: 'get',
-    params: { id }
-  })
-}
 
 // 退出方法
 export function logout() {
   return request({
-    url: '/logout',
+    url: '/user/logout',
     method: 'post'
   })
 }

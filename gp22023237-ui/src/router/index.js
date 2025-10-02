@@ -85,34 +85,22 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/nurse',
+    path: '/selection',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
     children: [
       {
-        path: 'nurseLevel',
-        component: () => import('@/views/nurse/nurseLevel/index'),
+        path: 'student',
+        component: () => import('@/views/selection/student/index'),
         name: 'nurseLevel',
-        meta: { title: '护理级别', icon: 'online' }
+        meta: { title: '选择导师', icon: 'online' }
       },
       {
-        path: 'nurseItem',
-        component: () => import('@/views/nurse/nurseItem/index'),
+        path: 'mentor',
+        component: () => import('@/views/selection/mentor/index'),
         name: 'nurseItem',
-        meta: { title: '护理项目', icon: 'list' }
-      },
-      {
-        path: 'nurseRecords',
-        component: () => import('@/views/nurse/nurseRecords/index'),
-        name: 'nurseRecords',
-        meta: { title: '护理记录', icon: 'excel' }
-      },
-      {
-        path: 'nurseSetting',
-        component: () => import('@/views/nurse/nurseSetting/index'),
-        name: 'nurseSetting',
-        meta: { title: '客户护理设置', icon: 'dict' }
+        meta: { title: '选择学生', icon: 'list' }
       }
     ]
   },
