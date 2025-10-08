@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.po.Student;
+import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.po.User;
+import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +23,8 @@ public class UserController {
     @Autowired
     private UserService userService;
     @Autowired
+    private StudentService studentService;
+    @Autowired
     private JSONReturn jsonReturn;
 
 
@@ -32,6 +37,21 @@ public class UserController {
                     .select(User::getName, User::getUsername, User::getRoleId);
             List<User> users = userService.list(queryWrapper);
             return jsonReturn.returnSuccess(users);
+        }catch(Exception e){
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // 查询学生信息
+    @RequestMapping("/getStudentInfo")
+    public String getStudentInfo(String userId){
+        try{
+            LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(!ObjectUtils.isEmpty(userId), Student::getUserId, userId)
+                    .select(Student::getId, Student::getStudentNo, Student::getStudentName, Student::getDepartment, Student::getMajor, Student::getResearchDirection, Student::getAdmissionYear, Student::getGraduationYear);
+            List<Student> students = studentService.list(queryWrapper);
+            return jsonReturn.returnSuccess(students);
         }catch(Exception e){
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.MentorStudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.jameshao.gp22023237.po.MentorStudent">
+            <id property="id" column="id" />
+            <result property="mentorId" column="mentor_id" />
+            <result property="studentId" column="student_id" />
+            <result property="mentorType" column="mentor_type" />
+            <result property="round" column="round" />
+            <result property="studentChoiceOrder" column="student_choice_order" />
+            <result property="studentStatus" column="student_status" />
+            <result property="teacherStatus" column="teacher_status" />
+            <result property="selectionTime" column="selection_time" />
+            <result property="confirmTime" column="confirm_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,mentor_id,student_id,mentor_type,round,student_choice_order,
+        student_status,teacher_status,selection_time,confirm_time,create_time,
+        update_time
+    </sql>
+</mapper>

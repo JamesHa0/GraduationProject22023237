@@ -9,6 +9,15 @@ export function getInfo(id) {
     })
 }
 
+// 查询学生info
+export function getStudentInfo(id) {
+    return request({
+        url: '/user/getStudentInfo',
+        method: 'get',
+        params: { id }
+    })
+}
+
 // 查询用户列表
 export function list(data) {
     return request({
@@ -36,3 +45,4 @@ export function listByRoleId(data) {
         params: data
     })
 }
+

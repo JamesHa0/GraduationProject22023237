@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.SystemConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.jameshao.gp22023237.po.SystemConfig">
+            <id property="id" column="id" />
+            <result property="configKey" column="config_key" />
+            <result property="configValue" column="config_value" />
+            <result property="configName" column="config_name" />
+            <result property="configType" column="config_type" />
+            <result property="remark" column="remark" />
+            <result property="updateTime" column="update_time" />
+            <result property="updateUser" column="update_user" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,config_key,config_value,config_name,config_type,remark,
+        update_time,update_user
+    </sql>
+</mapper>
