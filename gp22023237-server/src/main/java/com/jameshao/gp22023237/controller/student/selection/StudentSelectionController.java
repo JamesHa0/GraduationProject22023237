@@ -1,6 +1,7 @@
-package com.jameshao.gp22023237.controller.selection;
+package com.jameshao.gp22023237.controller.student.selection;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
@@ -18,8 +19,8 @@ import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("/selection")
-public class SelectionController {
+@RequestMapping("/student/selection")
+public class StudentSelectionController {
 
     @Autowired
     private TeacherService teacherService;
@@ -48,11 +49,11 @@ public class SelectionController {
     @RequestMapping("/getStudentChoices")
     public String getStudentChoices(String studentId){
         try{
-            System.out.println("-------------------------"+studentId);
+            System.out.println("查询学生已选志愿:"+studentId);
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(MentorStudent::getStudentId, studentId);
+            queryWrapper.eq(MentorStudent::getStudentId, studentId)
+                    .eq(MentorStudent::getStudentStatus, 1);
 
-            // 使用MyBatis Plus的关联查询
             List<MentorStudent> mentorStudents = mentorStudentService.list(queryWrapper);
 
             List<SelectionDTO> result = new ArrayList<>();
@@ -81,22 +82,8 @@ public class SelectionController {
     @RequestMapping("/studentSubmit")
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
-            System.out.println("-------------------------"+mentorStudent);
-            int round = mentorStudent.getRound();
-            int studentChoiceOrder = mentorStudent.getStudentChoiceOrder();
-            long studentId = mentorStudent.getStudentId();
-            long mentorId = mentorStudent.getMentorId();
-
-            // 创建单个MentorStudent对象
-            MentorStudent mentorStudentRecord = new MentorStudent();
-            mentorStudentRecord.setStudentChoiceOrder(studentChoiceOrder);
-            mentorStudentRecord.setRound(round);
-            mentorStudentRecord.setStudentId(studentId);
-            mentorStudentRecord.setMentorId(mentorId);
-
-            // 设置其他必要字段
-            mentorStudentRecord.setStudentStatus(1);
-            mentorStudentRecord.setSelectionTime(new Date());
+            System.out.println("学生提交选择:"+mentorStudent);
+            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
 
             // 使用MyBatis Plus的saveOrUpdate方法
             boolean success = mentorStudentService.saveOrUpdate(mentorStudentRecord);
@@ -110,5 +97,51 @@ public class SelectionController {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
+    }
+
+    // 获取MentorStudent对象
+    private static MentorStudent getMentorStudent(MentorStudent mentorStudent) {
+        int round = mentorStudent.getRound();
+        int studentChoiceOrder = mentorStudent.getStudentChoiceOrder();
+        long studentId = mentorStudent.getStudentId();
+        long mentorId = mentorStudent.getMentorId();
+
+        // 创建单个MentorStudent对象
+        MentorStudent mentorStudentRecord = new MentorStudent();
+        mentorStudentRecord.setStudentChoiceOrder(studentChoiceOrder);
+        mentorStudentRecord.setRound(round);
+        mentorStudentRecord.setStudentId(studentId);
+        mentorStudentRecord.setMentorId(mentorId);
+
+        // 设置其他必要字段
+        mentorStudentRecord.setStudentStatus(1);
+        mentorStudentRecord.setSelectionTime(new Date());
+        return mentorStudentRecord;
+    }
+
+    // 学生删除志愿
+    @RequestMapping("/studentDeselect")
+    public String studentDeselect(@RequestBody MentorStudent mentorStudent){
+        try {
+            System.out.println("删除学生志愿:"+mentorStudent);
+            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
+            mentorStudentRecord.setStudentStatus(0);
+            mentorStudentRecord.setUpdateTime(new Date());
+
+            UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
+            updateWrapper.eq("student_id", mentorStudentRecord.getStudentId())
+                    .eq("mentor_id", mentorStudentRecord.getMentorId())
+                    .eq("round", mentorStudentRecord.getRound())
+                    .eq("student_choice_order", mentorStudentRecord.getStudentChoiceOrder());
+            boolean success = mentorStudentService.update(mentorStudentRecord, updateWrapper);
+            if (success) {
+                return jsonReturn.returnSuccess("取消成功");
+            } else {
+                return jsonReturn.returnError("取消失败");
+            }
+        } catch (Exception e) {
+        e.printStackTrace();
+        return jsonReturn.returnError(e.getMessage());
+    }
     }
 }

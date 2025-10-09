@@ -85,42 +85,42 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/selection',
+    path: '/student/selection',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
     children: [
       {
-        path: 'student',
-        component: () => import('@/views/selection/student/index'),
-        name: 'nurseLevel',
+        path: 'choices',
+        component: () => import('@/views/student/selection/choices/index'),
+        name: 'selection',
         meta: { title: '选择导师', icon: 'online' }
       },
       {
-        path: 'mentor',
-        component: () => import('@/views/selection/mentor/index'),
-        name: 'nurseItem',
-        meta: { title: '选择学生', icon: 'list' }
+        path: 'results',
+        component: () => import('@/views/student/selection/results/index'),
+        name: 'results',
+        meta: { title: '双选结果', icon: 'list' }
       }
     ]
   },
   {
-    path: '/health',
+    path: '/mentor/selection',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
     children: [
       {
-        path: 'serviceCustomerSetting',
-        component: () => import('@/views/health/serviceCustomerSetting/index'),
-        name: 'serviceCustomerSetting',
-        meta: { title: '设置服务对象', icon: 'online' }
+        path: 'applicants',
+        component: () => import('@/views/mentor/selection/applicants/index'),
+        name: 'applicants',
+        meta: { title: '选择学生', icon: 'online' }
       },
       {
-        path: 'serviceCare',
-        component: () => import('@/views/health/serviceCare/index'),
-        name: 'serviceCare',
-        meta: { title: '服务关注', icon: 'list' }
+        path: 'confirmed',
+        component: () => import('@/views/mentor/selection/confirmed/index'),
+        name: 'confirmed',
+        meta: { title: '已确认学生', icon: 'list' }
       }
     ]
   }

@@ -9,12 +9,12 @@ export function getInfo(id) {
     })
 }
 
-// 查询学生info
-export function getStudentInfo(id) {
+// 查询用户角色info
+export function getRoleInfo(userId, roleId) {
     return request({
-        url: '/user/getStudentInfo',
+        url: '/user/getRoleInfo',
         method: 'get',
-        params: { id }
+        params: { userId, roleId }
     })
 }
 

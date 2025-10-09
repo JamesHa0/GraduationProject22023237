@@ -14,10 +14,10 @@
                 <p v-else>未选择</p>
                 <template #footer>
                     <div class="card-footer">
-                        <el-button type="primary" @click="submit(index - 1)">
+                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1)">
                             提交
                         </el-button>
-                        <el-button type="danger" @click="abandon(index - 1)">
+                        <el-button v-else type="danger" @click="deselect(index - 1)">
                             放弃
                         </el-button>
                     </div>
@@ -51,11 +51,11 @@
                 <template #default="scope">
                     <el-tag v-if="scope.row.status == 1" type="primary">可选</el-tag>
                     <el-tag v-else-if="scope.row.status == 2" type="danger">无剩余名额</el-tag>
-                    <el-tag v-else-if="scope.row.status == 3" type="success">已选中</el-tag>
+                    <el-tag v-else-if="scope.row.status == 3" type="success">已选择</el-tag>
                     <el-tag v-else type="info">不可选</el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="招收名额" align="center" prop="quota" :show-overflow-tooltip="true" />
+            <el-table-column label="剩余名额" align="center" prop="remainingQuota" :show-overflow-tooltip="true" />
             <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
                 <template #default="scope">
                     <el-button v-if="isMentorSelected(scope.row.id)" link type="success" icon="Check" disabled>
@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import { listMentor as initData, submitSelection, studentChoices } from "@/api/selection/student";
+import { listMentor as initData, submitSelection, studentChoices, deselectSelection } from "@/api/student/selection";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
@@ -132,8 +132,17 @@ let queryParams = ref({
 const isMentorSelected = (mentorId) => {
     return studentChoicesData.value.some(choice => choice.mentorId === mentorId);
 };
+// 检查已选择的志愿数量是否达到上限
+const isMaxChoicesReached = () => {
+    return studentChoicesData.value.length >= maxChoiceCount.value;
+};
 // 选中导师函数
 const selectMentor = (row) => {
+    // 检查是否已达到最大选择数
+    if (isMaxChoicesReached()) {
+        proxy.$modal.msgWarning(`已达到最大志愿数 (${maxChoiceCount.value})，无法继续选择`);
+        return;
+    }
     row.isLoading = true;
     // 如果已有选中的导师，先取消之前的选择
     if (selectedMentor.value) {
@@ -184,12 +193,15 @@ function getStudentChoices() {
         studentId: studentId.value
     });
 
-    studentChoices(param.value).then(response => {
+    // 返回 Promise 以支持链式调用
+    return studentChoices(param.value).then(response => {
         console.log(`学生志愿情况：`, response);
         studentChoicesData.value = response.data || [];
     }).catch(error => {
         proxy.$modal.msgError("获取学生志愿情况失败");
         console.error("获取志愿情况错误:", error);
+        // 即使出错也要返回一个 resolved promise 以保证链式调用继续
+        return Promise.resolve();
     });
 }
 
@@ -206,16 +218,17 @@ function getList() {
     }
     studentId.value = id;
 
-    getStudentChoices(); // 获取学生志愿情况
-
-    initData(queryParams.value).then(response => {
+    // 确保先获取学生志愿情况，再获取导师列表
+    getStudentChoices().then(() => {
+        return initData(queryParams.value);
+    }).then(response => {
         mentorList.value = response.data.map(mentor => {
             // 检查该导师是否已被选为任何志愿
             const isAlreadySelected = studentChoicesData.value.some(choice =>
                 choice.mentorId === mentor.id
             );
             if (isAlreadySelected) {
-                mentor.status = 3; // 已选中
+                mentor.status = 3; // 已选择
             } else if (mentor.remainingQuota > 0) {
                 mentor.status = 1; // 可选
             } else {
@@ -226,6 +239,10 @@ function getList() {
         console.log(response);
 
         total.value = response.data.length;
+        loading.value = false;
+    }).catch(error => {
+        console.error("获取数据失败:", error);
+        proxy.$modal.msgError("获取数据失败");
         loading.value = false;
     });
 
@@ -246,10 +263,10 @@ function resetQuery() {
 
 
 
-/** 提交添加项目 */
+/** 提交按钮操作 */
 function submit(choiceIndex) {
 
-    if (!studentId) {
+    if (!studentId.value) {
         proxy.$modal.msgError('学生信息尚未加载')
         return;
     }
@@ -259,24 +276,65 @@ function submit(choiceIndex) {
         return;
     }
 
-    const data = {
-        round: 1,  // 暂定1轮
-        studentChoiceOrder: choiceIndex + 1,
-        studentId: studentId.value,
-        mentorId: selectedMentor.value
+    proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
+
+
+        const data = {
+            round: 1,  // 暂定1轮
+            studentChoiceOrder: choiceIndex + 1,
+            studentId: studentId.value,
+            mentorId: selectedMentor.value
+        }
+
+        console.log(`提交的信息:`, data);
+
+        // 提交选中导师 ID
+        submitSelection(data).then(response => {
+            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
+
+            selectedMentor.value = null; // 清除选中状态
+
+            getList();
+        }).catch(error => {
+            proxy.$modal.msgError("提交失败");
+            console.error("提交错误:", error);
+        });
+    }).catch(() => { });
+}
+
+/** 放弃按钮操作 */
+function deselect(choiceIndex) {
+    if (!studentId.value) {
+        proxy.$modal.msgError('学生信息尚未加载')
+        return;
     }
 
-    console.log(`提交的信息:`, data);
+    // 获取该志愿对应的已选导师信息
+    const selectedChoice = studentChoicesData.value.find(
+        choice => choice.studentChoiceOrder === choiceIndex + 1
+    );
 
-    // 提交选中导师 ID
-    submitSelection(data).then(response => {
-        proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
+    proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
 
-        getList();
-    }).catch(error => {
-        proxy.$modal.msgError("提交失败");
-        console.error("提交错误:", error);
-    });
+        const data = {
+            round: 1,  // 暂定1轮
+            studentChoiceOrder: choiceIndex + 1,
+            studentId: studentId.value,
+            mentorId: selectedChoice.mentorId
+        }
+        console.log(`放弃信息:`, data);
+
+
+        deselectSelection(data).then(response => {
+            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
+            selectedMentor.value = null; // 清除选中状态
+            getList();
+        }).catch(error => {
+            proxy.$modal.msgError("放弃失败");
+            console.error("放弃错误:", error);
+        });
+    }).catch(() => { });
+
 }
 
 getList(); // 获取导师列表

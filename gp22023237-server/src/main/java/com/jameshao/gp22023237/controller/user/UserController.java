@@ -8,6 +8,7 @@ import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,8 @@ public class UserController {
     private UserService userService;
     @Autowired
     private StudentService studentService;
+    @Autowired
+    private TeacherService teacherService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -43,15 +46,28 @@ public class UserController {
         }
     }
 
-    // 查询学生信息
-    @RequestMapping("/getStudentInfo")
-    public String getStudentInfo(String userId){
+    // 查询特定角色信息
+    @RequestMapping("/getRoleInfo")
+    public String getRoleInfo(String userId, String roleId){
         try{
-            LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(!ObjectUtils.isEmpty(userId), Student::getUserId, userId)
-                    .select(Student::getId, Student::getStudentNo, Student::getStudentName, Student::getDepartment, Student::getMajor, Student::getResearchDirection, Student::getAdmissionYear, Student::getGraduationYear);
-            List<Student> students = studentService.list(queryWrapper);
-            return jsonReturn.returnSuccess(students);
+            System.out.println("查询特定角色信息:ID:"+userId + " 角色:"+roleId);
+            if (roleId.equals("6")){
+                LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(!ObjectUtils.isEmpty(userId), Student::getUserId, userId)
+                        .select(Student::getId, Student::getStudentNo, Student::getStudentName, Student::getDepartment, Student::getMajor, Student::getResearchDirection, Student::getAdmissionYear, Student::getGraduationYear);
+                List<Student> list = studentService.list(queryWrapper);
+                return jsonReturn.returnSuccess(list);
+            } else if (roleId.equals("7")) {
+                LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(!ObjectUtils.isEmpty(userId), Teacher::getUserId, userId)
+                        .select(Teacher::getId, Teacher::getTeacherNo, Teacher::getTeacherName, Teacher::getTitle, Teacher::getDepartment, Teacher::getResearchField, Teacher::getQuota, Teacher::getRemainingQuota, Teacher::getIsMentor);
+                List<Teacher> list = teacherService.list(queryWrapper);
+                return jsonReturn.returnSuccess(list);
+            }else {
+                return jsonReturn.returnFailed("查询失败：角色不存在！");
+            }
+
+
         }catch(Exception e){
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

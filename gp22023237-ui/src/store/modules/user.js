@@ -3,7 +3,7 @@ import { getInfo } from '@/api/user/user'
 import { getToken, setToken, removeToken, getUserId, setUserId } from '@/utils/auth'
 import { isHttp, isEmpty } from "@/utils/validate"
 import defAva from '@/assets/images/profile.jpg'
-import { getStudentInfo } from '../../api/user/user'
+import { getRoleInfo } from '../../api/user/user'
 
 const useUserStore = defineStore(
   'user',
@@ -15,8 +15,7 @@ const useUserStore = defineStore(
       avatar: '',
       roles: [],
       permissions: [],
-      studentInfo: null, // 存储学生信息
-      teacherInfo: null  // 存储教师信息
+      roleInfo: null, // 存储角色信息
     }),
     actions: {
       // 登录
@@ -55,14 +54,8 @@ const useUserStore = defineStore(
               this.permissions = ["PERMISSIONS_DEFAULT"]
               //this.permissions = res.permissions // 这里没有权限（我的数据库里角色代表了权限）
 
-              // roleId为6表示学生
-              if (res.data[0].roleId === 6) {
-                this.fetchStudentInfo(userId);
-              }
-              // roleId为7表示教师
-              else if (res.data[0].roleId === 7) {
-                this.fetchTeacherInfo(userId);
-              }
+              // 获取角色信息
+              this.fetchRoleInfo(userId, res.data[0].roleId);
 
 
             } else {
@@ -77,30 +70,18 @@ const useUserStore = defineStore(
         })
       },
 
-      // 获取学生信息
-      fetchStudentInfo(userId) {
-        console.log(`获取学生信息`);
+      // 获取角色信息
+      fetchRoleInfo(userId, roleId) {
+        console.log(`获取角色信息`);
         return new Promise((resolve, reject) => {
-          getStudentInfo(userId).then(res => {
-            this.studentInfo = res.data
-            console.log(`获取学生信息成功：`, res.data);
+          getRoleInfo(userId, roleId).then(res => {
+            this.roleInfo = res.data
+            console.log(`获取角色信息成功：`, res.data);
 
             resolve(res)
           }).catch(error => {
             reject(error)
           })
-        })
-      },
-      // 获取教师信息
-      fetchTeacherInfo(userId) {
-        console.log(`获取教师信息`);
-        return new Promise((resolve, reject) => {
-          // getTeacherInfo(userId).then(res => {
-          //   this.teacherInfo = res.data
-          //   resolve(res)
-          // }).catch(error => {
-          //   reject(error)
-          // })
         })
       },
       // 退出系统
