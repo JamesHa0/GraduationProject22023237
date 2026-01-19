@@ -226,3 +226,15 @@ export function getNormalPath(p) {
 export function blobValidate(data) {
   return data.type !== 'application/json'
 }
+
+
+// 性别格式化函数
+export function genderFormat(value) {
+  if (value === 1) {
+    return "男"
+  } else if (value === 2) {
+    return "女"
+  } else {
+    return "未知"
+  }
+}

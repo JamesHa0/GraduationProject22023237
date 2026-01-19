@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -43,7 +44,9 @@ public class MentorSelectionController {
             List<SelectionDTO> result = new ArrayList<>();
             for (MentorStudent ms : list) {
                 SelectionDTO dto = new SelectionDTO();
+                dto.setId(ms.getId());
                 dto.setStudentId(ms.getStudentId());
+                dto.setTeacherStatus(ms.getTeacherStatus());
 
                 Student student = studentService.getById(ms.getStudentId());
                 if (student != null) {
@@ -52,6 +55,7 @@ public class MentorSelectionController {
                     dto.setDepartment(student.getDepartment());
                     dto.setMajor(student.getMajor());
                     dto.setAdmissionYear(student.getAdmissionYear());
+                    dto.setUserId(student.getUserId());
                 }
 
                 result.add(dto);
@@ -63,104 +67,22 @@ public class MentorSelectionController {
         }
     }
 
-    // 查询学生已选志愿
-//    @RequestMapping("/getStudentChoices")
-//    public String getStudentChoices(String studentId){
-//        try{
-//            System.out.println("查询学生已选志愿:"+studentId);
-//            LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
-//            queryWrapper.eq(MentorStudent::getStudentId, studentId)
-//                    .eq(MentorStudent::getStudentStatus, 1);
-//
-//            // 使用MyBatis Plus的关联查询
-//            List<MentorStudent> mentorStudents = mentorStudentService.list(queryWrapper);
-//
-//            List<SelectionDTO> result = new ArrayList<>();
-//
-//            // 关联查询Teacher表获取导师姓名
-//            for (MentorStudent ms : mentorStudents) {
-//                SelectionDTO dto = new SelectionDTO();
-//                dto.setMentorId(ms.getMentorId());
-//                dto.setStudentChoiceOrder(ms.getStudentChoiceOrder());
-//
-//                Teacher teacher = teacherService.getById(ms.getMentorId());
-//                if (teacher != null) {
-//                    dto.setMentorName(teacher.getTeacherName());
-//                }
-//
-//                result.add(dto);
-//            }
-//            return jsonReturn.returnSuccess(result);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return jsonReturn.returnError(e.getMessage());
-//        }
-//    }
+    // 导师提交选中
+    @RequestMapping("/submitSelection")
+    public String submitSelection(@RequestBody MentorStudent mentorStudent){
+        try {
+            UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
+            updateWrapper.eq("id", mentorStudent.getId()).set("teacher_status", mentorStudent.getTeacherStatus()).set("confirm_time",  LocalDateTime.now());
+            boolean update = mentorStudentService.update(null, updateWrapper);
+            if (update) {
+                return jsonReturn.returnSuccess();
+            } else {
+                return jsonReturn.returnFailed();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
 
-     // 学生提交选择
-//    @RequestMapping("/studentSubmit")
-//    public String submitSelection(@RequestBody MentorStudent mentorStudent){
-//        try {
-//            System.out.println("学生提交选择:"+mentorStudent);
-//            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
-//
-//            // 使用MyBatis Plus的saveOrUpdate方法
-//            boolean success = mentorStudentService.saveOrUpdate(mentorStudentRecord);
-//
-//            if (success) {
-//                return jsonReturn.returnSuccess("提交成功");
-//            } else {
-//                return jsonReturn.returnError("提交失败");
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return jsonReturn.returnError(e.getMessage());
-//        }
-//    }
-
-    // 获取MentorStudent对象
-//    private static MentorStudent getMentorStudent(MentorStudent mentorStudent) {
-//        int round = mentorStudent.getRound();
-//        int studentChoiceOrder = mentorStudent.getStudentChoiceOrder();
-//        long studentId = mentorStudent.getStudentId();
-//        long mentorId = mentorStudent.getMentorId();
-//
-//        // 创建单个MentorStudent对象
-//        MentorStudent mentorStudentRecord = new MentorStudent();
-//        mentorStudentRecord.setStudentChoiceOrder(studentChoiceOrder);
-//        mentorStudentRecord.setRound(round);
-//        mentorStudentRecord.setStudentId(studentId);
-//        mentorStudentRecord.setMentorId(mentorId);
-//
-//        // 设置其他必要字段
-//        mentorStudentRecord.setStudentStatus(1);
-//        mentorStudentRecord.setSelectionTime(new Date());
-//        return mentorStudentRecord;
-//    }
-
-    // 学生删除志愿
-//    @RequestMapping("/studentDeselect")
-//    public String studentDeselect(@RequestBody MentorStudent mentorStudent){
-//        try {
-//            System.out.println("删除学生志愿:"+mentorStudent);
-//            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
-//            mentorStudentRecord.setStudentStatus(0);
-//            mentorStudentRecord.setUpdateTime(new Date());
-//
-//            UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
-//            updateWrapper.eq("student_id", mentorStudentRecord.getStudentId())
-//                    .eq("mentor_id", mentorStudentRecord.getMentorId())
-//                    .eq("round", mentorStudentRecord.getRound())
-//                    .eq("student_choice_order", mentorStudentRecord.getStudentChoiceOrder());
-//            boolean success = mentorStudentService.update(mentorStudentRecord, updateWrapper);
-//            if (success) {
-//                return jsonReturn.returnSuccess("取消成功");
-//            } else {
-//                return jsonReturn.returnError("取消失败");
-//            }
-//        } catch (Exception e) {
-//        e.printStackTrace();
-//        return jsonReturn.returnError(e.getMessage());
-//    }
-//    }
 }

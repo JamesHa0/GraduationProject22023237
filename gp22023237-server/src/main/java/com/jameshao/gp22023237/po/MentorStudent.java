@@ -18,7 +18,7 @@ public class MentorStudent {
      * 
      */
     @TableId
-    private Integer id;
+    private Long id;
 
     /**
      * 导师的id
