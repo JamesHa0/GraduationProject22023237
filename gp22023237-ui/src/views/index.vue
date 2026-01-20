@@ -22,7 +22,7 @@
             @click="goTarget('https://gitee.com/james-hao/GraduationProject22023237')">访问码云
           </el-button>
 
-          <el-button icon="HomeFilled" plain @click="goTarget('http://47.239.28.73:88/')">访问主页</el-button>
+          <el-button icon="HomeFilled" plain @click="goTarget('http://47.239.28.73:88/')" disabled>访问主页</el-button>
         </p>
       </el-col>
 
