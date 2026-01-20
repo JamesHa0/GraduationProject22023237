@@ -40,7 +40,8 @@ public class MentorSelectionController {
         try{
             System.out.println("导师查询可选学生:"+mentorStudent);
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(MentorStudent::getMentorId, mentorStudent.getMentorId())
+            queryWrapper.eq(!ObjectUtils.isEmpty(mentorStudent.getTeacherStatus()), MentorStudent::getTeacherStatus, mentorStudent.getTeacherStatus())
+                    .eq(MentorStudent::getMentorId, mentorStudent.getMentorId())
                     .eq(MentorStudent::getStudentStatus, 1);
             List<MentorStudent> list = mentorStudentService.list(queryWrapper);
             List<SelectionDTO> result = new ArrayList<>();

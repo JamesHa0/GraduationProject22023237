@@ -1,39 +1,30 @@
 <template>
     <div class="app-container">
-        <div class="card-container">
-            <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
-                v-if="maxChoiceCount > 0">
-                <template #header>
-                    <div class="card-header">
-                        <span>{{ getChoiceName(index - 1) }}志愿</span>
-                    </div>
-                </template>
-                <p v-if="isChoiceSelected(index)">
-                    已选择导师：{{ getChoiceMentor(index) || '未选择' }}
-                </p>
-                <p v-else>未选择</p>
-                <template #footer>
-                    <div class="card-footer">
-                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1)">
-                            提交
-                        </el-button>
-                        <el-button v-else type="danger" @click="deselect(index - 1)">
-                            放弃
-                        </el-button>
-                    </div>
-                </template>
-            </el-card>
-        </div>
-        <el-form :model="queryParams" ref="queryRef" :inline="true" @submit.native.prevent>
-            <el-form-item label="查询导师" prop="nursingName">
-                <el-input v-model="queryParams.name" placeholder="请输入要查询的导师姓名" clearable style="width: 200px"
-                    @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            </el-form-item>
-        </el-form>
+        <el-row>
+            <el-col :span="12">
+                <el-form :model="queryParams" ref="queryRef" :inline="true" @submit.native.prevent>
+                    <el-form-item label="查询学生" prop="nursingName">
+                        <el-input v-model="queryParams.name" placeholder="请输入要查询的学生姓名" clearable style="width: 200px"
+                            @keyup.enter="handleQuery" />
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+                        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+                    </el-form-item>
+                </el-form>
+            </el-col>
+            <el-col :span="6">
+                <el-tag type="danger" effect="plain" size="large">
+                    第一轮导师确认截止时间：{{ deadlineTime }}
+                </el-tag>
+            </el-col>
+            <el-col :span="2">
+                <el-tag type="warning" effect="plain" size="large">
+                    剩余名额：{{ quota - confirmedQuota }}/{{ quota }}
+                </el-tag>
+            </el-col>
+        </el-row>
+
 
         <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
             style="width: 100%;">
@@ -42,324 +33,236 @@
                     <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
                 </template>
             </el-table-column>
-            <el-table-column label="ID" align="center" prop="id" :show-overflow-tooltip="true" v-if=false />
-            <el-table-column label="姓名" align="center" prop="teacherName" :show-overflow-tooltip="true" />
-            <el-table-column label="职称" align="center" prop="title" :show-overflow-tooltip="true" />
+            <el-table-column label="姓名" align="center" prop="studentName" :show-overflow-tooltip="true" />
+            <el-table-column label="学号" align="center" prop="studentNo" :show-overflow-tooltip="true" />
             <el-table-column label="院系" align="center" prop="department" :show-overflow-tooltip="true" />
-            <el-table-column label="研究领域" align="center" prop="researchField" :show-overflow-tooltip="true" />
-            <el-table-column label="状态" align="center" prop="" :show-overflow-tooltip="true">
+            <el-table-column label="专业" align="center" prop="major" :show-overflow-tooltip="true" />
+            <el-table-column fixed="right" label="操作" align="center" class-name="small-padding fixed-width"
+                min-width="90">
                 <template #default="scope">
-                    <el-tag v-if="scope.row.status == 1" type="primary">可选</el-tag>
-                    <el-tag v-else-if="scope.row.status == 2" type="danger">无剩余名额</el-tag>
-                    <el-tag v-else-if="scope.row.status == 3" type="success">已选择</el-tag>
-                    <el-tag v-else type="info">不可选</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column label="剩余名额" align="center" prop="remainingQuota" :show-overflow-tooltip="true" />
-            <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
-                <template #default="scope">
-                    <el-button v-if="isMentorSelected(scope.row.id)" link type="success" icon="Check" disabled>
-                        已提交
+                    <el-button text type="success" icon="Tickets" @click="showDetail(scope.row)">
+                        详细信息
                     </el-button>
-                    <el-button v-else-if="selectedMentor !== scope.row.id" link type="primary" icon="Plus"
-                        @click="selectMentor(scope.row)">
-                        选中
+                    <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)">
+                        退选
                     </el-button>
-                    <el-button v-else link type="danger" icon="Close" @click="cancelSelection()">
-                        取消
-                    </el-button>
+
                 </template>
             </el-table-column>
         </el-table>
 
         <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
 
+
+
+
+        <!--学生详细信息  BEGIN-->
+        <el-dialog v-model="detailVisible" title="学生详细信息" width="500" destroy-on-close>
+            <div class="student-detail-container">
+                <el-descriptions :column="1" border size="large">
+                    <el-descriptions-item label="姓名">{{ currentStudent.studentName }}</el-descriptions-item>
+                    <el-descriptions-item label="性别">{{ genderFormat(currentStudent.gender) || '未填写'
+                    }}</el-descriptions-item>
+                    <el-descriptions-item label="学号">{{ currentStudent.studentNo }}</el-descriptions-item>
+                    <el-descriptions-item label="院系">{{ currentStudent.department }}</el-descriptions-item>
+                    <el-descriptions-item label="专业">{{ currentStudent.major }}</el-descriptions-item>
+                    <el-descriptions-item label="入学年份">{{ parseTime(currentStudent.admissionYear, '{y}')
+                        }}</el-descriptions-item>
+                    <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未填写' }}</el-descriptions-item>
+                    <el-descriptions-item label="邮箱">{{ currentStudent.email || '未填写' }}</el-descriptions-item>
+                </el-descriptions>
+            </div>
+
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button @click="detailVisible = false">关闭</el-button>
+                </div>
+            </template>
+        </el-dialog>
+        <!--学生详细信息  END-->
+
     </div>
 </template>
 
 <script setup>
-import { listMentor as initData, submitSelection, studentChoices, deselectSelection } from "@/api/student/selection";
-import useUserStore from '@/store/modules/user';
-import { getConfigKey } from '@/api/system/config';
+import { listStudents as initData, submitSelection } from "@/api/mentor/selection";
+import { listById as getUserById } from '@/api/user/user';
+import { getConfigKey } from "@/api/system/config";
+import { getUserInfo, updateUserData } from '@/utils/userInfo';
+import { onMounted } from "vue";
+
 
 const { proxy } = getCurrentInstance();
 
-const mentorList = ref([]);
-
-const maxChoiceCount = ref(0); // 最大志愿数
-const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
-// 获取第几志愿名称
-const getChoiceName = (index) => {
-    return choiceNames[index] || `第${index + 1}`;
-}
-
-const selectedMentor = ref(null); // 选中的导师
+const mentorList = ref([]);// 可选学生列表
+const allStudents = ref([]); // 所有学生原始数据
+const deadlineTime = ref(''); // 存储截止时间
+const quota = ref(0); // 导师名额
+const confirmedQuota = ref(0); // 已确认名额
 
 const loading = ref(true);
 
+const detailVisible = ref(false); // 学生详细信息弹窗显示控制
+const currentStudent = ref({}); // 当前查看的学生信息
+
+
+// 分页组件相关数据
 const total = ref(0);
 const pageNum = ref(1);
 const pageSize = ref(10);
 
-// 访问学生信息中的ID
-const studentId = ref(null);
-const getStudentId = () => {
-    const userStore = useUserStore();
-    if (userStore.studentInfo && userStore.studentInfo[0]) {
-        return userStore.studentInfo[0].id;
-    } else {
-        proxy.$modal.msgError('学生信息尚未加载');
-        return null;
-    }
-};
+// 获取导师id
+const getMentorId = () => getUserInfo('id');
+// 获取导师名额
+const getQuota = () => getUserInfo('quota');
+// 获取导师已确认名额
+const getConfirmedQuota = () => getUserInfo('confirmedQuota');
 
-const studentChoicesData = ref([]); // 学生志愿情况
-// 获取第几志愿的导师名称
-const getChoiceMentor = (choiceOrder) => {
-    const choice = studentChoicesData.value.find(item => item.studentChoiceOrder === choiceOrder);
-    return choice ? choice.mentorName : null;
-}
-// 判断第几志愿是否已选择
-const isChoiceSelected = (choiceOrder) => {
-    return studentChoicesData.value.some(item => item.studentChoiceOrder === choiceOrder);
-}
+
+// 获取截止时间
+getConfigKey('first_round_end_tutor')
+    .then(response => {
+        deadlineTime.value = response?.data || '未设置';
+    })
+    .catch(error => {
+        proxy.$modal.msgError('获取截止时间失败');
+        console.error('获取截止时间失败:', error);
+        deadlineTime.value = '未设置';
+    });
 
 let queryParams = ref({
-    name: undefined
+    name: undefined,
+    onlyUnselected: false
 });
 
-// 判断导师是否已被选择的函数
-const isMentorSelected = (mentorId) => {
-    return studentChoicesData.value.some(choice => choice.mentorId === mentorId);
-};
-// 检查已选择的志愿数量是否达到上限
-const isMaxChoicesReached = () => {
-    return studentChoicesData.value.length >= maxChoiceCount.value;
-};
-// 选中导师函数
-const selectMentor = (row) => {
-    // 检查是否已达到最大选择数
-    if (isMaxChoicesReached()) {
-        proxy.$modal.msgWarning(`已达到最大志愿数 (${maxChoiceCount.value})，无法继续选择`);
-        return;
-    }
-    row.isLoading = true;
-    // 如果已有选中的导师，先取消之前的选择
-    if (selectedMentor.value) {
-        const prevRow = mentorList.value.find(item => item.id === selectedMentor.value);
-        if (prevRow) {
-            prevRow.status = prevRow.remainingQuota > 0 ? 1 : 2;
-        }
-    }
-
-    // 选中新的导师
-    selectedMentor.value = row.id;
-    row.isLoading = false;
-    row.status = 3; // 已选中状态
-    proxy.$modal.msgSuccess("已选中该导师");
-};
-
-// 取消选中函数
-const cancelSelection = () => {
-    if (selectedMentor.value) {
-        const row = mentorList.value.find(item => item.id === selectedMentor.value);
-        if (row) {
-            row.status = row.remainingQuota > 0 ? 1 : 2;
-        }
-        selectedMentor.value = null;
-        proxy.$modal.msgSuccess("已取消选中");
-    }
-};
-
-
-// 查询志愿轮数
-function getMaxChoiceCount() {
-    getConfigKey("student_max_choices").then(response => {
-        // 确保获取到有效值，至少为1
-        maxChoiceCount.value = Math.max(1, parseInt(response.data) || 3);
-        console.log(`获取最大志愿数:`, maxChoiceCount.value);
-    }).catch(() => {
-        // 出错时设置默认值
-        proxy.$modal.msgError('获取最大志愿数失败');
-        maxChoiceCount.value = 0;
-    });
-
-}
-
-/** 查询学生志愿情况 */
-function getStudentChoices() {
-
-    let param = ref({
-        studentId: studentId.value
-    });
-
-    // 返回 Promise 以支持链式调用
-    return studentChoices(param.value).then(response => {
-        console.log(`学生志愿情况：`, response);
-        studentChoicesData.value = response.data || [];
-    }).catch(error => {
-        proxy.$modal.msgError("获取学生志愿情况失败");
-        console.error("获取志愿情况错误:", error);
-        // 即使出错也要返回一个 resolved promise 以保证链式调用继续
-        return Promise.resolve();
-    });
-}
-
-
-/** 查询可选导师列表 */
-function getList() {
+// 显示学生详情的方法
+const showDetail = (row) => {
+    currentStudent.value = { ...row };
     loading.value = true;
-
-    const id = getStudentId();
-    if (!id) {
-        proxy.$modal.msgError('学生信息尚未加载');
-        loading.value = false;
-        return;
-    }
-    studentId.value = id;
-
-    // 确保先获取学生志愿情况，再获取导师列表
-    getStudentChoices().then(() => {
-        return initData(queryParams.value);
-    }).then(response => {
-        mentorList.value = response.data.map(mentor => {
-            // 检查该导师是否已被选为任何志愿
-            const isAlreadySelected = studentChoicesData.value.some(choice =>
-                choice.mentorId === mentor.id
-            );
-            if (isAlreadySelected) {
-                mentor.status = 3; // 已选择
-            } else if (mentor.remainingQuota > 0) {
-                mentor.status = 1; // 可选
-            } else {
-                mentor.status = 2; // 无剩余名额
-            }
-            return mentor;
+    getUserById({ id: row.userId })
+        .then(response => {
+            // 成功时合并数据
+            currentStudent.value = { ...currentStudent.value, ...response.data[0] };
+            // 显示对话框
+            detailVisible.value = true;
+        })
+        .catch(error => {
+            // 处理错误
+            console.error('获取用户信息失败:', error);
+            proxy.$modal.msgError('获取用户信息失败');
+        })
+        .finally(() => {
+            loading.value = false;
         });
-        console.log(response);
+};
 
-        total.value = response.data.length;
-        loading.value = false;
-    }).catch(error => {
-        console.error("获取数据失败:", error);
-        proxy.$modal.msgError("获取数据失败");
-        loading.value = false;
-    });
+/** 选中学生 */
+const selectStudent = (row, status) => {
+    const data = {
+        id: row.id,
+        mentorId: getMentorId(),
+        teacherStatus: status
+    };
 
-    getMaxChoiceCount(); // 获取最大志愿数
-}
+    if (status === 2) {
+        proxy.$modal.confirm(`确定要拒绝学生：${row.studentName} 吗？`, '拒绝确认')
+            .then(() => {
+                submitSelection(data)
+                    .then(() => {
+                        updateUserData('confirmedQuota', parseInt(confirmedQuota.value - 1));
+                        proxy.$modal.msgSuccess(`已拒绝学生：${row.studentName}`);
+                        getList();
+                    })
+                    .catch(error => {
+                        console.error('拒绝失败:', error);
+                        proxy.$modal.msgError('操作失败，请稍后重试');
+                    });
+            })
+            .catch(() => {
+                proxy.$modal.msgError('已取消拒绝操作');
+            });
+        return;
+    } else {
+        submitSelection(data)
+            .then(() => {
+                updateUserData('confirmedQuota', parseInt(confirmedQuota.value + 1));
+                proxy.$modal.msgSuccess(`已选中学生：${row.studentName}`);
+                getList();
+            })
+            .catch(error => {
+                console.error('选中失败:', error);
+                proxy.$modal.msgError('操作失败，请稍后重试');
+            });
+    }
+};
 
 /** 搜索按钮操作 */
 function handleQuery() {
     pageNum.value = 1;
-    getList();
+    applyFilters();
 }
 
 /** 重置按钮操作 */
 function resetQuery() {
-    proxy.resetForm("queryRef");
+    queryParams.value.name = undefined;
+    queryParams.value.onlyUnselected = false;
     handleQuery();
 }
 
+/** 查询可选学生列表 */
+function getList() {
+    loading.value = true;
 
-
-/** 提交按钮操作 */
-function submit(choiceIndex) {
-
-    if (!studentId.value) {
-        proxy.$modal.msgError('学生信息尚未加载')
+    const id = getMentorId();
+    if (!id) {
+        proxy.$modal.msgError('导师信息尚未加载');
+        loading.value = false;
         return;
     }
 
-    if (!selectedMentor.value) {
-        proxy.$modal.msgWarning(`请为第${choiceIndex + 1}志愿选择一位导师`);
-        return;
-    }
+    confirmedQuota.value = getConfirmedQuota();
 
-    proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
-
-
-        const data = {
-            round: 1,  // 暂定1轮
-            studentChoiceOrder: choiceIndex + 1,
-            studentId: studentId.value,
-            mentorId: selectedMentor.value
-        }
-
-        console.log(`提交的信息:`, data);
-
-        // 提交选中导师 ID
-        submitSelection(data).then(response => {
-            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
-
-            selectedMentor.value = null; // 清除选中状态
-
-            getList();
-        }).catch(error => {
-            proxy.$modal.msgError("提交失败");
-            console.error("提交错误:", error);
-        });
-    }).catch(() => { });
+    const data = {
+        mentorId: id,
+        teacherStatus: 1 // 仅查询已确认的学生
+    };
+    initData(data).then(response => {
+        allStudents.value = response.data; // 保存原始数据
+        applyFilters(); // 应用过滤条件
+    }).finally(() => {
+        loading.value = false;
+    });
 }
 
-/** 放弃按钮操作 */
-function deselect(choiceIndex) {
-    if (!studentId.value) {
-        proxy.$modal.msgError('学生信息尚未加载')
-        return;
+// 应用过滤条件
+function applyFilters() {
+    let result = allStudents.value;
+
+    // 按姓名过滤（不区分大小写）
+    if (queryParams.value.name) {
+        const searchName = queryParams.value.name.toLowerCase();
+        result = result.filter(item => item.studentName.toLowerCase().includes(searchName));
     }
 
-    // 获取该志愿对应的已选导师信息
-    const selectedChoice = studentChoicesData.value.find(
-        choice => choice.studentChoiceOrder === choiceIndex + 1
-    );
+    // 按是否已选过滤
+    if (queryParams.value.onlyUnselected) {
+        result = result.filter(item => item.teacherStatus !== 1);
+    }
 
-    proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
-
-        const data = {
-            round: 1,  // 暂定1轮
-            studentChoiceOrder: choiceIndex + 1,
-            studentId: studentId.value,
-            mentorId: selectedChoice.mentorId
-        }
-        console.log(`放弃信息:`, data);
-
-
-        deselectSelection(data).then(response => {
-            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
-            selectedMentor.value = null; // 清除选中状态
-            getList();
-        }).catch(error => {
-            proxy.$modal.msgError("放弃失败");
-            console.error("放弃错误:", error);
-        });
-    }).catch(() => { });
-
+    mentorList.value = result;
+    total.value = result.length;
 }
+
 
 getList(); // 获取导师列表
+
+onMounted(() => {
+    quota.value = getQuota();
+});
+
 </script>
 
 <style scoped>
-.card-container {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.card-item {
-    flex: 1;
-    min-width: 200px;
-}
-
-.card-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
 .footer {
     margin-top: 20px;
     margin-right: 50px;
