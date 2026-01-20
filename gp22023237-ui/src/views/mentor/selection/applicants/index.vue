@@ -46,17 +46,19 @@
             <el-table-column label="学号" align="center" prop="studentNo" :show-overflow-tooltip="true" />
             <el-table-column label="院系" align="center" prop="department" :show-overflow-tooltip="true" />
             <el-table-column label="专业" align="center" prop="major" :show-overflow-tooltip="true" />
-            <el-table-column fixed="right" label="操作" align="center" class-name="small-padding fixed-width">
+            <el-table-column fixed="right" label="操作" align="center" class-name="small-padding fixed-width"
+                min-width="90">
                 <template #default="scope">
-                    <el-button link type="success" icon="Tickets" @click="showDetail(scope.row)">
+                    <el-button text type="success" icon="Tickets" @click="showDetail(scope.row)">
                         详细信息
                     </el-button>
-                    <el-button v-if="scope.row.teacherStatus == 1" link type="danger" icon="Close"
-                        @click="selectStudent(scope.row, 2)">
-                        退选
+                    <el-button text bg type="primary" icon="Plus" :disabled="scope.row.teacherStatus === 1"
+                        @click="selectStudent(scope.row, 1)">
+                        同意
                     </el-button>
-                    <el-button v-else link type="primary" icon="Plus" @click="selectStudent(scope.row, 1)">
-                        选中
+                    <el-button text bg type="danger" icon="Close" :disabled="scope.row.teacherStatus === 2"
+                        @click="selectStudent(scope.row, 2)">
+                        拒绝
                     </el-button>
 
                 </template>
@@ -74,12 +76,12 @@
                 <el-descriptions :column="1" border size="large">
                     <el-descriptions-item label="姓名">{{ currentStudent.studentName }}</el-descriptions-item>
                     <el-descriptions-item label="性别">{{ genderFormat(currentStudent.gender) || '未填写'
-                        }}</el-descriptions-item>
+                    }}</el-descriptions-item>
                     <el-descriptions-item label="学号">{{ currentStudent.studentNo }}</el-descriptions-item>
                     <el-descriptions-item label="院系">{{ currentStudent.department }}</el-descriptions-item>
                     <el-descriptions-item label="专业">{{ currentStudent.major }}</el-descriptions-item>
                     <el-descriptions-item label="入学年份">{{ parseTime(currentStudent.admissionYear, '{y}')
-                    }}</el-descriptions-item>
+                        }}</el-descriptions-item>
                     <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未填写' }}</el-descriptions-item>
                     <el-descriptions-item label="邮箱">{{ currentStudent.email || '未填写' }}</el-descriptions-item>
                 </el-descriptions>
@@ -170,7 +172,7 @@ const showDetail = (row) => {
 };
 
 
-/** 选中学生 */
+/** 选择学生 */
 const selectStudent = (row, status) => {
     const data = {
         id: row.id,
@@ -179,21 +181,21 @@ const selectStudent = (row, status) => {
     };
 
     if (status === 2) {
-        proxy.$modal.confirm(`确定要退选学生：${row.studentName} 吗？`, '退选确认')
+        proxy.$modal.confirm(`确定要拒绝学生：${row.studentName} 吗？`, '拒绝确认')
             .then(() => {
                 submitSelection(data)
                     .then(() => {
                         updateUserData('confirmedQuota', parseInt(confirmedQuota.value - 1));
-                        proxy.$modal.msgSuccess(`已退选学生：${row.studentName}`);
+                        proxy.$modal.msgSuccess(`已拒绝学生：${row.studentName}`);
                         getList();
                     })
                     .catch(error => {
-                        console.error('退选失败:', error);
+                        console.error('拒绝失败:', error);
                         proxy.$modal.msgError('操作失败，请稍后重试');
                     });
             })
             .catch(() => {
-                proxy.$modal.msgError('已取消退选操作');
+                proxy.$modal.msgError('已取消拒绝操作');
             });
         return;
     } else {
@@ -208,8 +210,6 @@ const selectStudent = (row, status) => {
                 proxy.$modal.msgError('操作失败，请稍后重试');
             });
     }
-
-
 };
 
 /** 搜索按钮操作 */
