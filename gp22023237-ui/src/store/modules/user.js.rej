@@ -1,4 +1,4 @@
-diff a/nhs-ui-ruoyi-vue3-rebuild/src/store/modules/user.js b/nhs-ui-ruoyi-vue3-rebuild/src/store/modules/user.js	(rejected hunks)
+diff a/gp22023237-ui/src/store/modules/user.js b/gp22023237-ui/src/store/modules/user.js	(rejected hunks)
 @@ -36,22 +36,22 @@
          })
        },

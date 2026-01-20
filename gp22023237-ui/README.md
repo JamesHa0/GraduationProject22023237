@@ -20,10 +20,10 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/JamesHa0/NHS.git
+git clone https://github.com/JamesHa0/GraduationProject22023237.git
 
 # 进入项目目录
-cd nhs-ui-ruoyi-vue3-rebuild
+cd gp22023237-ui
 
 # 安装依赖
 yarn --registry=https://registry.npmmirror.com

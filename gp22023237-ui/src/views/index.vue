@@ -2,9 +2,10 @@
   <div class="app-container home">
     <el-row :gutter="20">
       <el-col :sm="24" :lg="12" style="padding-left: 20px">
-        <h2>颐养中心后台管理系统</h2>
+        <h2>人工智能学院研究生管理信息系统</h2>
         <p>
-          颐养中心后台管理系统（Nursing Home System，NHS）
+          Graduate Student Management Information System of the School of Artificial Intelligence, Harbin
+          University（HRBU-AI-GSMIS）
         </p>
         <p>
           <b>当前版本:</b> <span>v{{ version }}</span>
@@ -13,10 +14,12 @@
           <el-tag type="danger">&yen;学生作品，免费开源&yen;</el-tag>
         </p>
         <p>
-          <el-button type="primary" plain @click="goTarget('https://github.com/JamesHa0/NHS')"><svg-icon
+          <el-button type="primary" plain
+            @click="goTarget('https://github.com/JamesHa0/GraduationProject22023237')"><svg-icon
               icon-class="github" />&nbsp;&nbsp;访问GitHub
           </el-button>
-          <el-button type="primary" icon="Cloudy" plain @click="goTarget('https://gitee.com/james-hao/NHS')">访问码云
+          <el-button type="primary" icon="Cloudy" plain
+            @click="goTarget('https://gitee.com/james-hao/GraduationProject22023237')">访问码云
           </el-button>
 
           <el-button icon="HomeFilled" plain @click="goTarget('http://47.239.28.73:88/')">访问主页</el-button>
@@ -67,10 +70,11 @@
             <p>
               <el-icon>
                 <Guide />
-              </el-icon> 官网：<el-link href="http://47.239.28.73:88/" target="_blank">http://jameshao.fun/</el-link>
+              </el-icon> 官网：<el-text href="http://47.239.28.73:88/" target="_blank"
+                tag="del">http://jameshao.fun/</el-text>
             </p>
             <p>
-              <svg-icon icon-class="wechat" /> 微信：<a href="javascript:;">James-Hao-</a>
+              <svg-icon icon-class="wechat" /> 微信：<a href="javascript:;">JamesHa0</a>
             </p>
             <p>
               <svg-icon icon-class="qq" /> QQ：<a href="javascript:;">2258693275</a>
@@ -86,9 +90,9 @@
             </div>
           </template>
           <el-collapse accordion>
-            <el-collapse-item title="v0.1.0 - 2025-04-11">
+            <el-collapse-item title="v0.1.0 - 2025-10-01">
               <ol>
-                <li>颐养中心后台管理系统开发中</li>
+                <li>人工智能学院研究生管理信息系统开发中</li>
               </ol>
             </el-collapse-item>
           </el-collapse>
@@ -103,7 +107,7 @@
           </template>
           <div class="body">
             <img src="@/assets/images/pay.png" alt="donate" style="width:100%" />
-            <span style="display: inline-block; height: 30px; line-height: 30px">你可以请作者喝杯咖啡表示鼓励</span>
+            <span style="display: inline-block; height: 30px; line-height: 30px">你可以请作者喝杯奶茶表示鼓励</span>
           </div>
         </el-card>
       </el-col>
