@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class SelectionDTO {
-    private Long id;
+    private Long id;// 主键id
     private Integer round; // 轮次
     private Long studentId; // 学生id
     private Long mentorId; // 导师id

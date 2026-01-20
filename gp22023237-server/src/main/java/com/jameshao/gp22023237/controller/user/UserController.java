@@ -60,7 +60,7 @@ public class UserController {
             } else if (roleId.equals("7")) {
                 LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(!ObjectUtils.isEmpty(userId), Teacher::getUserId, userId)
-                        .select(Teacher::getId, Teacher::getTeacherNo, Teacher::getTeacherName, Teacher::getTitle, Teacher::getDepartment, Teacher::getResearchField, Teacher::getQuota, Teacher::getRemainingQuota, Teacher::getIsMentor);
+                        .select(Teacher::getId, Teacher::getTeacherNo, Teacher::getTeacherName, Teacher::getTitle, Teacher::getDepartment, Teacher::getResearchField, Teacher::getQuota, Teacher::getRemainingQuota, Teacher::getConfirmedQuota, Teacher::getIsMentor);
                 List<Teacher> list = teacherService.list(queryWrapper);
                 return jsonReturn.returnSuccess(list);
             }else {

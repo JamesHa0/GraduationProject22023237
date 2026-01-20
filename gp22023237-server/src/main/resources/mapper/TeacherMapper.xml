@@ -7,21 +7,22 @@
     <resultMap id="BaseResultMap" type="com.jameshao.gp22023237.po.Teacher">
             <id property="id" column="id" />
             <result property="userId" column="user_id" />
+            <result property="teacherName" column="teacher_name" />
             <result property="teacherNo" column="teacher_no" />
             <result property="title" column="title" />
             <result property="department" column="department" />
             <result property="researchField" column="research_field" />
             <result property="quota" column="quota" />
             <result property="remainingQuota" column="remaining_quota" />
+            <result property="confirmedQuota" column="confirmed_quota" />
+            <result property="isMentor" column="is_mentor" />
             <result property="createTime" column="create_time" />
             <result property="updateTime" column="update_time" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,user_id,teacher_no,title,department,research_field,
-        quota,remaining_quota,create_time,update_time
+        id,user_id,teacher_name,teacher_no,title,department,
+        research_field,quota,remaining_quota,confirmed_quota,is_mentor,
+        create_time,update_time
     </sql>
-
-
-
 </mapper>

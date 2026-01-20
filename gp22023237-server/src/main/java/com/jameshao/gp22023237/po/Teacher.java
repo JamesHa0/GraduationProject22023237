@@ -61,6 +61,11 @@ public class Teacher {
     private Integer remainingQuota;
 
     /**
+     * 已确认名额（仅导师有值）
+     */
+    private Integer confirmedQuota;
+
+    /**
      * 是否可指导研究生：0-否，1-是
      */
     private Integer isMentor;
@@ -96,6 +101,7 @@ public class Teacher {
             && (this.getResearchField() == null ? other.getResearchField() == null : this.getResearchField().equals(other.getResearchField()))
             && (this.getQuota() == null ? other.getQuota() == null : this.getQuota().equals(other.getQuota()))
             && (this.getRemainingQuota() == null ? other.getRemainingQuota() == null : this.getRemainingQuota().equals(other.getRemainingQuota()))
+            && (this.getConfirmedQuota() == null ? other.getConfirmedQuota() == null : this.getConfirmedQuota().equals(other.getConfirmedQuota()))
             && (this.getIsMentor() == null ? other.getIsMentor() == null : this.getIsMentor().equals(other.getIsMentor()))
             && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
             && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()));
@@ -114,6 +120,7 @@ public class Teacher {
         result = prime * result + ((getResearchField() == null) ? 0 : getResearchField().hashCode());
         result = prime * result + ((getQuota() == null) ? 0 : getQuota().hashCode());
         result = prime * result + ((getRemainingQuota() == null) ? 0 : getRemainingQuota().hashCode());
+        result = prime * result + ((getConfirmedQuota() == null) ? 0 : getConfirmedQuota().hashCode());
         result = prime * result + ((getIsMentor() == null) ? 0 : getIsMentor().hashCode());
         result = prime * result + ((getCreateTime() == null) ? 0 : getCreateTime().hashCode());
         result = prime * result + ((getUpdateTime() == null) ? 0 : getUpdateTime().hashCode());
@@ -135,6 +142,7 @@ public class Teacher {
         sb.append(", researchField=").append(researchField);
         sb.append(", quota=").append(quota);
         sb.append(", remainingQuota=").append(remainingQuota);
+        sb.append(", confirmedQuota=").append(confirmedQuota);
         sb.append(", isMentor=").append(isMentor);
         sb.append(", createTime=").append(createTime);
         sb.append(", updateTime=").append(updateTime);

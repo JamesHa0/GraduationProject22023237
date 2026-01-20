@@ -28,6 +28,8 @@ public class MentorSelectionController {
     @Autowired
     private StudentService studentService;
     @Autowired
+    private TeacherService teacherService;
+    @Autowired
     private MentorStudentService mentorStudentService;
     @Autowired
     private JSONReturn jsonReturn;
@@ -71,14 +73,52 @@ public class MentorSelectionController {
     @RequestMapping("/submitSelection")
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
-            UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
-            updateWrapper.eq("id", mentorStudent.getId()).set("teacher_status", mentorStudent.getTeacherStatus()).set("confirm_time",  LocalDateTime.now());
-            boolean update = mentorStudentService.update(null, updateWrapper);
-            if (update) {
-                return jsonReturn.returnSuccess();
-            } else {
-                return jsonReturn.returnFailed();
+            // 获取原始记录以确定是否为确认状态变化
+            MentorStudent originalRecord = mentorStudentService.getById(mentorStudent.getId());
+            if (originalRecord == null) {
+                return jsonReturn.returnError("记录不存在");
             }
+
+            // 更新导师-学生关系表
+            UpdateWrapper<MentorStudent> selectionWrapper = new UpdateWrapper<>();
+            selectionWrapper.eq("id", mentorStudent.getId())
+                    .set("teacher_status", mentorStudent.getTeacherStatus())
+                    .set("confirm_time", LocalDateTime.now());
+            boolean updateResult = mentorStudentService.update(null, selectionWrapper);
+
+            if (!updateResult) {
+                return jsonReturn.returnFailed("更新选中状态失败");
+            }
+
+            // 根据 teacherStatus 调整导师已确认名额
+            int quotaChange = 0;
+            if (mentorStudent.getTeacherStatus() == 1 && originalRecord.getTeacherStatus() != 1) {
+                // 学生被确认选中，已确认名额加1
+                quotaChange = 1;
+            } else if (mentorStudent.getTeacherStatus() == 2 && originalRecord.getTeacherStatus() != 2) {
+                // 取消选中，已确认名额减1
+                quotaChange = -1;
+            }
+
+            if (quotaChange != 0) {
+                // 查询当前导师的已确认名额
+                Teacher currentTeacher = teacherService.getById(mentorStudent.getMentorId());
+                if (currentTeacher != null) {
+                    int newConfirmedQuota = currentTeacher.getConfirmedQuota() + quotaChange;
+
+                    // 更新导师表中的已确认名额
+                    UpdateWrapper<Teacher> teacherWrapper = new UpdateWrapper<>();
+                    teacherWrapper.eq("id", mentorStudent.getMentorId())
+                            .set("confirmed_quota", newConfirmedQuota);
+
+                    boolean teacherUpdateResult = teacherService.update(null, teacherWrapper);
+                    if (!teacherUpdateResult) {
+                        return jsonReturn.returnError("更新导师已确认名额失败");
+                    }
+                }
+            }
+
+            return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
