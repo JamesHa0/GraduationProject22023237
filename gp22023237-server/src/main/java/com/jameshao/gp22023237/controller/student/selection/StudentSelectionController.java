@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -36,7 +37,7 @@ public class StudentSelectionController {
             LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.like(!ObjectUtils.isEmpty(name),Teacher::getTeacherName, name)
                     .eq(Teacher::getIsMentor, 1)
-                    .gt(Teacher::getRemainingQuota, 0);
+                    .gt(Teacher::getQuota, 0);
             List<Teacher> list = teacherService.list(queryWrapper);
             return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
@@ -83,65 +84,67 @@ public class StudentSelectionController {
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
             System.out.println("学生提交选择:"+mentorStudent);
-            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
+            // 首先检查是否已经存在该学生的记录（除了StudentStatus字段）
+            LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(MentorStudent::getStudentId, mentorStudent.getStudentId())
+                    .eq(MentorStudent::getMentorId, mentorStudent.getMentorId());
 
-            // 使用MyBatis Plus的saveOrUpdate方法
-            boolean success = mentorStudentService.saveOrUpdate(mentorStudentRecord);
+            MentorStudent existingRecord = mentorStudentService.getOne(queryWrapper);
 
-            if (success) {
-                return jsonReturn.returnSuccess("提交成功");
+            boolean success = false;
+            if (existingRecord != null) {
+                // 如果存在记录，更新StudentStatus字段
+                UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
+                updateWrapper.eq("student_id", mentorStudent.getStudentId())
+                        .eq("mentor_id", mentorStudent.getMentorId())
+                        .set("student_status", mentorStudent.getStudentStatus());
+
+                success = mentorStudentService.update(updateWrapper);
             } else {
+                // 如果不存在记录，插入新的数据
+                mentorStudent.setSelectionTime(new Date());
+                success = mentorStudentService.save(mentorStudent);
+            }
+
+            if (!success) {
                 return jsonReturn.returnError("提交失败");
             }
+
+
+
+            // 根据 StudentStatus 调整导师剩余名额
+            int quotaChange = 0;
+            if (mentorStudent.getStudentStatus() == 1) {
+                // 选中，导师剩余名额减1
+                quotaChange = -1;
+            } else if (mentorStudent.getStudentStatus() == 0) {
+                // 取消选中，导师剩余名额加1
+                quotaChange = +1;
+            }
+
+            if (quotaChange != 0) {
+                // 查询当前导师的剩余名额
+                Teacher currentTeacher = teacherService.getById(mentorStudent.getMentorId());
+                if (currentTeacher != null) {
+                    int newRemainingQuota = currentTeacher.getRemainingQuota() + quotaChange;
+
+                    // 更新导师表中的剩余名额
+                    UpdateWrapper<Teacher> teacherWrapper = new UpdateWrapper<>();
+                    teacherWrapper.eq("id", mentorStudent.getMentorId())
+                            .set("remaining_quota", newRemainingQuota);
+
+                    boolean teacherUpdateResult = teacherService.update(null, teacherWrapper);
+                    if (!teacherUpdateResult) {
+                        return jsonReturn.returnError("更新导师剩余名额失败");
+                    }
+                }
+            }
+
+            return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
     }
 
-    // 获取MentorStudent对象
-    private static MentorStudent getMentorStudent(MentorStudent mentorStudent) {
-        int round = mentorStudent.getRound();
-        int studentChoiceOrder = mentorStudent.getStudentChoiceOrder();
-        long studentId = mentorStudent.getStudentId();
-        long mentorId = mentorStudent.getMentorId();
-
-        // 创建单个MentorStudent对象
-        MentorStudent mentorStudentRecord = new MentorStudent();
-        mentorStudentRecord.setStudentChoiceOrder(studentChoiceOrder);
-        mentorStudentRecord.setRound(round);
-        mentorStudentRecord.setStudentId(studentId);
-        mentorStudentRecord.setMentorId(mentorId);
-
-        // 设置其他必要字段
-        mentorStudentRecord.setStudentStatus(1);
-        mentorStudentRecord.setSelectionTime(new Date());
-        return mentorStudentRecord;
-    }
-
-    // 学生删除志愿
-    @RequestMapping("/studentDeselect")
-    public String studentDeselect(@RequestBody MentorStudent mentorStudent){
-        try {
-            System.out.println("删除学生志愿:"+mentorStudent);
-            MentorStudent mentorStudentRecord = getMentorStudent(mentorStudent);
-            mentorStudentRecord.setStudentStatus(0);
-            mentorStudentRecord.setUpdateTime(new Date());
-
-            UpdateWrapper<MentorStudent> updateWrapper = new UpdateWrapper<>();
-            updateWrapper.eq("student_id", mentorStudentRecord.getStudentId())
-                    .eq("mentor_id", mentorStudentRecord.getMentorId())
-                    .eq("round", mentorStudentRecord.getRound())
-                    .eq("student_choice_order", mentorStudentRecord.getStudentChoiceOrder());
-            boolean success = mentorStudentService.update(mentorStudentRecord, updateWrapper);
-            if (success) {
-                return jsonReturn.returnSuccess("取消成功");
-            } else {
-                return jsonReturn.returnError("取消失败");
-            }
-        } catch (Exception e) {
-        e.printStackTrace();
-        return jsonReturn.returnError(e.getMessage());
-    }
-    }
 }

@@ -8,16 +8,16 @@
                         <span>{{ getChoiceName(index - 1) }}志愿</span>
                     </div>
                 </template>
-                <p v-if="isChoiceSelected(index)">
-                    已选择导师：{{ getChoiceMentor(index) || '未选择' }}
-                </p>
+                <el-text v-if="isChoiceSelected(index)" size="large">
+                    已选择导师：<el-tag type="success" size="large">{{ getChoiceMentor(index) || '未选择' }}</el-tag>
+                </el-text>
                 <p v-else>未选择</p>
                 <template #footer>
                     <div class="card-footer">
-                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1)">
+                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1, 1)">
                             提交
                         </el-button>
-                        <el-button v-else type="danger" @click="deselect(index - 1)">
+                        <el-button v-else type="danger" @click="submit(index - 1, 0)">
                             放弃
                         </el-button>
                     </div>
@@ -56,16 +56,16 @@
                 </template>
             </el-table-column>
             <el-table-column label="剩余名额" align="center" prop="remainingQuota" :show-overflow-tooltip="true" />
-            <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+            <el-table-column fixed="right" label="操作" align="center" class-name="small-padding fixed-width">
                 <template #default="scope">
-                    <el-button v-if="isMentorSelected(scope.row.id)" link type="success" icon="Check" disabled>
+                    <el-button v-if="isMentorSelected(scope.row.id)" text type="success" icon="Check" disabled>
                         已提交
                     </el-button>
-                    <el-button v-else-if="selectedMentor !== scope.row.id" link type="primary" icon="Plus"
-                        @click="selectMentor(scope.row)">
+                    <el-button v-else-if="selectedMentor !== scope.row.id" text type="primary" icon="Plus"
+                        @click="selectMentor(scope.row)" :disabled="scope.row.status === 2">
                         选中
                     </el-button>
-                    <el-button v-else link type="danger" icon="Close" @click="cancelSelection()">
+                    <el-button v-else text type="danger" icon="Close" @click="cancelSelection()">
                         取消
                     </el-button>
                 </template>
@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import { listMentor as initData, submitSelection, studentChoices, deselectSelection } from "@/api/student/selection";
+import { listMentor as initData, submitSelection, studentChoices } from "@/api/student/selection";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
@@ -105,8 +105,8 @@ const pageSize = ref(10);
 const studentId = ref(null);
 const getStudentId = () => {
     const userStore = useUserStore();
-    if (userStore.studentInfo && userStore.studentInfo[0]) {
-        return userStore.studentInfo[0].id;
+    if (userStore.roleInfo && userStore.roleInfo[0]) {
+        return userStore.roleInfo[0].id;
     } else {
         proxy.$modal.msgError('学生信息尚未加载');
         return null;
@@ -176,7 +176,7 @@ const cancelSelection = () => {
 function getMaxChoiceCount() {
     getConfigKey("student_max_choices").then(response => {
         // 确保获取到有效值，至少为1
-        maxChoiceCount.value = Math.max(1, parseInt(response.data) || 3);
+        maxChoiceCount.value = Math.max(1, parseInt(response.data) || 1);
         console.log(`获取最大志愿数:`, maxChoiceCount.value);
     }).catch(() => {
         // 出错时设置默认值
@@ -264,76 +264,71 @@ function resetQuery() {
 
 
 /** 提交按钮操作 */
-function submit(choiceIndex) {
+function submit(choiceIndex, studentStatus) {
 
     if (!studentId.value) {
         proxy.$modal.msgError('学生信息尚未加载')
         return;
     }
 
-    if (!selectedMentor.value) {
-        proxy.$modal.msgWarning(`请为第${choiceIndex + 1}志愿选择一位导师`);
-        return;
-    }
-
-    proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
-
+    if (studentStatus == 1) {
+        if (!selectedMentor.value) {
+            proxy.$modal.msgWarning(`请为第${choiceIndex + 1}志愿选择一位导师`);
+            return;
+        }
 
         const data = {
             round: 1,  // 暂定1轮
             studentChoiceOrder: choiceIndex + 1,
             studentId: studentId.value,
-            mentorId: selectedMentor.value
+            mentorId: selectedMentor.value,
+            studentStatus: studentStatus
         }
 
         console.log(`提交的信息:`, data);
 
-        // 提交选中导师 ID
-        submitSelection(data).then(response => {
-            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
+        proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
+            // 提交选中导师 ID
+            submitSelection(data).then(response => {
+                proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
 
-            selectedMentor.value = null; // 清除选中状态
+                selectedMentor.value = null; // 清除选中状态
 
-            getList();
-        }).catch(error => {
-            proxy.$modal.msgError("提交失败");
-            console.error("提交错误:", error);
-        });
-    }).catch(() => { });
-}
-
-/** 放弃按钮操作 */
-function deselect(choiceIndex) {
-    if (!studentId.value) {
-        proxy.$modal.msgError('学生信息尚未加载')
-        return;
+                getList();
+            }).catch(error => {
+                proxy.$modal.msgError("提交失败");
+                console.error("提交错误:", error);
+            });
+        }).catch(() => { });
     }
+    else if (studentStatus == 0) {
+        // 获取该志愿对应的已选导师信息
+        const selectedChoice = studentChoicesData.value.find(
+            choice => choice.studentChoiceOrder === choiceIndex + 1
+        );
 
-    // 获取该志愿对应的已选导师信息
-    const selectedChoice = studentChoicesData.value.find(
-        choice => choice.studentChoiceOrder === choiceIndex + 1
-    );
+        proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
 
-    proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
-
-        const data = {
-            round: 1,  // 暂定1轮
-            studentChoiceOrder: choiceIndex + 1,
-            studentId: studentId.value,
-            mentorId: selectedChoice.mentorId
-        }
-        console.log(`放弃信息:`, data);
+            const data = {
+                round: 1,  // 暂定1轮
+                studentChoiceOrder: choiceIndex + 1,
+                studentId: studentId.value,
+                mentorId: selectedChoice.mentorId,
+                studentStatus: studentStatus
+            }
+            console.log(`放弃信息:`, data);
 
 
-        deselectSelection(data).then(response => {
-            proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
-            selectedMentor.value = null; // 清除选中状态
-            getList();
-        }).catch(error => {
-            proxy.$modal.msgError("放弃失败");
-            console.error("放弃错误:", error);
-        });
-    }).catch(() => { });
+            submitSelection(data).then(response => {
+                proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
+                selectedMentor.value = null; // 清除选中状态
+                getList();
+            }).catch(error => {
+                proxy.$modal.msgError("放弃失败");
+                console.error("放弃错误:", error);
+            });
+        }).catch(() => { });
+    }
 
 }
 
