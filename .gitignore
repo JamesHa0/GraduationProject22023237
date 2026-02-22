@@ -1,4 +1,4 @@
-##ignore this file##
+# ignore this file #
 /target/
 /.idea/
 /.settings/
@@ -9,11 +9,11 @@
 .project
 .settings
 .idea
- ##filter databfile、sln file##
+# filter databfile、sln file #
 *.mdb
 *.ldb
 *.sln
-##class file##
+# class file #
 *.com
 *.class
 *.dll
