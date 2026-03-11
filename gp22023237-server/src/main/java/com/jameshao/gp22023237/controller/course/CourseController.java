@@ -22,16 +22,17 @@ public class CourseController {
      * 新增课程
      */
     @PostMapping("/add")
-    public JSONReturn add(@RequestBody Course course) {
+    public String add(@RequestBody Course course) {
         try {
             boolean success = courseService.save(course);
             if (success) {
-                return jsonReturn.success("新增成功");
+                return jsonReturn.returnSuccess("新增成功");
             } else {
-                return jsonReturn.fail("新增失败");
+                return jsonReturn.returnError("新增失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -39,16 +40,17 @@ public class CourseController {
      * 更新课程
      */
     @PutMapping("/update")
-    public JSONReturn update(@RequestBody Course course) {
+    public String update(@RequestBody Course course) {
         try {
             boolean success = courseService.updateById(course);
             if (success) {
-                return jsonReturn.success("更新成功");
+                return jsonReturn.returnSuccess("更新成功");
             } else {
-                return jsonReturn.fail("更新失败");
+                return jsonReturn.returnError("更新失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -56,16 +58,17 @@ public class CourseController {
      * 删除课程
      */
     @DeleteMapping("/delete/{id}")
-    public JSONReturn delete(@PathVariable Long id) {
+    public String delete(@PathVariable Long id) {
         try {
             boolean success = courseService.removeById(id);
             if (success) {
-                return jsonReturn.success("删除成功");
+                return jsonReturn.returnSuccess("删除成功");
             } else {
-                return jsonReturn.fail("删除失败");
+                return jsonReturn.returnError("删除失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -73,16 +76,17 @@ public class CourseController {
      * 批量删除课程
      */
     @DeleteMapping("/deleteBatch")
-    public JSONReturn deleteBatch(@RequestBody List<Long> ids) {
+    public String deleteBatch(@RequestBody List<Long> ids) {
         try {
             boolean success = courseService.removeByIds(ids);
             if (success) {
-                return jsonReturn.success("删除成功");
+                return jsonReturn.returnSuccess("删除成功");
             } else {
-                return jsonReturn.fail("删除失败");
+                return jsonReturn.returnError("删除失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -90,12 +94,13 @@ public class CourseController {
      * 查询课程列表
      */
     @GetMapping("/list")
-    public JSONReturn list() {
+    public String list() {
         try {
             List<Course> courses = courseService.list();
-            return jsonReturn.success(courses);
+            return jsonReturn.returnSuccess(courses);
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -103,12 +108,13 @@ public class CourseController {
      * 查询课程详情
      */
     @GetMapping("/{id}")
-    public JSONReturn detail(@PathVariable Long id) {
+    public String detail(@PathVariable Long id) {
         try {
             Course course = courseService.getById(id);
-            return jsonReturn.success(course);
+            return jsonReturn.returnSuccess(course);
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 }

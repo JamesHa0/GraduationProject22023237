@@ -22,16 +22,17 @@ public class CourseSelectionController {
      * 新增选课记录
      */
     @PostMapping("/add")
-    public JSONReturn add(@RequestBody CourseSelection courseSelection) {
+    public String add(@RequestBody CourseSelection courseSelection) {
         try {
             boolean success = courseSelectionService.save(courseSelection);
             if (success) {
-                return jsonReturn.success("选课成功");
+                return jsonReturn.returnSuccess("选课成功");
             } else {
-                return jsonReturn.fail("选课失败");
+                return jsonReturn.returnError("选课失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -39,16 +40,17 @@ public class CourseSelectionController {
      * 更新选课记录
      */
     @PutMapping("/update")
-    public JSONReturn update(@RequestBody CourseSelection courseSelection) {
+    public String update(@RequestBody CourseSelection courseSelection) {
         try {
             boolean success = courseSelectionService.updateById(courseSelection);
             if (success) {
-                return jsonReturn.success("更新成功");
+                return jsonReturn.returnSuccess("更新成功");
             } else {
-                return jsonReturn.fail("更新失败");
+                return jsonReturn.returnError("更新失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -56,16 +58,17 @@ public class CourseSelectionController {
      * 删除选课记录
      */
     @DeleteMapping("/delete/{id}")
-    public JSONReturn delete(@PathVariable Long id) {
+    public String delete(@PathVariable Long id) {
         try {
             boolean success = courseSelectionService.removeById(id);
             if (success) {
-                return jsonReturn.success("退课成功");
+                return jsonReturn.returnSuccess("退课成功");
             } else {
-                return jsonReturn.fail("退课失败");
+                return jsonReturn.returnError("退课失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -73,16 +76,17 @@ public class CourseSelectionController {
      * 批量删除选课记录
      */
     @DeleteMapping("/deleteBatch")
-    public JSONReturn deleteBatch(@RequestBody List<Long> ids) {
+    public String deleteBatch(@RequestBody List<Long> ids) {
         try {
             boolean success = courseSelectionService.removeByIds(ids);
             if (success) {
-                return jsonReturn.success("删除成功");
+                return jsonReturn.returnSuccess("删除成功");
             } else {
-                return jsonReturn.fail("删除失败");
+                return jsonReturn.returnError("删除失败");
             }
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -90,12 +94,13 @@ public class CourseSelectionController {
      * 查询选课记录列表
      */
     @GetMapping("/list")
-    public JSONReturn list() {
+    public String list() {
         try {
             List<CourseSelection> courseSelections = courseSelectionService.list();
-            return jsonReturn.success(courseSelections);
+            return jsonReturn.returnSuccess(courseSelections);
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 
@@ -103,12 +108,13 @@ public class CourseSelectionController {
      * 查询选课记录详情
      */
     @GetMapping("/{id}")
-    public JSONReturn detail(@PathVariable Long id) {
+    public String detail(@PathVariable Long id) {
         try {
             CourseSelection courseSelection = courseSelectionService.getById(id);
-            return jsonReturn.success(courseSelection);
+            return jsonReturn.returnSuccess(courseSelection);
         } catch (Exception e) {
-            return jsonReturn.fail(e.getMessage());
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
         }
     }
 }
