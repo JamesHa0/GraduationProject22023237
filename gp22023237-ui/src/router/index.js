@@ -123,6 +123,32 @@ export const constantRoutes = [
         meta: { title: '已确认学生', icon: 'list' }
       }
     ]
+  },
+  {
+    path: '/course',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'course',
+        component: () => import('@/views/course/course/index'),
+        name: 'Course',
+        meta: { title: '课程信息管理', icon: 'book' }
+      },
+      {
+        path: 'selection',
+        component: () => import('@/views/course/selection/index'),
+        name: 'CourseSelection',
+        meta: { title: '选课管理', icon: 'list' }
+      },
+      {
+        path: 'score',
+        component: () => import('@/views/course/score/index'),
+        name: 'Score',
+        meta: { title: '成绩管理', icon: 'score' }
+      }
+    ]
   }
 ]
 
