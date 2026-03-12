@@ -107,7 +107,6 @@ public class GraduationQualificationController {
             return jsonReturn.fail("查询失败：" + e.getMessage());
         }
     }
-}
 
     /**
      * 查询学生毕业资格

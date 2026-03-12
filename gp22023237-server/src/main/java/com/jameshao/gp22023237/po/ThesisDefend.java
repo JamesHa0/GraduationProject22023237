@@ -32,7 +32,6 @@ public class ThesisDefend {
     /**
      * 答辩成绩
      */
- */
     private Integer defendResult;
 
     /**
