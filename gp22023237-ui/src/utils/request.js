@@ -73,14 +73,18 @@ service.interceptors.request.use(config => {
 
 // 响应拦截器
 service.interceptors.response.use(res => {
-  // 未设置状态码则默认成功状态
-  const code = res.data.code || 200;
-  // 获取错误信息
-  const msg = errorCode[code] || res.data.msg || errorCode['default']
   // 二进制数据则直接返回
   if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
     return res.data
   }
+
+  // 兼容两种响应格式
+  // 格式1: { "code": 200, "data": {...}, "msg": "..." }
+  // 格式2: { "result": "success", "data": {...}, "error": "..." }
+  const code = res.data.code || (res.data.result === 'success' ? 200 : 500);
+  // 获取错误信息
+  const msg = errorCode[code] || res.data.msg || res.data.error || errorCode['default']
+
   if (code === 401) {
     if (!isRelogin.show) {
       isRelogin.show = true;
@@ -104,7 +108,35 @@ service.interceptors.response.use(res => {
     ElNotification.error({ title: msg })
     return Promise.reject('error')
   } else {
-    return Promise.resolve(res.data)
+    // 统一返回格式
+    // 如果后端返回 { "result": "success", "data": {...} }
+    // 转换为 { "code": 200, "data": {...}, "msg": "..." }
+
+    const responseData = res.data.data
+
+    // 检查是否是分页对象结构 { current, pages, records, size, total }
+    if (responseData && typeof responseData === 'object' &&
+        'current' in responseData && 'records' in responseData) {
+      // 分页对象，将records作为data返回
+      return Promise.resolve({
+        code: 200,
+        data: responseData.records || [],
+        msg: msg,
+        // 保留分页信息供需要时使用
+        pagination: {
+          current: responseData.current,
+          pages: responseData.pages,
+          size: responseData.size,
+          total: responseData.total
+        }
+      })
+    }
+
+    return Promise.resolve({
+      code: 200,
+      data: responseData,
+      msg: msg
+    })
   }
 },
   error => {

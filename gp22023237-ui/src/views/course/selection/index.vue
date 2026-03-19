@@ -53,26 +53,36 @@
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form :model="form" :rules="rules" ref="selectionRef" label-width="80px">
-        <el-form-item label="学生ID" prop="studentId">
-          <el-input v-model="form.studentId" placeholder="请输入学生ID" />
-        </el-form-item>
-        <el-form-item label="课程ID" prop="courseId">
-          <el-input v-model="form.courseId" placeholder="请输入课程ID" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="0">待审核</el-radio>
-            <el-radio :value="1">已通过</el-radio>
-            <el-radio :value="2">已拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="学生ID" prop="studentId">
+              <el-input v-model="form.studentId" placeholder="请输入学生ID" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="课程ID" prop="courseId">
+              <el-input v-model="form.courseId" placeholder="请输入课程ID" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="选课状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio :value="0">待审核</el-radio>
+                <el-radio :value="1">已通过</el-radio>
+                <el-radio :value="2">已拒绝</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+          <el-button @click="cancel">取消</el-button>
         </div>
       </template>
     </el-dialog>

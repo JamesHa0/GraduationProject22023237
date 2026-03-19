@@ -149,6 +149,102 @@ export const constantRoutes = [
         meta: { title: '成绩管理', icon: 'score' }
       }
     ]
+  },
+  {
+    path: '/student',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'info',
+        component: () => import('@/views/student/info/index'),
+        name: 'StudentInfo',
+        meta: { title: '学生信息管理', icon: 'user' }
+      },
+      {
+        path: 'change',
+        component: () => import('@/views/student/change/index'),
+        name: 'StudentChange',
+        meta: { title: '学籍变更申请', icon: 'edit' }
+      },
+      {
+        path: 'approval',
+        component: () => import('@/views/student/approval/index'),
+        name: 'StudentApproval',
+        meta: { title: '学籍变更审批', icon: 'check' }
+      },
+      {
+        path: 'graduation',
+        component: () => import('@/views/student/graduation/index'),
+        name: 'GraduationAudit',
+        meta: { title: '毕业资格审核', icon: 'finished' }
+      }
+    ]
+  },
+  {
+    path: '/academic',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'activity',
+        component: () => import('@/views/academic/activity/index'),
+        name: 'AcademicActivity',
+        meta: { title: '学术活动管理', icon: 'star' }
+      },
+      {
+        path: 'innovation',
+        component: () => import('@/views/academic/innovation/index'),
+        name: 'InnovationProject',
+        meta: { title: '创新实践项目', icon: 'trophy' }
+      },
+      {
+        path: 'achievement',
+        component: () => import('@/views/academic/achievement/index'),
+        name: 'AcademicAchievement',
+        meta: { title: '学术成果管理', icon: 'medal' }
+      }
+    ]
+  },
+  {
+    path: '/degree',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'proposal',
+        component: () => import('@/views/degree/proposal/index'),
+        name: 'ThesisProposal',
+        meta: { title: '论文开题', icon: 'document' }
+      },
+      {
+        path: 'midterm',
+        component: () => import('@/views/degree/midterm/index'),
+        name: 'ThesisMidterm',
+        meta: { title: '论文中期检查', icon: 'date' }
+      },
+      {
+        path: 'predefense',
+        component: () => import('@/views/degree/predefense/index'),
+        name: 'ThesisPreDefense',
+        meta: { title: '论文预答辩', icon: 'chat-dot-round' }
+      },
+      {
+        path: 'application',
+        component: () => import('@/views/degree/application/index'),
+        name: 'DegreeApplication',
+        meta: { title: '学位申请', icon: 's-promotion' }
+      },
+      {
+        path: 'approval',
+        component: () => import('@/views/degree/approval/index'),
+        name: 'DegreeApproval',
+        meta: { title: '学位审批', icon: 's-check' }
+      }
+    ]
   }
 ]
 

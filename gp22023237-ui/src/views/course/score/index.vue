@@ -57,37 +57,55 @@
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form :model="form" :rules="rules" ref="scoreRef" label-width="80px">
-        <el-form-item label="学生ID" prop="studentId">
-          <el-input v-model="form.studentId" placeholder="请输入学生ID" />
-        </el-form-item>
-        <el-form-item label="课程ID" prop="courseId">
-          <el-input v-model="form.courseId" placeholder="请输入课程ID" />
-        </el-form-item>
-        <el-form-item label="平时成绩" prop="usualScore">
-          <el-input-number v-model="form.usualScore" :min="0" :max="100" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="期末成绩" prop="examScore">
-          <el-input-number v-model="form.examScore" :min="0" :max="100" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="总成绩" prop="totalScore">
-          <el-input-number v-model="form.totalScore" :min="0" :max="100" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="成绩等级" prop="grade">
-          <el-select v-model="form.grade" placeholder="请选择成绩等级" style="width: 100%">
-            <el-option label="优秀" value="A" />
-            <el-option label="良好" value="B" />
-            <el-option label="中等" value="C" />
-            <el-option label="及格" value="D" />
-            <el-option label="不及格" value="F" />
-          </el-select>
-        </el-form-item>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="学生ID" prop="studentId">
+              <el-input v-model="form.studentId" placeholder="请输入学生ID" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="课程ID" prop="courseId">
+              <el-input v-model="form.courseId" placeholder="请输入课程ID" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="平时成绩" prop="usualScore">
+              <el-input-number v-model="form.usualScore" :min="0" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="期末成绩" prop="examScore">
+              <el-input-number v-model="form.examScore" :min="0" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="总成绩" prop="totalScore">
+              <el-input-number v-model="form.totalScore" :min="0" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="成绩等级" prop="grade">
+              <el-select v-model="form.grade" placeholder="请选择成绩等级" style="width: 100%">
+                <el-option label="优秀" value="A" />
+                <el-option label="良好" value="B" />
+                <el-option label="中等" value="C" />
+                <el-option label="及格" value="D" />
+                <el-option label="不及格" value="F" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+          <el-button @click="cancel">取消</el-button>
         </div>
       </template>
     </el-dialog>
