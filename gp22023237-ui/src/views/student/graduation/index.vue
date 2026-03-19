@@ -109,34 +109,37 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listGraduationAudit, manualAuditGraduation, getGraduationStats } from '@/api/student/status'
 
 const loading = ref(false)
 const dataList = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const isView = ref(false)
 
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
-  studentNo: '',
-  status: ''
+  studentId: undefined,
+  auditStatus: undefined
 })
 
 const form = reactive({
   id: '',
+  studentId: undefined,
+  studentNo: '',
   studentName: '',
   creditCheck: 0,
   thesisCheck: 0,
+  achievementCheck: 0,
   practiceCheck: 0,
+  auditStatus: 0,
   comment: ''
 })
 
 function handleQuery() {
   loading.value = true
-  // TODO: 调用API获取数据
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  getList()
 }
 
 function resetQuery() {
@@ -146,19 +149,58 @@ function resetQuery() {
 }
 
 function handleAudit(row) {
+  isView.value = false
   form.id = row.id
+  form.studentId = row.studentId
+  form.studentNo = row.studentNo
   form.studentName = row.studentName
-  form.creditCheck = row.creditCheck
-  form.thesisCheck = row.thesisCheck
-  form.practiceCheck = row.practiceCheck
+  form.creditCheck = row.creditCheck || 0
+  form.thesisCheck = row.thesisCheck || 0
+  form.achievementCheck = row.achievementCheck || 0
+  form.practiceCheck = row.practiceCheck || 0
+  form.auditStatus = row.auditStatus || 0
   form.comment = row.comment || ''
   dialogVisible.value = true
 }
 
 function handleSubmit() {
-  ElMessage.success('审核成功')
-  dialogVisible.value = false
-  handleQuery()
+  if (isView.value) {
+    dialogVisible.value = false
+    return
+  }
+
+  const { id, auditStatus, comment } = form
+  // TODO: 从登录信息获取auditorId和auditorName
+  manualAuditGraduation(id, auditStatus, comment, 1, '当前用户').then(res => {
+    if (res.code === 200) {
+      ElMessage.success('审核成功')
+      dialogVisible.value = false
+      getList()
+    } else {
+      ElMessage.error(res.msg || '审核失败')
+    }
+  }).catch(err => {
+    ElMessage.error('审核失败')
+    console.error(err)
+  })
+}
+
+function getList() {
+  loading.value = true
+  listGraduationAudit(queryParams).then(res => {
+    loading.value = false
+    if (res.code === 200) {
+      const result = res.data
+      dataList.value = result.records || []
+      total.value = result.total || 0
+    } else {
+      ElMessage.error(res.msg || '获取数据失败')
+    }
+  }).catch(err => {
+    loading.value = false
+    ElMessage.error('获取数据失败')
+    console.error(err)
+  })
 }
 
 function handleSizeChange(val) {
@@ -170,6 +212,9 @@ function handleCurrentChange(val) {
   queryParams.pageNum = val
   handleQuery()
 }
+
+// 初始化加载数据
+getList()
 </script>
 
 <style scoped>

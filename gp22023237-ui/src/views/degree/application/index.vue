@@ -109,26 +109,34 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listDegreeApplication, submitDegreeApplication, recordDefenseResult, committeeApprove, grantDegree } from '@/api/degree'
 
 const loading = ref(false)
 const dataList = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const isView = ref(false)
 
 const queryParams = reactive({
   pageNum:1,
   pageSize: 10,
-  studentNo: '',
-  status: ''
+  studentId: undefined,
+  degreeGranted: undefined
 })
 
 const form = reactive({
+  id: '',
+  studentId: undefined,
   degreeType: 1,
   thesisTitle: '',
   defenseTime: '',
   defenseLocation: '',
   committeeChair: '',
   committeeMembers: '',
+  defenseResult: 0,
+  defenseScore: 0,
+  degreeGranted: 0,
+  certificateNo: '',
   attachmentPath: ''
 })
 
@@ -149,7 +157,7 @@ function getResultType(result) {
 
 function handleQuery() {
   loading.value = true
-  setTimeout(() => { loading.value = false }, 500)
+  getList()
 }
 
 function resetQuery() {
@@ -159,17 +167,67 @@ function resetQuery() {
 }
 
 function handleAdd() {
+  isView.value = false
+  Object.assign(form, {
+    id: '',
+    studentId: undefined,
+    degreeType: 1,
+    thesisTitle: '',
+    defenseTime: '',
+    defenseLocation: '',
+    committeeChair: '',
+    committeeMembers: '',
+    defenseResult: 0,
+    defenseScore: 0,
+    degreeGranted: 0,
+    certificateNo: '',
+    attachmentPath: ''
+  })
   dialogVisible.value = true
 }
 
 function handleView(row) {
-  console.log('查看详情', row)
+  isView.value = true
+  Object.assign(form, row)
+  dialogVisible.value = true
 }
 
 function handleSubmit() {
-  ElMessage.success('申请提交成功')
-  dialogVisible.value = false
-  handleQuery()
+  if (isView.value) {
+    dialogVisible.value = false
+    return
+  }
+
+  submitDegreeApplication(form).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('申请提交成功')
+      dialogVisible.value = false
+      getList()
+    } else {
+      ElMessage.error(res.msg || '提交失败')
+    }
+  }).catch(err => {
+    ElMessage.error('提交失败')
+    console.error(err)
+  })
+}
+
+function getList() {
+  loading.value = true
+  listDegreeApplication(queryParams).then(res => {
+    loading.value = false
+    if (res.code === 200) {
+      const result = res.data
+      dataList.value = result.records || []
+      total.value = result.total || 0
+    } else {
+      ElMessage.error(res.msg || '获取数据失败')
+    }
+  }).catch(err => {
+    loading.value = false
+    ElMessage.error('获取数据失败')
+    console.error(err)
+  })
 }
 
 function handleSizeChange(val) {
@@ -181,6 +239,9 @@ function handleCurrentChange(val) {
   queryParams.pageNum = val
   handleQuery()
 }
+
+// 初始化加载数据
+getList()
 </script>
 
 <style scoped>

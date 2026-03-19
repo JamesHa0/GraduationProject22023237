@@ -108,24 +108,33 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listProposal, getProposalDetail, submitProposal, approveProposalMentor, approveProposalSecretary, approveProposalDean } from '@/api/degree'
 
 const loading = ref(false)
 const dataList = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const isView = ref(false)
 
 const queryParams = reactive({
   pageNum:1,
   pageSize: 10,
-  studentNo: '',
-  status: ''
+  studentId: undefined,
+  overallStatus: undefined
 })
 
 const form = reactive({
   id: '',
+  studentId: undefined,
   title: '',
   direction: '',
   content: '',
+  background: '',
+  status: '',
+  methods: '',
+  expectedResults: '',
+  plan: '',
+  references: '',
   status: 1,
   comment: ''
 })
@@ -142,7 +151,7 @@ function getStatusType(status) {
 
 function handleQuery() {
   loading.value = true
-  setTimeout(() => { loading.value = false }, 500)
+  getList()
 }
 
 function resetQuery() {
@@ -152,23 +161,70 @@ function resetQuery() {
 }
 
 function handleView(row) {
-  console.log('查看详情', row)
+  isView.value = true
+  getProposalDetail(row.id).then(res => {
+    if (res.code === 200) {
+      Object.assign(form, res.data)
+      dialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取详情失败')
+    }
+  })
 }
 
 function handleApprove(row) {
-  form.id = row.id
-  form.title = row.title
-  form.direction = row.direction
-  form.content = row.content
-  form.status = 1
-  form.comment = ''
-  dialogVisible.value = true
+  isView.value = false
+  getProposalDetail(row.id).then(res => {
+    if (res.code === 200) {
+      Object.assign(form, res.data)
+      form.status = 1
+      form.comment = ''
+      dialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取详情失败')
+    }
+  })
 }
 
 function handleSubmit() {
-  ElMessage.success('审批成功')
-  dialogVisible.value = false
-  handleQuery()
+  if (isView.value) {
+    dialogVisible.value = false
+    return
+  }
+
+  // 提交审批
+  const { id, status, comment } = form
+  // TODO: 根据当前用户角色选择不同的审批方法
+  approveProposalMentor(id, status, comment).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('审批成功')
+      dialogVisible.value = false
+      getList()
+    } else {
+      ElMessage.error(res.msg || '审批失败')
+    }
+  }).catch(err => {
+    ElMessage.error('审批失败')
+    console.error(err)
+  })
+}
+
+function getList() {
+  loading.value = true
+  listProposal(queryParams).then(res => {
+    loading.value = false
+    if (res.code === 200) {
+      const result = res.data
+      dataList.value = result.records || []
+      total.value = result.total || 0
+    } else {
+      ElMessage.error(res.msg || '获取数据失败')
+    }
+  }).catch(err => {
+    loading.value = false
+    ElMessage.error('获取数据失败')
+    console.error(err)
+  })
 }
 
 function handleSizeChange(val) {
@@ -180,6 +236,9 @@ function handleCurrentChange(val) {
   queryParams.pageNum = val
   handleQuery()
 }
+
+// 初始化加载数据
+getList()
 </script>
 
 <style scoped>

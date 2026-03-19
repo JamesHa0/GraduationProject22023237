@@ -103,27 +103,40 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listPreDefense, getPreDefenseDetail, submitPreDefense, recordPreDefenseResult, approvePreDefenseMentor, approvePreDefenseSecretary, approvePreDefenseDean } from '@/api/degree'
 
 const loading = ref(false)
 const dataList = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
+const isView = ref(false)
+const isRecord = ref(false)
 
 const queryParams = reactive({
   pageNum:1,
   pageSize: 10,
-  studentNo: '',
-  status: ''
+  studentId: undefined,
+  overallStatus: undefined
 })
 
 const form = reactive({
   id: '',
+  studentId: undefined,
+  thesisTitle: '',
+  thesisAbstract: '',
   defenseTime: '',
   defenseLocation: '',
   defenseResult: 1,
   defenseScore: 0,
+  committeeChair: '',
+  committeeMembers: '',
   committeeComment: '',
-  qaRecord: ''
+  qaRecord: '',
+  mentorStatus: 0,
+  secretaryStatus: 0,
+  deanStatus: 0,
+  status: 1,
+  comment: ''
 })
 
 function getResultText(result) {
@@ -136,17 +149,19 @@ function getResultType(result) {
   return map[result] || ''
 }
 
-function getStatusText() {
-  return '待审批'
+function getStatusText(status) {
+  const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' }
+  return map[status] || '-'
 }
 
-function getStatusType() {
-  return 'warning'
+function getStatusType(status) {
+  const map = { 0: 'warning', 1: 'success', 2: 'danger' }
+  return map[status] || ''
 }
 
 function handleQuery() {
   loading.value = true
-  setTimeout(() => { loading.value = false }, 500)
+  getList()
 }
 
 function resetQuery() {
@@ -156,24 +171,87 @@ function resetQuery() {
 }
 
 function handleView(row) {
-  console.log('查看详情', row)
+  isView.value = true
+  isRecord.value = false
+  getPreDefenseDetail(row.id).then(res => {
+    if (res.code === 200) {
+      Object.assign(form, res.data)
+      dialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取详情失败')
+    }
+  })
 }
 
 function handleRecord(row) {
-  form.id = row.id
-  form.defenseTime = ''
-  form.defenseLocation = ''
-  form.defenseResult = 1
-  form.defenseScore = 0
-  form.committeeComment = ''
-  form.qaRecord = ''
-  dialogVisible.value = true
+  isView.value = true
+  isRecord.value = true
+  getPreDefenseDetail(row.id).then(res => {
+    if (res.code === 200) {
+      Object.assign(form, res.data)
+      dialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取详情失败')
+    }
+  })
 }
 
 function handleSubmit() {
-  ElMessage.success('记录成功')
-  dialogVisible.value = false
-  handleQuery()
+  if (isView.value && !isRecord.value) {
+    dialogVisible.value = false
+    return
+  }
+
+  if (isRecord.value) {
+    // 记录答辩结果
+    const { id, defenseResult, defenseScore, committeeComment, qaRecord } = form
+    recordPreDefenseResult(id, defenseResult, committeeComment, qaRecord).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('记录成功')
+        dialogVisible.value = false
+        getList()
+      } else {
+        ElMessage.error(res.msg || '记录失败')
+      }
+    }).catch(err => {
+      ElMessage.error('记录失败')
+      console.error(err)
+    })
+  } else {
+    // 提交审批
+    const { id, status, comment } = form
+    // TODO: 根据当前用户角色选择不同的审批方法
+    approvePreDefenseMentor(id, status, comment).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('审批成功')
+        dialogVisible.value = false
+        getList()
+      } else {
+        ElMessage.error(res.msg || '审批失败')
+      }
+    }).catch(err => {
+      ElMessage.error('审批失败')
+      console.error(err)
+    })
+  }
+}
+
+function getList() {
+  loading.value = true
+  listPreDefense(queryParams).then(res => {
+    loading.value = false
+    if (res.code === 200) {
+      const result = res.data
+      dataList.value = result.records || []
+      total.value = result.total || 0
+    } else {
+      ElMessage.error(res.msg || '获取数据失败')
+    }
+  }).catch(err => {
+    loading.value = false
+    ElMessage.error('获取数据失败')
+    console.error(err)
+  })
 }
 
 function handleSizeChange(val) {
@@ -185,6 +263,9 @@ function handleCurrentChange(val) {
   queryParams.pageNum = val
   handleQuery()
 }
+
+// 初始化加载数据
+getList()
 </script>
 
 <style scoped>
