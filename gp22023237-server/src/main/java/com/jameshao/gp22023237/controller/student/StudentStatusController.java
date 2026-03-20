@@ -63,7 +63,7 @@ public class StudentStatusController {
         try {
             Page<StudentStatusChange> page = new Page<>(pageNum, pageSize);
             LambdaQueryWrapper<StudentStatusChange> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(StudentStatusChange::getApplyTime);
+            wrapper.orderByDesc(StudentStatusChange::getCreateTime); // 使用数据库实际字段进行排序
 
             if (studentId != null) {
                 wrapper.eq(StudentStatusChange::getStudentId, studentId);

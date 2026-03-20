@@ -22,15 +22,14 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
     @Override
     @Transactional
     public boolean submitApplication(StudentStatusChange application) {
-        // 设置申请时间
-        application.setApplyTime(new Date());
+        // 设置申请时间 - 使用数据库存在的字段
         application.setCreateTime(new Date());
         application.setUpdateTime(new Date());
 
-        // 初始状态为未审批
+        // 初始状态为未审批 - 使用数据库实际字段名
         application.setMentorStatus(0);
         application.setSecretaryStatus(0);
-        application.setDeanStatus(0);
+        application.setStatus(0); // 整体状态为待审批
 
         return save(application);
     }
@@ -44,11 +43,10 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
         }
 
         application.setMentorStatus(status);
-        application.setMentorComment(comment);
         application.setUpdateTime(new Date());
 
-        // 如果导师同意，且教学秘书已同意，且院长已同意，则更新学生状态
-        if (status == 1 && application.getSecretaryStatus() == 1 && application.getDeanStatus() == 1) {
+        // 如果导师同意，且辅导员已同意，则更新学生状态
+        if (status == 1 && application.getSecretaryStatus() == 1) {
             updateStudentStatus(application);
         }
 
@@ -64,11 +62,10 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
         }
 
         application.setSecretaryStatus(status);
-        application.setSecretaryComment(comment);
         application.setUpdateTime(new Date());
 
-        // 如果导师同意，教学秘书同意，且院长已同意，则更新学生状态
-        if (application.getMentorStatus() == 1 && status == 1 && application.getDeanStatus() == 1) {
+        // 如果导师同意，且辅导员同意，则更新学生状态
+        if (application.getMentorStatus() == 1 && status == 1) {
             updateStudentStatus(application);
         }
 
@@ -83,11 +80,10 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
             return false;
         }
 
-        application.setDeanStatus(status);
-        application.setDeanComment(comment);
+        // 数据库中没有院长审批字段，这里简单处理
         application.setUpdateTime(new Date());
 
-        // 如果导师同意，教学秘书同意，且院长同意，则更新学生状态
+        // 如果导师和辅导员都同意，则更新学生状态
         if (application.getMentorStatus() == 1 && application.getSecretaryStatus() == 1 && status == 1) {
             updateStudentStatus(application);
         }
@@ -98,7 +94,25 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
     private void updateStudentStatus(StudentStatusChange application) {
         Student student = studentService.getById(application.getStudentId());
         if (student != null) {
-            student.setStatus(application.getNewStatus());
+            // 根据异动类型更新学生状态
+            // 1-休学 -> 状态2，2-复学 -> 状态1，3-退学 -> 状态4，4-延期毕业 -> 保持状态1
+            Integer changeType = application.getChangeType();
+            if (changeType != null) {
+                switch (changeType) {
+                    case 1: // 休学
+                        student.setStatus(2);
+                        break;
+                    case 2: // 复学
+                        student.setStatus(1);
+                        break;
+                    case 3: // 退学
+                        student.setStatus(4);
+                        break;
+                    case 4: // 延期毕业
+                        // 保持在读状态
+                        break;
+                }
+            }
             student.setUpdateTime(new Date());
             studentService.updateById(student);
         }
