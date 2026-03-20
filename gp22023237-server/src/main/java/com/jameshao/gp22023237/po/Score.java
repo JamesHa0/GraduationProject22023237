@@ -30,12 +30,37 @@ public class Score {
     private Long courseId;
 
     /**
-     * 成绩
+     * 成绩（兼容旧版本，建议使用total_score）
      */
     private Double score;
 
     /**
-     * 等级：优秀，良好，中等，及格，不及格
+     * 平时成绩
+     */
+    private Double usualScore;
+
+    /**
+     * 期末成绩
+     */
+    private Double examScore;
+
+    /**
+     * 总成绩
+     */
+    private Double totalScore;
+
+    /**
+     * 平时成绩权重(默认30%)
+     */
+    private Double usualWeight;
+
+    /**
+     * 期末成绩权重(默认70%)
+     */
+    private Double examWeight;
+
+    /**
+     * 等级：A-优秀，B-良好，C-中等，D-及格，E-不及格
      */
     private String grade;
 

@@ -1,182 +1,291 @@
 <template>
   <div class="app-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>学籍变更申请</span>
-          <el-button type="primary" size="small" @click="handleAdd">新增申请</el-button>
-        </div>
-      </template>
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="100px">
+      <el-form-item label="学号" prop="studentNo">
+        <el-input v-model="queryParams.studentNo" placeholder="请输入学号" clearable style="width: 200px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="姓名" prop="studentName">
+        <el-input v-model="queryParams.studentName" placeholder="请输入姓名" clearable style="width: 200px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="变更类型" prop="changeType">
+        <el-select v-model="queryParams.changeType" placeholder="请选择" clearable style="width: 200px">
+          <el-option label="休学" :value="1" />
+          <el-option label="复学" :value="2" />
+          <el-option label="退学" :value="3" />
+          <el-option label="延期毕业" :value="4" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
 
-      <!-- 查询表单 -->
-      <el-form :model="queryParams" :inline="true">
-        <el-form-item label="变更类型" prop="type">
-          <el-select v-model="queryParams.type" placeholder="请选择" clearable>
-            <el-option label="请假" :value="1" />
-            <el-option label="休学" :value="2" />
-            <el-option label="复学" :value="3" />
-            <el-option label="退学" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button type="primary" plain icon="Plus" @click="handleAdd">新增申请</el-button>
+      </el-col>
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
+    </el-row>
 
-      <!-- 数据表格 -->
-      <el-table v-loading="loading" :data="dataList" border>
-        <el-table-column type="index" label="序号" width="55" align="center" />
-        <el-table-column label="学号" prop="studentNo" align="center" />
-        <el-table-column label="姓名" prop="studentName" align="center" />
-        <el-table-column label="变更类型" prop="type" align="center">
-          <template #default="{ row }">
-            <el-tag>{{ getTypeName(row.type) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="开始时间" prop="startDate" align="center" />
-        <el-table-column label="结束时间" prop="endDate" align="center" />
-        <el-table-column label="导师审批" prop="mentorStatus" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.mentorStatus)">
-              {{ getStatusText(row.mentorStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="辅导员审批" prop="counselorStatus" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.counselorStatus)">
-              {{ getStatusText(row.counselorStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" align="center">
-          <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="handleView(row)">详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <el-table v-loading="loading" :data="changeList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="50" align="center" />
+      <el-table-column label="学号" align="center" prop="studentNo" width="120" />
+      <el-table-column label="姓名" align="center" prop="studentName" :show-overflow-tooltip="true" />
+      <el-table-column label="变更类型" align="center" prop="changeType" width="100">
+        <template #default="scope">
+          <el-tag>{{ getTypeName(scope.row.changeType) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="生效日期" align="center" prop="effectiveDate" width="120">
+        <template #default="scope">
+          {{ parseDate(scope.row.effectiveDate) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="导师审批" align="center" prop="mentorStatus" width="100">
+        <template #default="scope">
+          <el-tag :type="getStatusType(scope.row.mentorStatus)">
+            {{ getStatusText(scope.row.mentorStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="教学秘书审批" align="center" prop="secretaryStatus" width="120">
+        <template #default="scope">
+          <el-tag :type="getStatusType(scope.row.secretaryStatus)">
+            {{ getStatusText(scope.row.secretaryStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="分管院长审批" align="center" prop="deanStatus" width="120">
+        <template #default="scope">
+          <el-tag :type="getStatusType(scope.row.deanStatus)">
+            {{ getStatusText(scope.row.deanStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="申请时间" align="center" prop="applyTime" width="170">
+        <template #default="scope">
+          {{ parseDate(scope.row.applyTime) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
+        <template #default="scope">
+          <el-button link type="primary" icon="View" @click="handleView(scope.row)"></el-button>
+          <el-button link type="primary" icon="Edit" :disabled="scope.row.mentorStatus !== 0" @click="handleUpdate(scope.row)"></el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
-      <!-- 分页 -->
-      <el-pagination
-        v-model:current-page="queryParams.pageNum"
-        v-model:page-size="queryParams.pageSize"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
-    </el-card>
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <!-- 申请对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-form-item label="变更类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择">
-            <el-option label="请假" :value="1" />
-            <el-option label="休学" :value="2" />
-            <el-option label="复学" :value="3" />
-            <el-option label="退学" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="开始日期" prop="startDate">
-          <el-date-picker v-model="form.startDate" type="date" placeholder="选择日期" />
-        </el-form-item>
-        <el-form-item label="结束日期" prop="endDate">
-          <el-date-picker v-model="form.endDate" type="date" placeholder="选择日期" />
-        </el-form-item>
-        <el-form-item label="原因" prop="reason">
-          <el-input v-model="form.reason" type="textarea" :rows="4" placeholder="请输入原因" />
-        </el-form-item>
+    <el-dialog :title="title" v-model="open" width="700px" append-to-body>
+      <el-form :model="form" :rules="rules" ref="changeRef" label-width="100px">
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="变更类型" prop="changeType">
+              <el-radio-group v-model="form.changeType">
+                <el-radio :value="1">休学</el-radio>
+                <el-radio :value="2">复学</el-radio>
+                <el-radio :value="3">退学</el-radio>
+                <el-radio :value="4">延期毕业</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="学号" prop="studentNo">
+              <el-input v-model="form.studentNo" placeholder="请输入学号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="姓名" prop="studentName">
+              <el-input v-model="form.studentName" placeholder="请输入姓名" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="生效日期" prop="effectiveDate">
+              <el-date-picker v-model="form.effectiveDate" type="date" placeholder="选择生效日期" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="变更原因" prop="reason">
+              <el-input v-model="form.reason" type="textarea" :rows="4" placeholder="请输入变更原因" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="附件" prop="attachmentPath">
+              <el-input v-model="form.attachmentPath" placeholder="请上传附件" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="cancel">取 消</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+<script setup name="StudentStatusChange">
+import { listStatusChange, getStatusChangeDetail, submitStatusChange } from "@/api/student/status";
+import { getCurrentInstance, ref, reactive, toRefs } from "vue";
 
-const loading = ref(false)
-const dataList = ref([])
-const total = ref(0)
-const dialogVisible = ref(false)
-const dialogTitle = ref('新增申请')
+const { proxy } = getCurrentInstance();
 
-const queryParams = reactive({
-  pageNum: 1,
-  pageSize: 10,
-  type: ''
-})
+const changeList = ref([]);
+const open = ref(false);
+const loading = ref(true);
+const showSearch = ref(true);
+const ids = ref([]);
+const single = ref(true);
+const multiple = ref(true);
+const total = ref(0);
+const title = ref("");
 
-const form = reactive({
-  type: '',
-  startDate: '',
-  endDate: '',
-  reason: ''
-})
+const columns = ref([
+  { key: 0, label: `学号`, visible: true },
+  { key: 1, label: `姓名`, visible: true },
+  { key: 2, label: `变更类型`, visible: true },
+  { key: 3, label: `生效日期`, visible: true },
+  { key: 4, label: `导师审批`, visible: true },
+  { key: 5, label: `教学秘书审批`, visible: true },
+  { key: 6, label: `分管院长审批`, visible: true },
+  { key: 7, label: `申请时间`, visible: true }
+]);
 
-const rules = {
-  type: [{ required: true, message: '请选择变更类型', trigger: 'change' }],
-  startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
-  reason: [{ required: true, message: '请输入原因', trigger: 'blur' }]
-}
+const data = reactive({
+  form: {},
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    studentNo: undefined,
+    studentName: undefined,
+    changeType: undefined
+  },
+  rules: {
+    changeType: [{ required: true, message: "请选择变更类型", trigger: "change" }],
+    studentNo: [{ required: true, message: "请输入学号", trigger: "blur" }],
+    studentName: [{ required: true, message: "请输入姓名", trigger: "blur" }],
+    reason: [{ required: true, message: "请输入变更原因", trigger: "blur" }],
+    effectiveDate: [{ required: true, message: "请选择生效日期", trigger: "change" }]
+  }
+});
+
+const { queryParams, form, rules } = toRefs(data);
 
 function getTypeName(type) {
-  const map = { 1: '请假', 2: '休学', 3: '复学', 4: '退学' }
-  return map[type] || '-'
+  const map = { 1: '休学', 2: '复学', 3: '退学', 4: '延期毕业' };
+  return map[type] || '-';
 }
 
 function getStatusText(status) {
-  const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' }
-  return map[status] || '-'
+  const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' };
+  return map[status] || '-';
 }
 
 function getStatusType(status) {
-  const map = { 0: 'warning', 1: 'success', 2: 'danger' }
-  return map[status] || ''
+  const map = { 0: 'warning', 1: 'success', 2: 'danger' };
+  return map[status] || 'info';
+}
+
+function parseDate(dateStr) {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleString('zh-CN');
+}
+
+function getList() {
+  loading.value = true;
+  listStatusChange(queryParams.value).then(res => {
+    loading.value = false;
+    changeList.value = res.data.records || res.data || [];
+    total.value = res.data.total || changeList.value.length;
+  });
 }
 
 function handleQuery() {
-  loading.value = true
-  // TODO: 调用API获取数据
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  queryParams.value.pageNum = 1;
+  getList();
 }
 
 function resetQuery() {
-  queryParams.type = ''
-  handleQuery()
+  proxy.resetForm("queryRef");
+  handleQuery();
+}
+
+function handleSelectionChange(selection) {
+  ids.value = selection.map(item => item.id);
+  single.value = selection.length != 1;
+  multiple.value = !selection.length;
+}
+
+function reset() {
+  form.value = {
+    id: undefined,
+    studentId: undefined,
+    studentNo: undefined,
+    studentName: undefined,
+    changeType: undefined,
+    reason: undefined,
+    attachmentPath: undefined,
+    effectiveDate: new Date(),
+    mentorStatus: 0,
+    secretaryStatus: 0,
+    deanStatus: 0
+  };
+  proxy.resetForm("changeRef");
+}
+
+function cancel() {
+  open.value = false;
+  reset();
 }
 
 function handleAdd() {
-  dialogTitle.value = '新增申请'
-  dialogVisible.value = true
-}
-
-function handleSubmit() {
-  ElMessage.success('申请提交成功')
-  dialogVisible.value = false
+  reset();
+  open.value = true;
+  title.value = "新增申请";
 }
 
 function handleView(row) {
-  console.log('查看', row)
+  getStatusChangeDetail(row.id).then(res => {
+    proxy.$modal.detail(res.data);
+  });
 }
 
-function handleSizeChange(val) {
-  queryParams.pageSize = val
-  handleQuery()
+function handleUpdate(row) {
+  reset();
+  const id = row.id || ids.value;
+  getStatusChangeDetail(id).then(res => {
+    form.value = res.data;
+    open.value = true;
+    title.value = "修改申请";
+  });
 }
 
-function handleCurrentChange(val) {
-  queryParams.pageNum = val
-  handleQuery()
+function submitForm() {
+  proxy.$refs["changeRef"].validate(valid => {
+    if (valid) {
+      submitStatusChange(form.value).then(() => {
+        proxy.$modal.msgSuccess("提交成功");
+        open.value = false;
+        getList();
+      });
+    }
+  });
 }
+
+getList();
 </script>
 
 <style scoped>

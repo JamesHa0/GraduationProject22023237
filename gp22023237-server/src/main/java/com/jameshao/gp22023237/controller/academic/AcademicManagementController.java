@@ -390,9 +390,21 @@ public class AcademicManagementController {
             Integer status = Integer.valueOf(params.get("status").toString());
             String comment = params.get("comment") != null ? params.get("comment").toString() : null;
 
-            // TODO: 根据当前登录用户的角色（导师/教学秘书/院长）调用对应的审批方法
-            // 暂时默认调用导师审批
-            boolean success = academicAchievementService.mentorApprove(id, status, comment);
+            boolean success;
+            if (CurrentUserUtil.isMentor()) {
+                // 导师审批
+                success = academicAchievementService.mentorApprove(id, status, comment);
+            } else if (CurrentUserUtil.isSecretary()) {
+                // 教学秘书审批
+                success = academicAchievementService.secretaryApprove(id, status, comment);
+            } else if (CurrentUserUtil.isDean()) {
+                // 分管院长审批
+                success = academicAchievementService.deanApprove(id, status, comment);
+            } else {
+                // 其他角色不允许审批
+                return jsonReturn.returnFailed("无审批权限");
+            }
+
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();

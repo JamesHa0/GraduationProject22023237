@@ -48,12 +48,12 @@ public class Student {
     /**
      * 入学年份
      */
-    private Object admissionYear;
+    private Integer admissionYear;
 
     /**
      * 预计毕业年份
      */
-    private Object graduationYear;
+    private Integer graduationYear;
 
     /**
      * 研究方向

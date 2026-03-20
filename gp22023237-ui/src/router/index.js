@@ -147,6 +147,12 @@ export const constantRoutes = [
         component: () => import('@/views/course/score/index'),
         name: 'Score',
         meta: { title: '成绩管理', icon: 'score' }
+      },
+      {
+        path: 'student-select',
+        component: () => import('@/views/course/course/student-select'),
+        name: 'StudentCourseSelect',
+        meta: { title: '学生选课', icon: 'form' }
       }
     ]
   },

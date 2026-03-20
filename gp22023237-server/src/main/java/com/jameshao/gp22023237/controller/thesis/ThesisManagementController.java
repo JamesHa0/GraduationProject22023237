@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/thesis")
@@ -280,6 +282,52 @@ public class ThesisManagementController {
         try {
             boolean success = thesisPreDefenseService.deanApprove(id, status, comment);
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // ==================== 答辩条件检查 ====================
+
+    @GetMapping("/degree/checkEligibility")
+    public String checkDefenseEligibility(@RequestParam Long studentId) {
+        try {
+            // 检查学生是否满足答辩条件
+            // 条件1：已完成开题报告且通过
+            // 条件2：已完成中期检查且通过
+            // 条件3：已完成预答辩且通过
+            // 条件4：课程学分达标
+
+            LambdaQueryWrapper<ThesisProposal> proposalWrapper = new LambdaQueryWrapper<>();
+            proposalWrapper.eq(ThesisProposal::getStudentId, studentId);
+            proposalWrapper.eq(ThesisProposal::getOverallStatus, 4); // 4表示已通过
+
+            LambdaQueryWrapper<ThesisMidterm> midtermWrapper = new LambdaQueryWrapper<>();
+            midtermWrapper.eq(ThesisMidterm::getStudentId, studentId);
+            midtermWrapper.eq(ThesisMidterm::getOverallStatus, 4); // 4表示已通过
+
+            LambdaQueryWrapper<ThesisPreDefense> preDefenseWrapper = new LambdaQueryWrapper<>();
+            preDefenseWrapper.eq(ThesisPreDefense::getStudentId, studentId);
+            preDefenseWrapper.eq(ThesisPreDefense::getOverallStatus, 4); // 4表示已通过
+
+            boolean proposalPassed = thesisProposalService.count(proposalWrapper) > 0;
+            boolean midtermPassed = thesisMidtermService.count(midtermWrapper) > 0;
+            boolean preDefensePassed = thesisPreDefenseService.count(preDefenseWrapper) > 0;
+
+            // 检查学分达标情况（简化实现，实际应检查培养方案）
+            boolean creditsQualified = true;
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("eligible", proposalPassed && midtermPassed && preDefensePassed && creditsQualified);
+            result.put("conditions", Map.of(
+                "proposalPassed", proposalPassed,
+                "midtermPassed", midtermPassed,
+                "preDefensePassed", preDefensePassed,
+                "creditsQualified", creditsQualified
+            ));
+
+            return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

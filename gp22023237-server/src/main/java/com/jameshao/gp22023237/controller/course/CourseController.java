@@ -1,8 +1,8 @@
 package com.jameshao.gp22023237.controller.course;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
+import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.service.CourseService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,15 +20,13 @@ public class CourseController {
     @Autowired
     private CourseService courseService;
 
+    @Autowired
+    private CourseMapper courseMapper;
+
     @GetMapping("/list")
     public String list(String name, String courseNo, Integer status) {
         try {
-            LambdaQueryWrapper<Course> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.like(!ObjectUtils.isEmpty(name), Course::getName, name)
-                    .like(!ObjectUtils.isEmpty(courseNo), Course::getCourseNo, courseNo)
-                    .eq(!ObjectUtils.isEmpty(status), Course::getStatus, status)
-                    .orderByDesc(Course::getCreateTime);
-            List<Course> list = courseService.list(queryWrapper);
+            List<CourseWithTeacherDTO> list = courseMapper.listCourseWithTeacher(name, courseNo, status);
             return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
             e.printStackTrace();
@@ -39,7 +37,7 @@ public class CourseController {
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id) {
         try {
-            Course course = courseService.getById(id);
+            CourseWithTeacherDTO course = courseMapper.getCourseWithTeacherById(id);
             return jsonReturn.returnSuccess(course);
         } catch (Exception e) {
             e.printStackTrace();

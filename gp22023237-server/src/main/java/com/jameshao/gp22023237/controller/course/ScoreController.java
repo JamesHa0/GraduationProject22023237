@@ -50,6 +50,8 @@ public class ScoreController {
     @PostMapping("/add")
     public String add(@RequestBody Score score) {
         try {
+            // 计算总成绩和等级
+            calculateScore(score);
             boolean success = scoreService.save(score);
             if (success) {
                 return jsonReturn.returnSuccess("新增成功");
@@ -65,6 +67,8 @@ public class ScoreController {
     @PutMapping("/update")
     public String update(@RequestBody Score score) {
         try {
+            // 计算总成绩和等级
+            calculateScore(score);
             boolean success = scoreService.updateById(score);
             if (success) {
                 return jsonReturn.returnSuccess("更新成功");
@@ -74,6 +78,56 @@ public class ScoreController {
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 计算总成绩和等级
+     */
+    private void calculateScore(Score score) {
+        // 设置默认权重
+        if (score.getUsualWeight() == null) {
+            score.setUsualWeight(0.3);
+        }
+        if (score.getExamWeight() == null) {
+            score.setExamWeight(0.7);
+        }
+
+        // 计算总成绩
+        if (score.getUsualScore() != null && score.getExamScore() != null) {
+            Double totalScore = score.getUsualScore() * score.getUsualWeight()
+                    + score.getExamScore() * score.getExamWeight();
+            score.setTotalScore(Math.round(totalScore * 100.0) / 100.0); // 保留两位小数
+            score.setScore(score.getTotalScore()); // 同时更新旧字段
+        } else if (score.getExamScore() != null) {
+            // 只有期末成绩
+            score.setTotalScore(score.getExamScore());
+            score.setScore(score.getExamScore());
+        }
+
+        // 计算等级
+        if (score.getTotalScore() != null) {
+            score.setGrade(calculateGrade(score.getTotalScore()));
+        }
+    }
+
+    /**
+     * 根据分数计算等级
+     */
+    private String calculateGrade(Double score) {
+        if (score == null) {
+            return null;
+        }
+        if (score >= 90) {
+            return "A"; // 优秀
+        } else if (score >= 80) {
+            return "B"; // 良好
+        } else if (score >= 70) {
+            return "C"; // 中等
+        } else if (score >= 60) {
+            return "D"; // 及格
+        } else {
+            return "E"; // 不及格
         }
     }
 

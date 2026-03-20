@@ -1,6 +1,7 @@
 package com.jameshao.gp22023237.po;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -82,6 +83,7 @@ public class ThesisProposal {
     /**
      * 参考文献
      */
+    @TableField("`references`")
     private String references;
 
     /**

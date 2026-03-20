@@ -13,7 +13,7 @@
           <el-option label="良好" value="B" />
           <el-option label="中等" value="C" />
           <el-option label="及格" value="D" />
-          <el-option label="不及格" value="F" />
+          <el-option label="不及格" value="E" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -84,7 +84,26 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="总成绩" prop="totalScore">
-              <el-input-number v-model="form.totalScore" :min="0" :max="100" style="width: 100%" />
+              <el-input-number v-model="form.totalScore" :min="0" :max="100" style="width: 100%" :disabled="true" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="平时权重" prop="usualWeight">
+              <el-input-number v-model="form.usualWeight" :min="0" :max="1" :step="0.1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="期末权重" prop="examWeight">
+              <el-input-number v-model="form.examWeight" :min="0" :max="1" :step="0.1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="评语" prop="comment">
+              <el-input v-model="form.comment" type="textarea" :rows="2" placeholder="请输入评语" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -96,7 +115,7 @@
                 <el-option label="良好" value="B" />
                 <el-option label="中等" value="C" />
                 <el-option label="及格" value="D" />
-                <el-option label="不及格" value="F" />
+                <el-option label="不及格" value="E" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -180,7 +199,11 @@ function reset() {
     usualScore: 0,
     examScore: 0,
     totalScore: 0,
-    grade: undefined
+    usualWeight: 0.3,
+    examWeight: 0.7,
+    grade: undefined,
+    comment: undefined,
+    teacherId: 1
   };
   proxy.resetForm("scoreRef");
 }

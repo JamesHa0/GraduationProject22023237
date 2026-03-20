@@ -192,3 +192,12 @@ export function grantDegree(id, certificateNo) {
     data: { id, certificateNo }
   })
 }
+
+// 学位申请答辩条件检查
+export function checkDefenseEligibility(studentId) {
+  return request({
+    url: '/thesis/degree/checkEligibility',
+    method: 'get',
+    params: { studentId }
+  })
+}
