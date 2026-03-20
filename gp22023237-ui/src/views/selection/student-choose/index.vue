@@ -1,12 +1,5 @@
 <template>
     <div class="app-container">
-        <el-row class="mb-20">
-            <el-col :span="24">
-                <el-tag type="primary" effect="dark" size="large">
-                    当前：{{ roundName }}
-                </el-tag>
-            </el-col>
-        </el-row>
         <div class="card-container">
             <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
                 v-if="maxChoiceCount > 0">
@@ -24,9 +17,9 @@
                         <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1, 1)">
                             提交
                         </el-button>
-                        <el-button v-else type="danger" @click="submit(index - 1, 0)">
-                            放弃
-                        </el-button>
+                        <el-tag v-else type="success">
+                            已提交
+                        </el-tag>
                     </div>
                 </template>
             </el-card>
@@ -86,20 +79,12 @@
 
 <script setup>
 import { listMentor as initData, submitSelection, studentChoices } from "@/api/student/selection";
-import { getCurrentRound } from "@/api/selection/round";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
 const { proxy } = getCurrentInstance();
 
 const mentorList = ref([]);
-const currentRound = ref(1); // 当前轮次
-const roundName = ref('第一轮'); // 当前轮次名称
-
-const getRoundName = (round) => {
-    const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
-    return names[round] || '第一轮';
-};
 
 const maxChoiceCount = ref(0); // 最大志愿数
 const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
@@ -293,7 +278,7 @@ function submit(choiceIndex, studentStatus) {
         }
 
         const data = {
-            round: currentRound.value,  // 使用当前轮次
+            round: 1,  // 暂定1轮
             studentChoiceOrder: choiceIndex + 1,
             studentId: studentId.value,
             mentorId: selectedMentor.value,
@@ -302,7 +287,7 @@ function submit(choiceIndex, studentStatus) {
 
         console.log(`提交的信息:`, data);
 
-        proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
+        proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择（提交后不可修改）`).then(() => {
             // 提交选中导师 ID
             submitSelection(data).then(response => {
                 proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
@@ -316,59 +301,12 @@ function submit(choiceIndex, studentStatus) {
             });
         }).catch(() => { });
     }
-    else if (studentStatus == 0) {
-        // 获取该志愿对应的已选导师信息
-        const selectedChoice = studentChoicesData.value.find(
-            choice => choice.studentChoiceOrder === choiceIndex + 1
-        );
-
-        proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
-
-            const data = {
-                round: currentRound.value,  // 使用当前轮次
-                studentChoiceOrder: choiceIndex + 1,
-                studentId: studentId.value,
-                mentorId: selectedChoice.mentorId,
-                studentStatus: studentStatus
-            }
-            console.log(`放弃信息:`, data);
-
-
-            submitSelection(data).then(response => {
-                proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
-                selectedMentor.value = null; // 清除选中状态
-                getList();
-            }).catch(error => {
-                proxy.$modal.msgError("放弃失败");
-                console.error("放弃错误:", error);
-            });
-        }).catch(() => { });
-    }
-
-
-
-
-}
-
-// 获取当前轮次
-function loadCurrentRound() {
-    getCurrentRound().then(response => {
-        currentRound.value = response.data;
-        roundName.value = getRoundName(response.data);
-    }).catch(() => {
-        console.error('获取当前轮次失败');
-    });
 }
 
 getList(); // 获取导师列表
-loadCurrentRound(); // 获取当前轮次
 </script>
 
 <style scoped>
-.mb-20 {
-    margin-bottom: 20px;
-}
-
 .card-container {
     display: flex;
     justify-content: space-between;

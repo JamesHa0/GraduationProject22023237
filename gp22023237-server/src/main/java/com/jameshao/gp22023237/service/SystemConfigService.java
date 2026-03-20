@@ -11,6 +11,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 public interface SystemConfigService extends IService<SystemConfig> {
     String getConfigValue(String configKey);
 
+    SystemConfig getConfigByKey(String configKey);
+
     boolean updateConfig(SystemConfig config);
 
 }

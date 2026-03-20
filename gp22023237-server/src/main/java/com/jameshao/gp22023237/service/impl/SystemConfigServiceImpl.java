@@ -58,6 +58,23 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
 
     /**
+     * 根据配置键获取完整配置对象
+     */
+    @Override
+    public SystemConfig getConfigByKey(String configKey) {
+        if (configKey == null || configKey.isEmpty()) {
+            return null;
+        }
+        try {
+            LambdaQueryWrapper<SystemConfig> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(SystemConfig::getConfigKey, configKey);
+            return this.getOne(queryWrapper);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * 更新配置
      */
     @Override
