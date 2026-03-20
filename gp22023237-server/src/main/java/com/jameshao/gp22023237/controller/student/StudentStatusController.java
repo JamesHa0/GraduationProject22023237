@@ -14,6 +14,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 学生状态管理控制器
+ * 负责处理学生学籍异动申请和毕业资格审核
+ * 学籍异动支持：休学、复学、退学、延期毕业四种类型
+ * 毕业资格审核支持自动审核和人工审核两种模式
+ * 路径前缀: /student/status
+ */
 @RestController
 @RequestMapping("/student/status")
 public class StudentStatusController {

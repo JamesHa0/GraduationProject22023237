@@ -15,6 +15,12 @@ import com.jameshao.gp22023237.service.InnovationProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 学术管理控制器
+ * 负责处理学术活动、创新项目、学术成果的提交和审批流程
+ * 支持导师、教学秘书、分管院长三级审批体系
+ * 路径前缀: /academic
+ */
 @RestController
 @RequestMapping("/academic")
 public class AcademicManagementController {
@@ -33,6 +39,11 @@ public class AcademicManagementController {
 
     // ==================== 学术活动管理 ====================
 
+    /**
+     * 学生提交学术活动申请
+     * @param activity 学术活动实体对象，包含活动类型、时间、地点、内容等信息
+     * @return 提交结果JSON
+     */
     @PostMapping("/activity/submit")
     public String submitActivity(@RequestBody AcademicActivity activity) {
         try {
@@ -44,6 +55,15 @@ public class AcademicManagementController {
         }
     }
 
+    /**
+     * 获取学术活动列表（支持分页和条件查询）
+     * @param pageNum 页码（默认1）
+     * @param pageSize 每页大小（默认10）
+     * @param studentId 学生ID（可选，用于查询特定学生的活动）
+     * @param activityType 活动类型（可选）
+     * @param status 审批状态过滤器（可选）：1-待导师审批，2-待秘书审批，3-待院长审批
+     * @return 分页活动列表
+     */
     @GetMapping("/activity/list")
     public String getActivityList(@RequestParam(defaultValue = "1") Integer pageNum,
                                  @RequestParam(defaultValue = "10") Integer pageSize,
@@ -382,7 +402,19 @@ public class AcademicManagementController {
         }
     }
 
-    // 统一的学术成果审批接口（根据用户角色自动调用对应的审批方法）
+    /**
+     * 统一的学术成果审批接口（根据用户角色自动调用对应的审批方法）
+     * 自动识别当前登录用户角色：
+     * - 导师角色调用导师审批方法
+     * - 教学秘书角色调用秘书审批方法
+     * - 分管院长角色调用院长审批方法
+     * - 其他角色返回无权限错误
+     * @param params 审批参数，包含：
+     *               - id: 成果ID
+     *               - status: 审批状态（1-同意，2-拒绝）
+     *               - comment: 审批意见（可选）
+     * @return 审批结果JSON
+     */
     @PostMapping("/achievement/approve")
     public String approveAchievement(@RequestBody Map<String, Object> params) {
         try {

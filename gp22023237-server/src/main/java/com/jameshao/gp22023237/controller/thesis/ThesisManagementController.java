@@ -13,6 +13,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 学位论文管理控制器
+ * 负责处理学位论文全流程管理：开题报告 -> 中期检查 -> 预答辩 -> 学位申请 -> 学位审批 -> 学位授予
+ * 支持导师、教学秘书、分管院长三级审批体系
+ * 路径前缀: /thesis
+ */
 @RestController
 @RequestMapping("/thesis")
 public class ThesisManagementController {
@@ -290,6 +296,16 @@ public class ThesisManagementController {
 
     // ==================== 答辩条件检查 ====================
 
+    /**
+     * 检查学生是否满足学位论文答辩条件
+     * 答辩条件包括：
+     * 1. 开题报告已完成且通过（overallStatus=4）
+     * 2. 中期检查已完成且通过（overallStatus=4）
+     * 3. 预答辩已完成且通过（overallStatus=4）
+     * 4. 课程学分达标（简化实现，实际需查询培养方案）
+     * @param studentId 学生ID
+     * @return 检查结果，包含是否合格及各条件的详细状态
+     */
     @GetMapping("/degree/checkEligibility")
     public String checkDefenseEligibility(@RequestParam Long studentId) {
         try {
