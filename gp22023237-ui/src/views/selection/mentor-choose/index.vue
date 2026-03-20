@@ -58,12 +58,10 @@
                         详细信息
                     </el-button>
                     <template v-if="scope.row.teacherStatus === 0">
-                        <el-button text bg type="primary" icon="Plus"
-                            @click="selectStudent(scope.row, 1)">
+                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)">
                             同意
                         </el-button>
-                        <el-button text bg type="danger" icon="Close"
-                            @click="selectStudent(scope.row, 2)">
+                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)">
                             拒绝
                         </el-button>
                     </template>
@@ -89,12 +87,12 @@
                 <el-descriptions :column="1" border size="large">
                     <el-descriptions-item label="姓名">{{ currentStudent.studentName }}</el-descriptions-item>
                     <el-descriptions-item label="性别">{{ genderFormat(currentStudent.gender) || '未填写'
-                    }}</el-descriptions-item>
+                        }}</el-descriptions-item>
                     <el-descriptions-item label="学号">{{ currentStudent.studentNo }}</el-descriptions-item>
                     <el-descriptions-item label="院系">{{ currentStudent.department }}</el-descriptions-item>
                     <el-descriptions-item label="专业">{{ currentStudent.major }}</el-descriptions-item>
                     <el-descriptions-item label="入学年份">{{ parseTime(currentStudent.admissionYear, '{y}')
-                        }}</el-descriptions-item>
+                    }}</el-descriptions-item>
                     <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未填写' }}</el-descriptions-item>
                     <el-descriptions-item label="邮箱">{{ currentStudent.email || '未填写' }}</el-descriptions-item>
                 </el-descriptions>
