@@ -184,7 +184,7 @@ public class StudentStatusController {
         try {
             Page<GraduationAudit> page = new Page<>(pageNum, pageSize);
             LambdaQueryWrapper<GraduationAudit> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(GraduationAudit::getApplyTime);
+            wrapper.orderByDesc(GraduationAudit::getCreateTime); // 使用数据库实际字段
 
             if (studentId != null) {
                 wrapper.eq(GraduationAudit::getStudentId, studentId);
