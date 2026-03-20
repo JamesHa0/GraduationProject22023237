@@ -37,7 +37,7 @@ public class MentorSelectionController {
     @Autowired
     private JSONReturn jsonReturn;
 
-    // 导师查询可选学生 - 增加轮次过滤
+    // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生
     @RequestMapping("/listStudents")
     public String listStudents(@RequestBody MentorStudent mentorStudent){
         try{
@@ -54,7 +54,27 @@ public class MentorSelectionController {
                     .eq(MentorStudent::getRound, currentRound); // 只查询当前轮次的学生
             List<MentorStudent> list = mentorStudentService.list(queryWrapper);
             List<SelectionDTO> result = new ArrayList<>();
+
+            // 先查询所有已被接受的学生ID
+            LambdaQueryWrapper<MentorStudent> acceptedWrapper = new LambdaQueryWrapper<>();
+            acceptedWrapper.eq(MentorStudent::getTeacherStatus, 1)
+                    .eq(MentorStudent::getStudentStatus, 1);
+            List<MentorStudent> acceptedList = mentorStudentService.list(acceptedWrapper);
+            List<Long> acceptedStudentIds = new ArrayList<>();
+            for (MentorStudent ms : acceptedList) {
+                if (!acceptedStudentIds.contains(ms.getStudentId())) {
+                    acceptedStudentIds.add(ms.getStudentId());
+                }
+            }
+            System.out.println("已被接受的学生ID列表: " + acceptedStudentIds);
+
             for (MentorStudent ms : list) {
+                // 如果该学生已被某个导师接受，则跳过
+                if (acceptedStudentIds.contains(ms.getStudentId())) {
+                    System.out.println("学生 " + ms.getStudentId() + " 已被接受，跳过");
+                    continue;
+                }
+
                 SelectionDTO dto = new SelectionDTO();
                 dto.setId(ms.getId());
                 dto.setStudentId(ms.getStudentId());
