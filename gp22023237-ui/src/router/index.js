@@ -153,6 +153,18 @@ export const constantRoutes = [
         component: () => import('@/views/course/course/student-select'),
         name: 'StudentCourseSelect',
         meta: { title: '学生选课', icon: 'form' }
+      },
+      {
+        path: 'select-result',
+        component: () => import('@/views/course/course/student-select'),
+        name: 'SelectResult',
+        meta: { title: '选课结果', icon: 'list' }
+      },
+      {
+        path: 'schedule',
+        component: () => import('@/views/course/course/student-select'),
+        name: 'CourseSchedule',
+        meta: { title: '课程表查询', icon: 'date' }
       }
     ]
   },
@@ -211,6 +223,12 @@ export const constantRoutes = [
         component: () => import('@/views/academic/achievement/index'),
         name: 'AcademicAchievement',
         meta: { title: '学术成果管理', icon: 'medal' }
+      },
+      {
+        path: 'review',
+        component: () => import('@/views/academic/activity/index'),
+        name: 'AcademicReview',
+        meta: { title: '学术内容审核', icon: 'check' }
       }
     ]
   },
@@ -249,6 +267,32 @@ export const constantRoutes = [
         component: () => import('@/views/degree/approval/index'),
         name: 'DegreeApproval',
         meta: { title: '学位审批', icon: 's-check' }
+      }
+    ]
+  },
+  {
+    path: '/system',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'role',
+        component: () => import('@/views/system/role/index'),
+        name: 'RoleManage',
+        meta: { title: '角色管理', icon: 'peoples' }
+      },
+      {
+        path: 'menu',
+        component: () => import('@/views/system/menu/index'),
+        name: 'MenuManage',
+        meta: { title: '菜单管理', icon: 'tree' }
+      },
+      {
+        path: 'user',
+        component: () => import('@/views/system/user/index'),
+        name: 'UserManage',
+        meta: { title: '用户管理', icon: 'user' }
       }
     ]
   }
