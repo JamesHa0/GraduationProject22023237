@@ -248,13 +248,13 @@ public class StudentSelectionController {
                 }
             }
 
-            // 保存所有志愿记录
+            // 保存所有志愿记录 - 每个志愿的round等于志愿顺序
             for (BatchSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
                 MentorStudent mentorStudent = new MentorStudent();
                 mentorStudent.setStudentId(batchDTO.getStudentId());
                 mentorStudent.setMentorId(choice.getMentorId());
                 mentorStudent.setStudentChoiceOrder(choice.getStudentChoiceOrder());
-                mentorStudent.setRound(currentRound);
+                mentorStudent.setRound(choice.getStudentChoiceOrder()); // 第一志愿round=1，第二round=2...
                 mentorStudent.setStudentStatus(1);
                 mentorStudent.setTeacherStatus(0);
                 mentorStudent.setSelectionTime(now);
