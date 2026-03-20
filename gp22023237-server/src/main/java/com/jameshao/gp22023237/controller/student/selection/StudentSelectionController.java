@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
+import com.jameshao.gp22023237.DTO.BatchSelectionDTO;
+import org.springframework.transaction.annotation.Transactional;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.po.MentorStudent;
@@ -176,6 +178,100 @@ public class StudentSelectionController {
                     boolean teacherUpdateResult = teacherService.update(null, teacherWrapper);
                     if (!teacherUpdateResult) {
                         return jsonReturn.returnError("更新导师剩余名额失败");
+                    }
+                }
+            }
+
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // 学生批量提交志愿 - 一次性提交所有志愿
+    @RequestMapping("/batchSubmit")
+    @Transactional(rollbackFor = Exception.class)
+    public String batchSubmitSelection(@RequestBody BatchSelectionDTO batchDTO){
+        try {
+            System.out.println("学生批量提交志愿:" + batchDTO);
+
+            // 验证参数
+            if (batchDTO.getStudentId() == null) {
+                return jsonReturn.returnError("学生ID不能为空");
+            }
+            if (batchDTO.getChoices() == null || batchDTO.getChoices().isEmpty()) {
+                return jsonReturn.returnError("志愿列表不能为空");
+            }
+
+            // 获取当前轮次
+            int currentRound = selectionRoundService.getCurrentRound();
+            System.out.println("当前轮次: " + currentRound);
+
+            // 检查该学生是否已经提交过志愿
+            LambdaQueryWrapper<MentorStudent> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(MentorStudent::getStudentId, batchDTO.getStudentId())
+                    .eq(MentorStudent::getStudentStatus, 1);
+            long existingCount = mentorStudentService.count(checkWrapper);
+            if (existingCount > 0) {
+                return jsonReturn.returnError("您已提交过志愿，不可重复提交");
+            }
+
+            Date now = new Date();
+            List<Long> mentorIds = new ArrayList<>();
+
+            // 验证并准备数据
+            for (BatchSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
+                if (choice.getMentorId() == null) {
+                    return jsonReturn.returnError("第" + choice.getStudentChoiceOrder() + "志愿的导师不能为空");
+                }
+                if (choice.getStudentChoiceOrder() == null) {
+                    return jsonReturn.returnError("志愿顺序不能为空");
+                }
+                // 检查是否重复选择同一位导师
+                if (mentorIds.contains(choice.getMentorId())) {
+                    return jsonReturn.returnError("不能重复选择同一位导师");
+                }
+                mentorIds.add(choice.getMentorId());
+
+                // 检查导师是否存在且有名额
+                Teacher teacher = teacherService.getById(choice.getMentorId());
+                if (teacher == null) {
+                    return jsonReturn.returnError("第" + choice.getStudentChoiceOrder() + "志愿的导师不存在");
+                }
+                if (teacher.getRemainingQuota() <= 0) {
+                    return jsonReturn.returnError("导师 " + teacher.getTeacherName() + " 已无剩余名额");
+                }
+            }
+
+            // 保存所有志愿记录
+            for (BatchSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
+                MentorStudent mentorStudent = new MentorStudent();
+                mentorStudent.setStudentId(batchDTO.getStudentId());
+                mentorStudent.setMentorId(choice.getMentorId());
+                mentorStudent.setStudentChoiceOrder(choice.getStudentChoiceOrder());
+                mentorStudent.setRound(currentRound);
+                mentorStudent.setStudentStatus(1);
+                mentorStudent.setTeacherStatus(0);
+                mentorStudent.setSelectionTime(now);
+
+                boolean saveResult = mentorStudentService.save(mentorStudent);
+                if (!saveResult) {
+                    throw new RuntimeException("保存第" + choice.getStudentChoiceOrder() + "志愿失败");
+                }
+            }
+
+            // 扣除所有所选导师的剩余名额
+            for (Long mentorId : mentorIds) {
+                Teacher currentTeacher = teacherService.getById(mentorId);
+                if (currentTeacher != null) {
+                    int newRemainingQuota = currentTeacher.getRemainingQuota() - 1;
+                    UpdateWrapper<Teacher> teacherWrapper = new UpdateWrapper<>();
+                    teacherWrapper.eq("id", mentorId)
+                            .set("remaining_quota", newRemainingQuota);
+                    boolean teacherUpdateResult = teacherService.update(null, teacherWrapper);
+                    if (!teacherUpdateResult) {
+                        throw new RuntimeException("更新导师剩余名额失败");
                     }
                 }
             }
