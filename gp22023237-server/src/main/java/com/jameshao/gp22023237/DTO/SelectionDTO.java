@@ -15,7 +15,11 @@ public class SelectionDTO {
     private Integer studentChoiceOrder; // 学生志愿顺序
     private String studentName; // 学生姓名
     private String mentorName; // 导师姓名
+    private String mentorTitle; // 导师职称
+    private String mentorDepartment; // 导师院系
+    private String mentorResearchField; // 导师研究领域
     private Long userId; // 学生的用户id
+    private Integer studentStatus; // 学生状态
     private Integer teacherStatus; // 导师选择状态
 
 }

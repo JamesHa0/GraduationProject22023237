@@ -74,18 +74,22 @@ public class StudentSelectionController {
 
             List<SelectionDTO> result = new ArrayList<>();
 
-            // 关联查询Teacher表获取导师姓名
+            // 关联查询Teacher表获取导师信息
             for (MentorStudent ms : mentorStudents) {
                 SelectionDTO dto = new SelectionDTO();
                 dto.setId(ms.getId());
                 dto.setMentorId(ms.getMentorId());
                 dto.setStudentChoiceOrder(ms.getStudentChoiceOrder());
                 dto.setRound(ms.getRound());
+                dto.setStudentStatus(ms.getStudentStatus());
                 dto.setTeacherStatus(ms.getTeacherStatus());
 
                 Teacher teacher = teacherService.getById(ms.getMentorId());
                 if (teacher != null) {
                     dto.setMentorName(teacher.getTeacherName());
+                    dto.setMentorTitle(teacher.getTitle());
+                    dto.setMentorDepartment(teacher.getDepartment());
+                    dto.setMentorResearchField(teacher.getResearchField());
                 }
 
                 result.add(dto);
