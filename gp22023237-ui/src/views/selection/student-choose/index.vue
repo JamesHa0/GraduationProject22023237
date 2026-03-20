@@ -1,13 +1,16 @@
 <template>
     <div class="app-container">
-        <el-alert title="请为三个志愿依次选择导师，确认无误后点击下方的“提交所有志愿”按钮" type="info" :closable="false" class="alert-info" show-icon />
+        <el-alert v-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的“提交所有志愿”按钮" type="info" :closable="false" class="alert-info" show-icon />
+        <el-alert v-else title="您已成功提交志愿，志愿选择已锁定，不可修改" type="success" :closable="false" class="alert-success" show-icon />
 
         <div class="card-container">
             <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
+                :class="{ 'card-locked': hasSubmitted }"
                 v-if="maxChoiceCount > 0">
                 <template #header>
                     <div class="card-header">
                         <span>{{ getChoiceName(index - 1) }}志愿</span>
+                        <el-tag v-if="hasSubmitted" type="success">已锁定</el-tag>
                     </div>
                 </template>
                 <el-text v-if="currentChoices[index - 1]" size="large">
@@ -16,18 +19,23 @@
                 <p v-else>未选择</p>
                 <template #footer>
                     <div class="card-footer">
-                        <el-button v-if="currentChoices[index - 1]" text type="danger" icon="Delete" @click="removeChoice(index - 1)">
-                            移除
+                        <el-button v-if="hasSubmitted" text type="info" icon="Lock" disabled>
+                            已锁定
                         </el-button>
-                        <el-button v-else type="primary" @click="openMentorSelector(index - 1)">
-                            选择导师
-                        </el-button>
+                        <template v-else>
+                            <el-button v-if="currentChoices[index - 1]" text type="danger" icon="Delete" @click="removeChoice(index - 1)">
+                                移除
+                            </el-button>
+                            <el-button v-else type="primary" @click="openMentorSelector(index - 1)">
+                                选择导师
+                            </el-button>
+                        </template>
                     </div>
                 </template>
             </el-card>
         </div>
 
-        <div class="submit-section">
+        <div v-if="!hasSubmitted" class="submit-section">
             <el-button type="primary" size="large" :disabled="!canSubmitAll" @click="submitAllChoices">
                 提交所有志愿
             </el-button>
@@ -108,6 +116,11 @@ const currentChoices = ref([]);
 // 已提交的志愿
 const submittedChoices = ref([]);
 
+// 是否已提交
+const hasSubmitted = computed(() => {
+    return submittedChoices.value.length > 0;
+});
+
 // 选择器相关
 const selectorVisible = ref(false);
 const selectingChoiceIndex = ref(0);
@@ -141,9 +154,9 @@ const isMentorSelectedInAnyChoice = (mentorId) => {
 
 // 检查是否可以提交所有志愿
 const canSubmitAll = computed(() => {
-    // 必须填满所有志愿才能提交
-    return currentChoices.value.filter(id => id !== null && id !== undefined).length === maxChoiceCount.value &&
-           submittedChoices.value.length === 0;
+    // 必须填满所有志愿且未提交才能提交
+    return !hasSubmitted.value &&
+           currentChoices.value.filter(id => id !== null && id !== undefined).length === maxChoiceCount.value;
 });
 
 let queryParams = ref({
@@ -152,6 +165,11 @@ let queryParams = ref({
 
 // 打开导师选择对话框
 const openMentorSelector = (choiceIndex) => {
+    // 如果已提交，不允许选择
+    if (hasSubmitted.value) {
+        proxy.$modal.msgWarning('已提交志愿，不可修改');
+        return;
+    }
     selectingChoiceIndex.value = choiceIndex;
     selectorVisible.value = true;
     handleQuery();
@@ -159,6 +177,10 @@ const openMentorSelector = (choiceIndex) => {
 
 // 确认选择导师
 const confirmSelectMentor = (row) => {
+    if (hasSubmitted.value) {
+        proxy.$modal.msgWarning('已提交志愿，不可修改');
+        return;
+    }
     currentChoices.value[selectingChoiceIndex.value] = row.id;
     selectorVisible.value = false;
     proxy.$modal.msgSuccess(`已为${getChoiceName(selectingChoiceIndex.value)}志愿选择导师：${row.teacherName}`);
@@ -166,11 +188,19 @@ const confirmSelectMentor = (row) => {
 
 // 移除某个志愿的选择
 const removeChoice = (choiceIndex) => {
+    if (hasSubmitted.value) {
+        proxy.$modal.msgWarning('已提交志愿，不可修改');
+        return;
+    }
     currentChoices.value[choiceIndex] = null;
 };
 
 // 重置所有选择
 const resetAllChoices = () => {
+    if (hasSubmitted.value) {
+        proxy.$modal.msgWarning('已提交志愿，不可修改');
+        return;
+    }
     proxy.$modal.confirm('确定要重置所有选择吗？').then(() => {
         currentChoices.value = new Array(maxChoiceCount.value).fill(null);
         proxy.$modal.msgSuccess('已重置');
@@ -179,6 +209,11 @@ const resetAllChoices = () => {
 
 // 提交所有志愿
 const submitAllChoices = () => {
+    if (hasSubmitted.value) {
+        proxy.$modal.msgWarning('您已提交过志愿');
+        return;
+    }
+
     if (!studentId.value) {
         proxy.$modal.msgError('学生信息尚未加载');
         return;
@@ -244,7 +279,7 @@ function getStudentChoices() {
         console.log(`学生志愿情况：`, response);
         submittedChoices.value = response.data || [];
 
-        // 如果已经有提交的志愿，填充到currentChoices中（但不允许修改）
+        // 如果已经有提交的志愿，填充到currentChoices中
         if (submittedChoices.value.length > 0) {
             submittedChoices.value.forEach(choice => {
                 if (choice.studentChoiceOrder >= 1 && choice.studentChoiceOrder <= maxChoiceCount.value) {
@@ -334,6 +369,10 @@ getList();
     margin-bottom: 20px;
 }
 
+.alert-success {
+    margin-bottom: 20px;
+}
+
 .card-container {
     display: flex;
     justify-content: space-between;
@@ -345,6 +384,22 @@ getList();
 .card-item {
     flex: 1;
     min-width: 200px;
+    transition: all 0.3s;
+}
+
+.card-locked {
+    opacity: 0.8;
+    background-color: #f5f7fa;
+}
+
+.card-locked :deep(.el-card__header) {
+    background-color: #f0f9eb;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .card-footer {
