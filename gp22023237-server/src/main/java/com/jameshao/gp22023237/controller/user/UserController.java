@@ -64,7 +64,7 @@ public class UserController {
                 List<Teacher> list = teacherService.list(queryWrapper);
                 return jsonReturn.returnSuccess(list);
             }else {
-                return jsonReturn.returnFailed("查询失败：角色不存在！");
+                return jsonReturn.returnSuccess("管理员您好！");
             }
 
 

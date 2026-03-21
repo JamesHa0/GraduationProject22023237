@@ -7,13 +7,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class MenuController {
+public class RouterController {
     @Autowired
     JSONReturn jsonReturn;
 
     @Autowired
     MenuService menuService;
-    //获取菜单：当前项目是角色决定菜单，所以查询条件是角色id
+
+    /**
+     * 获取菜单：当前项目是角色决定菜单，所以查询条件是角色id
+     */
     @RequestMapping("/getRouters")
     public String getMenusByRoleId(Integer roleid){
         System.out.println("roleid:"+roleid);

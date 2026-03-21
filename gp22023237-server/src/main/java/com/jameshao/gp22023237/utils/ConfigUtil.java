@@ -49,4 +49,19 @@ public class ConfigUtil {
     public void clearConfigCache(String configKey) {
         redisTemplate.delete(CONFIG_CACHE_PREFIX + configKey);
     }
+
+    /**
+     * 移除配置缓存（别名方法）
+     */
+    public void removeConfigCache(String configKey) {
+        clearConfigCache(configKey);
+    }
+
+    /**
+     * 清除所有配置缓存
+     */
+    public void clearAllConfigCache() {
+        // 使用keys模式删除所有配置缓存（生产环境建议使用scan）
+        redisTemplate.delete(redisTemplate.keys(CONFIG_CACHE_PREFIX + "*"));
+    }
 }

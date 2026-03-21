@@ -2,10 +2,12 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="课程名称" prop="name">
-        <el-input v-model="queryParams.name" placeholder="请输入课程名称" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.name" placeholder="请输入课程名称" clearable style="width: 200px"
+          @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="课程编号" prop="courseNo">
-        <el-input v-model="queryParams.courseNo" placeholder="请输入课程编号" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.courseNo" placeholder="请输入课程编号" clearable style="width: 200px"
+          @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="课程状态" clearable style="width: 120px">
@@ -57,7 +59,8 @@
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
+      v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form :model="form" :rules="rules" ref="courseRef" label-width="80px">
@@ -275,7 +278,7 @@ function handleDelete(row) {
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 getList();

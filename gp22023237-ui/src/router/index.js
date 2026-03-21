@@ -131,9 +131,9 @@ export const constantRoutes = [
     redirect: 'noredirect',
     children: [
       {
-        path: 'course',
-        component: () => import('@/views/course/course/index'),
-        name: 'Course',
+        path: 'info',
+        component: () => import('@/views/course/info/index'),
+        name: 'CourseInfo',
         meta: { title: '课程信息管理', icon: 'book' }
       },
       {
@@ -150,19 +150,19 @@ export const constantRoutes = [
       },
       {
         path: 'student-select',
-        component: () => import('@/views/course/course/student-select'),
+        component: () => import('@/views/course/student-select/index'),
         name: 'StudentCourseSelect',
         meta: { title: '学生选课', icon: 'form' }
       },
       {
         path: 'select-result',
-        component: () => import('@/views/course/course/student-select'),
+        component: () => import('@/views/course/select-result/index'),
         name: 'SelectResult',
         meta: { title: '选课结果', icon: 'list' }
       },
       {
         path: 'schedule',
-        component: () => import('@/views/course/course/student-select'),
+        component: () => import('@/views/course/schedule/index'),
         name: 'CourseSchedule',
         meta: { title: '课程表查询', icon: 'date' }
       }
@@ -226,7 +226,7 @@ export const constantRoutes = [
       },
       {
         path: 'review',
-        component: () => import('@/views/academic/activity/index'),
+        component: () => import('@/views/academic/review/index'),
         name: 'AcademicReview',
         meta: { title: '学术内容审核', icon: 'check' }
       }
@@ -277,6 +277,12 @@ export const constantRoutes = [
     redirect: 'noredirect',
     children: [
       {
+        path: 'user',
+        component: () => import('@/views/system/user/index'),
+        name: 'UserManage',
+        meta: { title: '用户管理', icon: 'user' }
+      },
+      {
         path: 'role',
         component: () => import('@/views/system/role/index'),
         name: 'RoleManage',
@@ -289,10 +295,72 @@ export const constantRoutes = [
         meta: { title: '菜单管理', icon: 'tree' }
       },
       {
-        path: 'user',
-        component: () => import('@/views/system/user/index'),
-        name: 'UserManage',
-        meta: { title: '用户管理', icon: 'user' }
+        path: 'dept',
+        component: () => import('@/views/system/dept/index'),
+        name: 'DeptManage',
+        meta: { title: '部门管理', icon: 'tree' }
+      },
+      {
+        path: 'dict',
+        component: () => import('@/views/system/dict/index'),
+        name: 'DictManage',
+        meta: { title: '字典管理', icon: 'dict' }
+      },
+      {
+        path: 'config',
+        component: () => import('@/views/system/config/index'),
+        name: 'ConfigManage',
+        meta: { title: '参数设置', icon: 'edit' }
+      },
+      {
+        path: 'notice',
+        component: () => import('@/views/system/notice/index'),
+        name: 'NoticeManage',
+        meta: { title: '通知公告', icon: 'message' }
+      },
+      {
+        path: 'post',
+        component: () => import('@/views/system/post/index'),
+        name: 'PostManage',
+        meta: { title: '岗位管理', icon: 'post' }
+      },
+      {
+        path: 'field',
+        component: () => import('@/views/system/field/index'),
+        name: 'FieldManage',
+        meta: { title: '系统字段', icon: 'form' }
+      }
+    ]
+  },
+  {
+    path: '/selection',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'student-choose',
+        component: () => import('@/views/selection/student-choose/index'),
+        name: 'StudentChoose',
+        meta: { title: '学生选导师', icon: 'online' }
+      },
+      {
+        path: 'results',
+        component: () => import('@/views/selection/results/index'),
+        name: 'SelectionResults',
+        meta: { title: '双选结果查询', icon: 'list' }
+      },
+      {
+        path: 'mentor-choose',
+        component: () => import('@/views/selection/mentor-choose/index'),
+        name: 'MentorChoose',
+        meta: { title: '导师选学生', icon: 'online' }
+      },
+      {
+        path: 'confirm',
+        component: () => import('@/views/selection/confirm/index'),
+        name: 'ConfirmStudent',
+        meta: { title: '确认学生', icon: 'list' }
       }
     ]
   }

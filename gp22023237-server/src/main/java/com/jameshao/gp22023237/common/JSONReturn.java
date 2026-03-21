@@ -56,12 +56,15 @@ public class JSONReturn {
         return jsonResult.toJSONString(resultMap);
     }
     public String returnError(String errorMsg){
-        StringBuffer result = new StringBuffer();
-        resultMap.put(FLAGS.SUCCESS_MSG, null);
-
-        result.append(FLAGS.RETURN_FLAG).append(":").append(FLAGS.RETURN_FAILED)
-                .append(",")
-                .append(FLAGS.FAILED_MSG).append(":").append(errorMsg);
-        return result.toString();
+        try {
+            this.errorMsg = errorMsg;
+            resultMap.put(FLAGS.RETURN_FLAG, FLAGS.RETURN_FAILED);
+            resultMap.put(FLAGS.FAILED_MSG, this.errorMsg);
+            resultMap.put(FLAGS.SUCCESS_MSG, null);
+            return jsonResult.toJSONString(resultMap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"result\":\"failed\",\"error\":\"" + errorMsg + "\"}";
+        }
     }
 }

@@ -106,7 +106,7 @@ service.interceptors.response.use(res => {
     return Promise.reject(new Error(msg))
   } else if (code !== 200) {
     ElNotification.error({ title: msg })
-    return Promise.reject('error')
+    return Promise.reject(new Error(msg))
   } else {
     // 统一返回格式
     // 如果后端返回 { "result": "success", "data": {...} }

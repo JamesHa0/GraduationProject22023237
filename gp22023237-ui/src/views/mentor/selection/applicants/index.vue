@@ -17,6 +17,11 @@
                     </el-form-item>
                 </el-form>
             </el-col>
+            <el-col :span="4">
+                <el-tag type="primary" effect="dark" size="large">
+                    当前：{{ roundName }}
+                </el-tag>
+            </el-col>
             <el-col :span="6">
                 <el-tag type="danger" effect="plain" size="large">
                     第一轮导师确认截止时间：{{ deadlineTime }}
@@ -52,14 +57,20 @@
                     <el-button text type="success" icon="Tickets" @click="showDetail(scope.row)">
                         详细信息
                     </el-button>
-                    <el-button text bg type="primary" icon="Plus" :disabled="scope.row.teacherStatus === 1"
-                        @click="selectStudent(scope.row, 1)">
-                        同意
-                    </el-button>
-                    <el-button text bg type="danger" icon="Close" :disabled="scope.row.teacherStatus === 2"
-                        @click="selectStudent(scope.row, 2)">
-                        拒绝
-                    </el-button>
+                    <template v-if="scope.row.teacherStatus === 0">
+                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)">
+                            同意
+                        </el-button>
+                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)">
+                            拒绝
+                        </el-button>
+                    </template>
+                    <el-tag v-else-if="scope.row.teacherStatus === 1" type="success">
+                        已同意
+                    </el-tag>
+                    <el-tag v-else-if="scope.row.teacherStatus === 2" type="danger">
+                        已拒绝
+                    </el-tag>
 
                 </template>
             </el-table-column>
@@ -102,6 +113,7 @@
 import { listStudents as initData, submitSelection } from "@/api/mentor/selection";
 import { listById as getUserById } from '@/api/user/user';
 import { getConfigKey } from "@/api/system/config";
+import { getCurrentRound } from "@/api/selection/round";
 import { getUserInfo, updateUserData } from '@/utils/userInfo';
 import { onMounted } from "vue";
 
@@ -113,8 +125,15 @@ const allStudents = ref([]); // 所有学生原始数据
 const deadlineTime = ref(''); // 存储截止时间
 const quota = ref(0); // 导师名额
 const confirmedQuota = ref(0); // 已确认名额
+const currentRound = ref(1); // 当前轮次
+const roundName = ref('第一轮'); // 当前轮次名称
 
 const loading = ref(true);
+
+const getRoundName = (round) => {
+    const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
+    return names[round] || '第一轮';
+};
 
 const detailVisible = ref(false); // 学生详细信息弹窗显示控制
 const currentStudent = ref({}); // 当前查看的学生信息
@@ -174,18 +193,20 @@ const showDetail = (row) => {
 
 /** 选择学生 */
 const selectStudent = (row, status) => {
+    console.log('选择学生，row数据:', row);
     const data = {
         id: row.id,
         mentorId: getMentorId(),
+        studentId: row.studentId,
         teacherStatus: status
     };
+    console.log('提交的数据:', data);
 
     if (status === 2) {
-        proxy.$modal.confirm(`确定要拒绝学生：${row.studentName} 吗？`, '拒绝确认')
+        proxy.$modal.confirm(`确定要拒绝学生：${row.studentName} 吗？（拒绝后不可撤销）`, '拒绝确认')
             .then(() => {
                 submitSelection(data)
                     .then(() => {
-                        updateUserData('confirmedQuota', parseInt(confirmedQuota.value - 1));
                         proxy.$modal.msgSuccess(`已拒绝学生：${row.studentName}`);
                         getList();
                     })
@@ -199,15 +220,21 @@ const selectStudent = (row, status) => {
             });
         return;
     } else {
-        submitSelection(data)
+        proxy.$modal.confirm(`确定要同意学生：${row.studentName} 吗？（同意后不可撤销）`, '同意确认')
             .then(() => {
-                updateUserData('confirmedQuota', parseInt(confirmedQuota.value + 1));
-                proxy.$modal.msgSuccess(`已选中学生：${row.studentName}`);
-                getList();
+                submitSelection(data)
+                    .then(() => {
+                        updateUserData('confirmedQuota', parseInt(confirmedQuota.value + 1));
+                        proxy.$modal.msgSuccess(`已选中学生：${row.studentName}`);
+                        getList();
+                    })
+                    .catch(error => {
+                        console.error('选中失败:', error);
+                        proxy.$modal.msgError('操作失败，请稍后重试');
+                    });
             })
-            .catch(error => {
-                console.error('选中失败:', error);
-                proxy.$modal.msgError('操作失败，请稍后重试');
+            .catch(() => {
+                proxy.$modal.msgError('已取消同意操作');
             });
     }
 };
@@ -269,7 +296,18 @@ function applyFilters() {
 }
 
 
+// 获取当前轮次
+function loadCurrentRound() {
+    getCurrentRound().then(response => {
+        currentRound.value = response.data;
+        roundName.value = getRoundName(response.data);
+    }).catch(() => {
+        console.error('获取当前轮次失败');
+    });
+}
+
 getList(); // 获取导师列表
+loadCurrentRound(); // 获取当前轮次
 
 onMounted(() => {
     quota.value = getQuota();
