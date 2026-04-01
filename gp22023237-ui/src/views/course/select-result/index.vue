@@ -1,39 +1,25 @@
 <template>
   <div class="app-container">
-    <!-- 统计信息 -->
-    <el-row :gutter="20" class="mb20">
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <el-icon class="stat-icon" color="#409EFF"><Document /></el-icon>
-            <div class="stat-info">
-              <div class="stat-value">{{ selectedCount }}</div>
-              <div class="stat-label">已选课程</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <el-icon class="stat-icon" color="#67C23A"><Grid /></el-icon>
-            <div class="stat-info">
-              <div class="stat-value">{{ totalCredits }}</div>
-              <div class="stat-label">总学分</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 已选课程列表 -->
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
           <span class="card-title">选课结果</span>
         </div>
       </template>
+
       <el-table v-loading="loading" :data="selectedCourses" border>
+        <el-table-column label="志愿顺序" width="100" align="center">
+          <template #default="scope">
+            {{ getChoiceName(scope.row.choiceOrder - 1) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="提交状态" width="100" align="center">
+          <template #default="scope">
+            <el-tag :type="scope.row.submitStatus === 1 ? 'success' : 'warning'">
+              {{ scope.row.submitStatus === 1 ? '已提交' : '草稿' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="课程编号" prop="courseNo" width="150" />
         <el-table-column label="课程名称" prop="name" />
         <el-table-column label="学分" prop="credit" width="80" align="center" />
@@ -56,7 +42,28 @@
           </template>
         </el-table-column>
       </el-table>
+
       <el-empty v-if="!loading && selectedCourses.length === 0" description="暂无选课记录" />
+    </el-card>
+
+    <!-- 最终结果展示 -->
+    <el-card class="mt20" shadow="never" v-if="selectedCourses.length > 0">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">选课统计</span>
+        </div>
+      </template>
+      <el-result icon="success" title="选课成功">
+        <template #sub-title>
+          您已选择 {{ selectedCourses.length }} 门课程，共 {{ totalCredits }} 学分
+        </template>
+        <template #extra>
+          <el-descriptions :column="2" border style="width: 600px; margin: 0 auto;">
+            <el-descriptions-item label="已选课程">{{ selectedCourses.length }} 门</el-descriptions-item>
+            <el-descriptions-item label="总学分">{{ totalCredits }} 学分</el-descriptions-item>
+          </el-descriptions>
+        </template>
+      </el-result>
     </el-card>
   </div>
 </template>
@@ -66,6 +73,11 @@ import { listCourseSelection } from "@/api/course/selection";
 import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
+
+const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
+const getChoiceName = (index) => {
+  return choiceNames[index] || `第${index + 1}`;
+};
 
 // 学生ID
 const studentId = ref(null);
@@ -86,7 +98,6 @@ const loading = ref(true);
 const selectedCourses = ref([]);
 
 // 统计信息
-const selectedCount = ref(0);
 const totalCredits = ref(0);
 
 // 获取已选课程
@@ -98,7 +109,7 @@ function getSelectedCourses() {
   }
 
   loading.value = true;
-  listCourseSelection({ studentId: id, status: 1 }).then(res => {
+  listCourseSelection({ studentId: id, status: 1, submitStatus: 1 }).then(res => {
     selectedCourses.value = res.data || [];
     updateStatistics();
     loading.value = false;
@@ -109,7 +120,6 @@ function getSelectedCourses() {
 
 // 更新统计信息
 function updateStatistics() {
-  selectedCount.value = selectedCourses.value.length;
   totalCredits.value = selectedCourses.value.reduce((sum, course) => {
     return sum + (course.credit || 0);
   }, 0);
@@ -129,38 +139,8 @@ init();
 </script>
 
 <style scoped>
-.mb20 {
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  cursor: default;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.stat-icon {
-  font-size: 40px;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 4px;
+.mt20 {
+  margin-top: 20px;
 }
 
 .card-header {

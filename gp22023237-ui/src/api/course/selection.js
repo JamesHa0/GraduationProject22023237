@@ -37,3 +37,35 @@ export function delCourseSelection(id) {
     method: 'delete'
   })
 }
+
+export function getStudentCourseChoices(query) {
+  return request({
+    url: '/course/selection/getStudentCourseChoices',
+    method: 'get',
+    params: query
+  })
+}
+
+export function saveCourseChoice(data) {
+  return request({
+    url: '/course/selection/saveCourseChoice',
+    method: 'post',
+    data: data
+  })
+}
+
+export function removeCourseChoice(data) {
+  return request({
+    url: '/course/selection/removeCourseChoice',
+    method: 'post',
+    data: data
+  })
+}
+
+export function batchSubmitCourses(data) {
+  return request({
+    url: '/course/selection/batchSubmitCourses',
+    method: 'post',
+    data: data
+  })
+}
