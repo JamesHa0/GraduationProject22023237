@@ -199,25 +199,37 @@ const getUserRoleInfo = () => {
 // 生成学期选项
 function generateSemesterOptions(admissionYear) {
   const options = [];
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
 
   // 生成从入学年份到当前年份的所有学期
   for (let year = admissionYear; year <= currentYear; year++) {
-    options.push({
-      label: `${year}-${year + 1}学年第一学期`,
-      value: `${year}-${year + 1}-1`
-    });
-    options.push({
-      label: `${year}-${year + 1}学年第二学期`,
-      value: `${year}-${year + 1}-2`
-    });
+    // 第一学期：9月-次年1月，只有当年份小于当前年份，或者当前年份且月份>=9时才显示
+    if (year < currentYear || (year === currentYear && currentMonth >= 9)) {
+      options.push({
+        label: `${year}-${year + 1}学年第一学期`,
+        value: `${year}-${year + 1}-1`
+      });
+    }
+    // 第二学期：2月-7月，只有当年份小于当前年份，或者当前年份且月份>=2时才显示
+    if (year < currentYear || (year === currentYear && currentMonth >= 2)) {
+      options.push({
+        label: `${year}-${year + 1}学年第二学期`,
+        value: `${year}-${year + 1}-2`
+      });
+    }
   }
 
   semesterOptions.value = options;
 
-  // 默认选中第一个学期
-  if (options.length > 0 && !currentSemester.value) {
-    currentSemester.value = options[0].value;
+  // 默认选中最后一个学期（最新的学期）
+  if (options.length > 0) {
+    // 如果当前选中的学期不在选项列表中，或者没有选中，则选中最后一个
+    const currentOption = options.find(opt => opt.value === currentSemester.value);
+    if (!currentOption || !currentSemester.value) {
+      currentSemester.value = options[options.length - 1].value;
+    }
   }
 }
 
