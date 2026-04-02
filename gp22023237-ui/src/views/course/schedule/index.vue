@@ -4,9 +4,13 @@
     <el-card class="mb20" shadow="never">
       <el-form :inline="true">
         <el-form-item label="学期">
-          <el-select v-model="currentSemester" placeholder="请选择学期" style="width: 200px">
-            <el-option label="2024-2025学年第一学期" value="2024-1" />
-            <el-option label="2024-2025学年第二学期" value="2024-2" />
+          <el-select v-model="currentSemester" placeholder="请选择学期" style="width: 220px">
+            <el-option
+              v-for="item in semesterOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -129,18 +133,25 @@
 
 <script setup name="CourseSchedule">
 import { listCourseSelection } from "@/api/course/selection";
+import { getCurrentStudent } from "@/api/student/info";
 import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
 
-// 当前学期
-const currentSemester = ref('2024-2');
+// 当前学期：空字符串表示"入学以来"
+const currentSemester = ref('');
 
 // 显示模式：table-表格模式，list-列表模式
 const displayMode = ref('table');
 
 // 加载状态
 const loading = ref(true);
+
+// 学生信息
+const studentInfo = ref(null);
+
+// 学期选项列表
+const semesterOptions = ref([]);
 
 // 已选课程
 const selectedCourses = ref([]);
@@ -190,6 +201,29 @@ const getStudentId = () => {
   }
 };
 
+// 生成学期选项
+function generateSemesterOptions(admissionYear) {
+  const options = [];
+  const currentYear = new Date().getFullYear();
+
+  // 生成从入学年份到当前年份的所有学期
+  for (let year = admissionYear; year <= currentYear; year++) {
+    options.push({
+      label: `${year}-${year + 1}学年第一学期`,
+      value: `${year}-${year + 1}-1`
+    });
+    options.push({
+      label: `${year}-${year + 1}学年第二学期`,
+      value: `${year}-${year + 1}-2`
+    });
+  }
+
+  // 前置"入学以来"选项
+  options.unshift({ label: '入学以来', value: '' });
+
+  semesterOptions.value = options;
+}
+
 // 获取已选课程
 function getSelectedCourses() {
   const id = getStudentId();
@@ -199,8 +233,14 @@ function getSelectedCourses() {
   }
 
   loading.value = true;
-  console.log('查询学生选课，studentId:', id);
-  listCourseSelection({ studentId: id, status: 1 }).then(res => {
+  console.log('查询学生选课，studentId:', id, 'semester:', currentSemester.value);
+
+  const params = { studentId: id, status: 1 };
+  if (currentSemester.value) {
+    params.semester = currentSemester.value;
+  }
+
+  listCourseSelection(params).then(res => {
     console.log('选课返回数据:', res);
     selectedCourses.value = res.data || [];
     console.log('已选课程列表:', selectedCourses.value);
@@ -282,7 +322,18 @@ function init() {
     return;
   }
   studentId.value = id;
-  getSelectedCourses();
+
+  // 获取学生信息并生成学期选项
+  getCurrentStudent().then(res => {
+    studentInfo.value = res.data;
+    if (studentInfo.value && studentInfo.value.admissionYear) {
+      generateSemesterOptions(studentInfo.value.admissionYear);
+    }
+    getSelectedCourses();
+  }).catch(err => {
+    console.error('获取学生信息失败:', err);
+    getSelectedCourses();
+  });
 }
 
 init();

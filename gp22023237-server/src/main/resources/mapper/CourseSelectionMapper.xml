@@ -43,6 +43,9 @@
             <if test="status != null">
                 AND cs.status = #{status}
             </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
         </where>
         ORDER BY cs.selection_time DESC
     </select>

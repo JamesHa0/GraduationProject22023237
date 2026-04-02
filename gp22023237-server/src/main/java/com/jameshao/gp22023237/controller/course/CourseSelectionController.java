@@ -43,9 +43,9 @@ public class CourseSelectionController {
     private CourseMapper courseMapper;
 
     @GetMapping("/list")
-    public String list(Long studentId, Long courseId, Integer status) {
+    public String list(Long studentId, Long courseId, Integer status, String semester) {
         try {
-            List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper.listSelectionWithCourseDetails(studentId, courseId, status);
+            List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper.listSelectionWithCourseDetails(studentId, courseId, status, semester);
             return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
             e.printStackTrace();
@@ -68,7 +68,7 @@ public class CourseSelectionController {
     public String getStudentCourseChoices(Long studentId) {
         try {
             System.out.println("查询学生已选课程:" + studentId);
-            List<CourseSelectionWithDetailsDTO> result = courseSelectionMapper.listSelectionWithCourseDetails(studentId, null, 1);
+            List<CourseSelectionWithDetailsDTO> result = courseSelectionMapper.listSelectionWithCourseDetails(studentId, null, 1, null);
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();

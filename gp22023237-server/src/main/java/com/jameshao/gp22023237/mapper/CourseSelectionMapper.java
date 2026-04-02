@@ -21,5 +21,6 @@ public interface CourseSelectionMapper extends BaseMapper<CourseSelection> {
      */
     List<CourseSelectionWithDetailsDTO> listSelectionWithCourseDetails(@Param("studentId") Long studentId,
                                                                        @Param("courseId") Long courseId,
-                                                                       @Param("status") Integer status);
+                                                                       @Param("status") Integer status,
+                                                                       @Param("semester") String semester);
 }
