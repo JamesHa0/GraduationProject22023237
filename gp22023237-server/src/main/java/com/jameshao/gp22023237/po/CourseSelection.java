@@ -30,16 +30,6 @@ public class CourseSelection {
     private Long courseId;
 
     /**
-     * 选课顺序（志愿号）
-     */
-    private Integer choiceOrder;
-
-    /**
-     * 提交状态：0-草稿，1-已提交
-     */
-    private Integer submitStatus;
-
-    /**
      * 选课时间
      */
     private Date selectionTime;

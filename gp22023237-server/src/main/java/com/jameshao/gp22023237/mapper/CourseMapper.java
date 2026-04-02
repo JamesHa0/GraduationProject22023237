@@ -21,7 +21,8 @@ public interface CourseMapper extends BaseMapper<Course> {
      */
     List<CourseWithTeacherDTO> listCourseWithTeacher(@Param("name") String name,
                                                   @Param("courseNo") String courseNo,
-                                                  @Param("status") Integer status);
+                                                  @Param("status") Integer status,
+                                                  @Param("semester") String semester);
 
     /**
      * 根据ID查询课程详情，关联教师信息

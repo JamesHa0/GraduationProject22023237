@@ -1,14 +1,13 @@
 package com.jameshao.gp22023237.controller.course;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.CourseSelectionWithDetailsDTO;
-import com.jameshao.gp22023237.DTO.CourseSelectionDTO;
 import com.jameshao.gp22023237.DTO.BatchCourseSelectionDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.mapper.CourseSelectionMapper;
 import com.jameshao.gp22023237.po.Course;
+import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
 import com.jameshao.gp22023237.po.CourseSelection;
 import com.jameshao.gp22023237.service.CourseSelectionService;
 import com.jameshao.gp22023237.service.CourseService;
@@ -40,6 +39,9 @@ public class CourseSelectionController {
     @Autowired
     private CourseSelectionMapper courseSelectionMapper;
 
+    @Autowired
+    private CourseMapper courseMapper;
+
     @GetMapping("/list")
     public String list(Long studentId, Long courseId, Integer status) {
         try {
@@ -65,39 +67,8 @@ public class CourseSelectionController {
     @GetMapping("/getStudentCourseChoices")
     public String getStudentCourseChoices(Long studentId) {
         try {
-            System.out.println("查询学生已选课程草稿:" + studentId);
-            LambdaQueryWrapper<CourseSelection> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(CourseSelection::getStudentId, studentId)
-                    .eq(CourseSelection::getSubmitStatus, 0);
-
-            List<CourseSelection> selections = courseSelectionService.list(queryWrapper);
-
-            List<CourseSelectionDTO> result = new ArrayList<>();
-
-            for (CourseSelection cs : selections) {
-                CourseSelectionDTO dto = new CourseSelectionDTO();
-                dto.setId(cs.getId());
-                dto.setStudentId(cs.getStudentId());
-                dto.setCourseId(cs.getCourseId());
-                dto.setChoiceOrder(cs.getChoiceOrder());
-                dto.setSubmitStatus(cs.getSubmitStatus());
-                dto.setStatus(cs.getStatus());
-
-                Course course = courseService.getById(cs.getCourseId());
-                if (course != null) {
-                    dto.setCourseNo(course.getCourseNo());
-                    dto.setCourseName(course.getName());
-                    dto.setCredit(course.getCredit());
-                    dto.setHours(course.getHours());
-                    dto.setTeacherName(course.getTeacherName());
-                    dto.setDayOfWeek(course.getDayOfWeek());
-                    dto.setStartTime(course.getStartTime());
-                    dto.setEndTime(course.getEndTime());
-                    dto.setClassroom(course.getClassroom());
-                }
-
-                result.add(dto);
-            }
+            System.out.println("查询学生已选课程:" + studentId);
+            List<CourseSelectionWithDetailsDTO> result = courseSelectionMapper.listSelectionWithCourseDetails(studentId, null, 1);
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -105,101 +76,11 @@ public class CourseSelectionController {
         }
     }
 
-    @PostMapping("/saveCourseChoice")
-    public String saveCourseChoice(@RequestBody CourseSelection courseSelection) {
-        try {
-            System.out.println("保存课程选择:" + courseSelection);
-
-            if (courseSelection.getStudentId() == null) {
-                return jsonReturn.returnError("学生ID不能为空");
-            }
-            if (courseSelection.getCourseId() == null) {
-                return jsonReturn.returnError("课程ID不能为空");
-            }
-            if (courseSelection.getChoiceOrder() == null) {
-                return jsonReturn.returnError("选课顺序不能为空");
-            }
-
-            LambdaQueryWrapper<CourseSelection> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(CourseSelection::getStudentId, courseSelection.getStudentId())
-                    .eq(CourseSelection::getSubmitStatus, 1);
-            long submittedCount = courseSelectionService.count(checkWrapper);
-            if (submittedCount > 0) {
-                return jsonReturn.returnError("您已提交选课，不可再修改");
-            }
-
-            LambdaQueryWrapper<CourseSelection> existingWrapper = new LambdaQueryWrapper<>();
-            existingWrapper.eq(CourseSelection::getStudentId, courseSelection.getStudentId())
-                    .eq(CourseSelection::getChoiceOrder, courseSelection.getChoiceOrder())
-                    .eq(CourseSelection::getSubmitStatus, 0);
-            CourseSelection existing = courseSelectionService.getOne(existingWrapper);
-
-            boolean success;
-            if (existing != null) {
-                existing.setCourseId(courseSelection.getCourseId());
-                existing.setUpdateTime(new Date());
-                success = courseSelectionService.updateById(existing);
-            } else {
-                courseSelection.setSubmitStatus(0);
-                courseSelection.setStatus(1);
-                courseSelection.setCreateTime(new Date());
-                courseSelection.setUpdateTime(new Date());
-                success = courseSelectionService.save(courseSelection);
-            }
-
-            if (success) {
-                return jsonReturn.returnSuccess("保存成功");
-            } else {
-                return jsonReturn.returnError("保存失败");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/removeCourseChoice")
-    public String removeCourseChoice(@RequestBody CourseSelection courseSelection) {
-        try {
-            System.out.println("移除课程选择:" + courseSelection);
-
-            if (courseSelection.getStudentId() == null) {
-                return jsonReturn.returnError("学生ID不能为空");
-            }
-            if (courseSelection.getChoiceOrder() == null) {
-                return jsonReturn.returnError("选课顺序不能为空");
-            }
-
-            LambdaQueryWrapper<CourseSelection> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(CourseSelection::getStudentId, courseSelection.getStudentId())
-                    .eq(CourseSelection::getSubmitStatus, 1);
-            long submittedCount = courseSelectionService.count(checkWrapper);
-            if (submittedCount > 0) {
-                return jsonReturn.returnError("您已提交选课，不可再修改");
-            }
-
-            LambdaQueryWrapper<CourseSelection> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(CourseSelection::getStudentId, courseSelection.getStudentId())
-                    .eq(CourseSelection::getChoiceOrder, courseSelection.getChoiceOrder())
-                    .eq(CourseSelection::getSubmitStatus, 0);
-            boolean success = courseSelectionService.remove(deleteWrapper);
-
-            if (success) {
-                return jsonReturn.returnSuccess("移除成功");
-            } else {
-                return jsonReturn.returnError("移除失败");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/batchSubmitCourses")
+    @PostMapping("/save")
     @Transactional(rollbackFor = Exception.class)
-    public String batchSubmitCourses(@RequestBody BatchCourseSelectionDTO batchDTO) {
+    public String save(@RequestBody BatchCourseSelectionDTO batchDTO) {
         try {
-            System.out.println("学生批量提交选课:" + batchDTO);
+            System.out.println("保存学生选课:" + batchDTO);
 
             if (batchDTO.getStudentId() == null) {
                 return jsonReturn.returnError("学生ID不能为空");
@@ -208,23 +89,14 @@ public class CourseSelectionController {
                 return jsonReturn.returnError("选课列表不能为空");
             }
 
-            LambdaQueryWrapper<CourseSelection> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(CourseSelection::getStudentId, batchDTO.getStudentId())
-                    .eq(CourseSelection::getSubmitStatus, 1);
-            long existingCount = courseSelectionService.count(checkWrapper);
-            if (existingCount > 0) {
-                return jsonReturn.returnError("您已提交过选课，不可重复提交");
-            }
-
             Date now = new Date();
             List<Long> courseIds = new ArrayList<>();
+            int index = 0;
 
             for (BatchCourseSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
+                index++;
                 if (choice.getCourseId() == null) {
-                    return jsonReturn.returnError("第" + choice.getChoiceOrder() + "个选课的课程不能为空");
-                }
-                if (choice.getChoiceOrder() == null) {
-                    return jsonReturn.returnError("选课顺序不能为空");
+                    return jsonReturn.returnError("第" + index + "个选课的课程不能为空");
                 }
                 if (courseIds.contains(choice.getCourseId())) {
                     return jsonReturn.returnError("不能重复选择同一门课程");
@@ -233,7 +105,7 @@ public class CourseSelectionController {
 
                 Course course = courseService.getById(choice.getCourseId());
                 if (course == null) {
-                    return jsonReturn.returnError("第" + choice.getChoiceOrder() + "个选课的课程不存在");
+                    return jsonReturn.returnError("第" + index + "个选课的课程不存在");
                 }
                 if (course.getStatus() != 1) {
                     return jsonReturn.returnError("课程《" + course.getName() + "》未开课，无法选择");
@@ -241,8 +113,7 @@ public class CourseSelectionController {
 
                 LambdaQueryWrapper<CourseSelection> countWrapper = new LambdaQueryWrapper<>();
                 countWrapper.eq(CourseSelection::getCourseId, choice.getCourseId())
-                        .eq(CourseSelection::getStatus, 1)
-                        .eq(CourseSelection::getSubmitStatus, 1);
+                        .eq(CourseSelection::getStatus, 1);
                 long currentCount = courseSelectionService.count(countWrapper);
                 if (course.getMaxStudents() != null && currentCount >= course.getMaxStudents()) {
                     return jsonReturn.returnError("课程《" + course.getName() + "》选课人数已满");
@@ -255,16 +126,15 @@ public class CourseSelectionController {
             }
 
             LambdaQueryWrapper<CourseSelection> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(CourseSelection::getStudentId, batchDTO.getStudentId())
-                    .eq(CourseSelection::getSubmitStatus, 0);
+            deleteWrapper.eq(CourseSelection::getStudentId, batchDTO.getStudentId());
             courseSelectionService.remove(deleteWrapper);
 
+            index = 0;
             for (BatchCourseSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
+                index++;
                 CourseSelection cs = new CourseSelection();
                 cs.setStudentId(batchDTO.getStudentId());
                 cs.setCourseId(choice.getCourseId());
-                cs.setChoiceOrder(choice.getChoiceOrder());
-                cs.setSubmitStatus(1);
                 cs.setStatus(1);
                 cs.setSelectionTime(now);
                 cs.setCreateTime(now);
@@ -272,11 +142,11 @@ public class CourseSelectionController {
 
                 boolean saveResult = courseSelectionService.save(cs);
                 if (!saveResult) {
-                    throw new RuntimeException("保存第" + choice.getChoiceOrder() + "个选课失败");
+                    throw new RuntimeException("保存第" + index + "个选课失败");
                 }
             }
 
-            return jsonReturn.returnSuccess("提交成功");
+            return jsonReturn.returnSuccess("保存成功");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

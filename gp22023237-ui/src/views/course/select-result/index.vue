@@ -8,18 +8,7 @@
       </template>
 
       <el-table v-loading="loading" :data="selectedCourses" border>
-        <el-table-column label="志愿顺序" width="100" align="center">
-          <template #default="scope">
-            {{ getChoiceName(scope.row.choiceOrder - 1) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="提交状态" width="100" align="center">
-          <template #default="scope">
-            <el-tag :type="scope.row.submitStatus === 1 ? 'success' : 'warning'">
-              {{ scope.row.submitStatus === 1 ? '已提交' : '草稿' }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column label="序号" width="80" type="index" align="center" />
         <el-table-column label="课程编号" prop="courseNo" width="150" />
         <el-table-column label="课程名称" prop="name" />
         <el-table-column label="学分" prop="credit" width="80" align="center" />
@@ -74,11 +63,6 @@ import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
 
-const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
-const getChoiceName = (index) => {
-  return choiceNames[index] || `第${index + 1}`;
-};
-
 // 学生ID
 const studentId = ref(null);
 const getStudentId = () => {
@@ -109,7 +93,7 @@ function getSelectedCourses() {
   }
 
   loading.value = true;
-  listCourseSelection({ studentId: id, status: 1, submitStatus: 1 }).then(res => {
+  listCourseSelection({ studentId: id, status: 1 }).then(res => {
     selectedCourses.value = res.data || [];
     updateStatistics();
     loading.value = false;

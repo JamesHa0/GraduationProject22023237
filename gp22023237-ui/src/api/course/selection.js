@@ -69,3 +69,11 @@ export function batchSubmitCourses(data) {
     data: data
   })
 }
+
+export function saveCourseSelections(data) {
+  return request({
+    url: '/course/selection/save',
+    method: 'post',
+    data: data
+  })
+}

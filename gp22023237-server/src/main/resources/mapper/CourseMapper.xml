@@ -22,6 +22,10 @@
             c.max_credits AS maxCredits,
             c.status,
             c.description,
+            c.study_nature AS studyNature,
+            c.textbook,
+            c.external_selection AS externalSelection,
+            c.remark,
             DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
             DATE_FORMAT(c.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
         FROM course c
@@ -35,6 +39,9 @@
             </if>
             <if test="status != null">
                 AND c.status = #{status}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
             </if>
         </where>
         ORDER BY c.create_time DESC
@@ -60,6 +67,10 @@
             c.max_credits AS maxCredits,
             c.status,
             c.description,
+            c.study_nature AS studyNature,
+            c.textbook,
+            c.external_selection AS externalSelection,
+            c.remark,
             DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
             DATE_FORMAT(c.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
         FROM course c

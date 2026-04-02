@@ -11,6 +11,5 @@ public class BatchCourseSelectionDTO {
     @Data
     public static class ChoiceItem {
         private Long courseId;
-        private Integer choiceOrder;
     }
 }

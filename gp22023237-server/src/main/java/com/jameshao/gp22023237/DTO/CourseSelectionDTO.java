@@ -7,8 +7,6 @@ public class CourseSelectionDTO {
     private Long id;
     private Long studentId;
     private Long courseId;
-    private Integer choiceOrder;
-    private Integer submitStatus;
     private Integer status;
 
     private String courseNo;

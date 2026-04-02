@@ -20,92 +20,109 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">课程表</span>
+          <el-radio-group v-model="displayMode" size="small">
+            <el-radio-button value="table">表格模式</el-radio-button>
+            <el-radio-button value="list">列表模式</el-radio-button>
+          </el-radio-group>
         </div>
       </template>
-      <div class="schedule-container">
-        <el-table :data="scheduleData" border style="width: 100%">
-          <el-table-column label="时间" width="100" align="center">
-            <template #default="scope">
-              <div class="time-cell">
-                <div class="time-slot">{{ scope.row.slot }}</div>
-                <div class="time-range">{{ scope.row.time }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="周一" align="center">
-            <template #default="scope">
-              <div v-if="scope.row.monday" class="course-cell" :style="{ background: scope.row.monday.color }">
-                <div class="course-name">{{ scope.row.monday.name }}</div>
-                <div class="course-info">{{ scope.row.monday.teacher }}</div>
-                <div class="course-info">{{ scope.row.monday.classroom }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="周二" align="center">
-            <template #default="scope">
-              <div v-if="scope.row.tuesday" class="course-cell" :style="{ background: scope.row.tuesday.color }">
-                <div class="course-name">{{ scope.row.tuesday.name }}</div>
-                <div class="course-info">{{ scope.row.tuesday.teacher }}</div>
-                <div class="course-info">{{ scope.row.tuesday.classroom }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="周三" align="center">
-            <template #default="scope">
-              <div v-if="scope.row.wednesday" class="course-cell" :style="{ background: scope.row.wednesday.color }">
-                <div class="course-name">{{ scope.row.wednesday.name }}</div>
-                <div class="course-info">{{ scope.row.wednesday.teacher }}</div>
-                <div class="course-info">{{ scope.row.wednesday.classroom }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="周四" align="center">
-            <template #default="scope">
-              <div v-if="scope.row.thursday" class="course-cell" :style="{ background: scope.row.thursday.color }">
-                <div class="course-name">{{ scope.row.thursday.name }}</div>
-                <div class="course-info">{{ scope.row.thursday.teacher }}</div>
-                <div class="course-info">{{ scope.row.thursday.classroom }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="周五" align="center">
-            <template #default="scope">
-              <div v-if="scope.row.friday" class="course-cell" :style="{ background: scope.row.friday.color }">
-                <div class="course-name">{{ scope.row.friday.name }}</div>
-                <div class="course-info">{{ scope.row.friday.teacher }}</div>
-                <div class="course-info">{{ scope.row.friday.classroom }}</div>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+      <el-empty v-if="!loading && selectedCourses.length === 0" description="暂无课程，请先进行选课" class="py20" />
+      <div v-else>
+        <!-- 表格模式 -->
+        <div v-if="displayMode === 'table'" class="schedule-container">
+          <el-table :data="scheduleData" border style="width: 100%">
+            <el-table-column label="时间" width="100" align="center">
+              <template #default="scope">
+                <div class="time-cell">
+                  <div class="time-slot">{{ scope.row.slot }}</div>
+                  <div class="time-range">{{ scope.row.time }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="周一" align="center">
+              <template #default="scope">
+                <div v-if="scope.row.monday" class="course-cell" :style="{ background: scope.row.monday.color }">
+                  <div class="course-name">{{ scope.row.monday.name }}</div>
+                  <div class="course-info">{{ scope.row.monday.teacher }}</div>
+                  <div class="course-info">{{ scope.row.monday.classroom }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="周二" align="center">
+              <template #default="scope">
+                <div v-if="scope.row.tuesday" class="course-cell" :style="{ background: scope.row.tuesday.color }">
+                  <div class="course-name">{{ scope.row.tuesday.name }}</div>
+                  <div class="course-info">{{ scope.row.tuesday.teacher }}</div>
+                  <div class="course-info">{{ scope.row.tuesday.classroom }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="周三" align="center">
+              <template #default="scope">
+                <div v-if="scope.row.wednesday" class="course-cell" :style="{ background: scope.row.wednesday.color }">
+                  <div class="course-name">{{ scope.row.wednesday.name }}</div>
+                  <div class="course-info">{{ scope.row.wednesday.teacher }}</div>
+                  <div class="course-info">{{ scope.row.wednesday.classroom }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="周四" align="center">
+              <template #default="scope">
+                <div v-if="scope.row.thursday" class="course-cell" :style="{ background: scope.row.thursday.color }">
+                  <div class="course-name">{{ scope.row.thursday.name }}</div>
+                  <div class="course-info">{{ scope.row.thursday.teacher }}</div>
+                  <div class="course-info">{{ scope.row.thursday.classroom }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="周五" align="center">
+              <template #default="scope">
+                <div v-if="scope.row.friday" class="course-cell" :style="{ background: scope.row.friday.color }">
+                  <div class="course-name">{{ scope.row.friday.name }}</div>
+                  <div class="course-info">{{ scope.row.friday.teacher }}</div>
+                  <div class="course-info">{{ scope.row.friday.classroom }}</div>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <!-- 列表模式 -->
+        <div v-else class="list-container">
+          <el-table :data="sortedCourses" border style="width: 100%">
+            <el-table-column label="序号" width="60" type="index" align="center" />
+            <el-table-column label="课程编号" prop="courseNo" width="120" />
+            <el-table-column label="课程名称" prop="name" min-width="150" />
+            <el-table-column label="总学时" prop="hours" width="80" align="center" />
+            <el-table-column label="学分" prop="credit" width="80" align="center" />
+            <el-table-column label="修读性质" prop="studyNature" width="100" />
+            <el-table-column label="任课教师" prop="teacherName" width="120" />
+            <el-table-column label="选课状态" width="100" align="center">
+              <template #default="scope">
+                <el-tag type="success" size="small">已选</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="教材" width="80" align="center">
+              <template #default="scope">
+                {{ scope.row.textbook === 1 ? '是' : '否' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="外年级/专业选课" width="120" align="center">
+              <template #default="scope">
+                {{ scope.row.externalSelection === 1 ? '是' : '否' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="上课时间地点" width="200">
+              <template #default="scope">
+                <div v-if="scope.row.dayOfWeek">
+                  周{{ scope.row.dayOfWeek }} {{ scope.row.startTime || '-' }}-{{ scope.row.endTime || '-' }}
+                </div>
+                <div v-if="scope.row.classroom">{{ scope.row.classroom }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" prop="remark" min-width="150" show-overflow-tooltip />
+          </el-table>
+        </div>
       </div>
-    </el-card>
-
-    <!-- 我的课程列表 -->
-    <el-card class="mt20" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">我的课程</span>
-        </div>
-      </template>
-      <el-table v-loading="loading" :data="selectedCourses" border>
-        <el-table-column label="课程编号" prop="courseNo" width="150" />
-        <el-table-column label="课程名称" prop="name" />
-        <el-table-column label="学分" prop="credit" width="80" align="center" />
-        <el-table-column label="授课教师" prop="teacherName" width="120" />
-        <el-table-column label="星期" width="80" align="center">
-          <template #default="scope">
-            {{ scope.row.dayOfWeek ? '周' + scope.row.dayOfWeek : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="时间" width="150" align="center">
-          <template #default="scope">
-            {{ scope.row.startTime || '-' }} - {{ scope.row.endTime || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="教室" prop="classroom" width="120" />
-      </el-table>
-      <el-empty v-if="!loading && selectedCourses.length === 0" description="暂无课程" />
     </el-card>
   </div>
 </template>
@@ -119,6 +136,9 @@ const { proxy } = getCurrentInstance();
 // 当前学期
 const currentSemester = ref('2024-2');
 
+// 显示模式：table-表格模式，list-列表模式
+const displayMode = ref('table');
+
 // 加载状态
 const loading = ref(true);
 
@@ -130,6 +150,22 @@ const courseColors = [
   '#E6F7FF', '#F6FFED', '#FFF7E6', '#FFF1F0', '#F9F0FF',
   '#E0F7FA', '#E8F5E9', '#FFF3E0', '#FCE4EC', '#F3E5F5'
 ];
+
+// 排序后的课程列表（按星期和时间排序）
+const sortedCourses = computed(() => {
+  return [...selectedCourses.value].sort((a, b) => {
+    // 先按星期几排序
+    const dayA = a.dayOfWeek || 0;
+    const dayB = b.dayOfWeek || 0;
+    if (dayA !== dayB) {
+      return dayA - dayB;
+    }
+    // 再按开始时间排序
+    const timeA = a.startTime || '';
+    const timeB = b.startTime || '';
+    return timeA.localeCompare(timeB);
+  });
+});
 
 // 课程表数据
 const scheduleData = ref([
@@ -163,17 +199,22 @@ function getSelectedCourses() {
   }
 
   loading.value = true;
+  console.log('查询学生选课，studentId:', id);
   listCourseSelection({ studentId: id, status: 1 }).then(res => {
+    console.log('选课返回数据:', res);
     selectedCourses.value = res.data || [];
+    console.log('已选课程列表:', selectedCourses.value);
     generateSchedule();
     loading.value = false;
-  }).catch(() => {
+  }).catch((err) => {
+    console.error('查询选课失败:', err);
     loading.value = false;
   });
 }
 
 // 生成课程表
 function generateSchedule() {
+  console.log('开始生成课程表，课程数量:', selectedCourses.value.length);
   // 重置课程表
   scheduleData.value.forEach(row => {
     row.monday = null;
@@ -185,9 +226,11 @@ function generateSchedule() {
 
   // 填充课程
   selectedCourses.value.forEach((course, index) => {
+    console.log('处理课程:', course.name, 'dayOfWeek:', course.dayOfWeek, 'startTime:', course.startTime);
     if (course.dayOfWeek && dayMap[course.dayOfWeek]) {
       const dayKey = dayMap[course.dayOfWeek];
       const timeSlot = getTimeSlot(course.startTime);
+      console.log('dayKey:', dayKey, 'timeSlot:', timeSlot);
       if (timeSlot >= 0 && timeSlot < scheduleData.value.length) {
         scheduleData.value[timeSlot][dayKey] = {
           name: course.name,
@@ -195,21 +238,35 @@ function generateSchedule() {
           classroom: course.classroom || '-',
           color: courseColors[index % courseColors.length]
         };
+        console.log('课程已添加到课程表');
+      } else {
+        console.log('时间段无效，跳过');
       }
+    } else {
+      console.log('dayOfWeek无效，跳过');
     }
   });
+  console.log('课程表生成完成:', scheduleData.value);
 }
 
 // 根据开始时间获取时间段索引
 function getTimeSlot(startTime) {
-  const timeMap = {
-    '08:00': 0, '08:30': 0,
-    '10:00': 1, '10:30': 1,
-    '14:00': 2, '14:30': 2,
-    '16:00': 3, '16:30': 3,
-    '19:00': 4, '19:30': 4
-  };
-  return timeMap[startTime] !== undefined ? timeMap[startTime] : -1;
+  if (!startTime) {
+    console.log('startTime为空');
+    return -1;
+  }
+  // 提取小时部分进行匹配，更灵活
+  const hour = parseInt(startTime.split(':')[0]);
+  console.log('startTime:', startTime, 'hour:', hour);
+
+  if (hour >= 8 && hour < 10) return 0;    // 08:00-09:59
+  if (hour >= 10 && hour < 12) return 1;   // 10:00-11:59
+  if (hour >= 14 && hour < 16) return 2;   // 14:00-15:59
+  if (hour >= 16 && hour < 18) return 3;   // 16:00-17:59
+  if (hour >= 19 && hour < 21) return 4;   // 19:00-20:59
+
+  console.log('未匹配到时间段');
+  return -1;
 }
 
 // 查询
@@ -238,6 +295,10 @@ init();
 
 .mt20 {
   margin-top: 20px;
+}
+
+.py20 {
+  padding: 20px 0;
 }
 
 .card-header {

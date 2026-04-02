@@ -3,9 +3,12 @@ package com.jameshao.gp22023237.controller.student;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.Student;
+import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.UserService;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -20,6 +23,9 @@ public class StudentController {
 
     @Autowired
     private StudentService studentService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * 查询学生列表
@@ -106,6 +112,7 @@ public class StudentController {
      * @return 操作结果
      */
     @PostMapping("/add")
+    @Transactional(rollbackFor = Exception.class)
     public String add(@RequestBody Student student) {
         try {
             // 检查学号是否已存在
@@ -116,9 +123,33 @@ public class StudentController {
                 return jsonReturn.returnFailed("学号已存在");
             }
 
+            // 检查用户名（学号）是否已存在
+            QueryWrapper<User> userWrapper = new QueryWrapper<>();
+            userWrapper.eq("username", student.getStudentNo());
+            User existUser = userService.getOne(userWrapper);
+            if (existUser != null) {
+                return jsonReturn.returnFailed("学号已存在（用户账号）");
+            }
+
+            // 创建用户账号
+            User user = new User();
+            user.setUsername(student.getStudentNo()); // 学号作为用户名
+            user.setPassword(student.getStudentNo()); // 默认密码为学号
+            user.setName(student.getStudentName());
+            user.setRoleId(1); // 1-学生角色
+            user.setStatus(1); // 默认为正常状态
+            user.setCreateTime(new Date());
+            user.setUpdateTime(new Date());
+            boolean userSuccess = userService.save(user);
+            if (!userSuccess) {
+                return jsonReturn.returnFailed("创建用户账号失败");
+            }
+
             // 设置创建时间和更新时间
             student.setCreateTime(new Date());
             student.setUpdateTime(new Date());
+            // 设置关联的用户ID
+            student.setUserId(user.getId());
 
             // 设置默认状态
             if (student.getStatus() == null) {
@@ -130,7 +161,7 @@ public class StudentController {
 
             boolean success = studentService.save(student);
             if (success) {
-                return jsonReturn.returnSuccess("新增学生成功");
+                return jsonReturn.returnSuccess("新增学生成功，默认密码为学号");
             } else {
                 return jsonReturn.returnFailed("新增学生失败");
             }
@@ -146,6 +177,7 @@ public class StudentController {
      * @return 操作结果
      */
     @PutMapping("/update")
+    @Transactional(rollbackFor = Exception.class)
     public String update(@RequestBody Student student) {
         try {
             if (student.getId() == null) {
@@ -171,7 +203,24 @@ public class StudentController {
             // 设置更新时间
             student.setUpdateTime(new Date());
 
+            // 更新学生信息
             boolean success = studentService.updateById(student);
+
+            // 同步更新用户表（姓名）
+            if (success && existStudent.getUserId() != null) {
+                User user = userService.getById(existStudent.getUserId());
+                if (user != null) {
+                    if (student.getStudentName() != null) {
+                        user.setName(student.getStudentName());
+                    }
+                    if (student.getStudentNo() != null) {
+                        user.setUsername(student.getStudentNo());
+                    }
+                    user.setUpdateTime(new Date());
+                    userService.updateById(user);
+                }
+            }
+
             if (success) {
                 return jsonReturn.returnSuccess("更新学生成功");
             } else {
@@ -189,6 +238,7 @@ public class StudentController {
      * @return 操作结果
      */
     @DeleteMapping("/delete/{id}")
+    @Transactional(rollbackFor = Exception.class)
     public String delete(@PathVariable Long id) {
         try {
             Student student = studentService.getById(id);
@@ -196,7 +246,15 @@ public class StudentController {
                 return jsonReturn.returnFailed("学生不存在");
             }
 
+            Long userId = student.getUserId();
+
             boolean success = studentService.removeById(id);
+
+            // 同步删除用户账号
+            if (success && userId != null) {
+                userService.removeById(userId);
+            }
+
             if (success) {
                 return jsonReturn.returnSuccess("删除学生成功");
             } else {
@@ -214,13 +272,27 @@ public class StudentController {
      * @return 操作结果
      */
     @DeleteMapping("/deleteBatch")
+    @Transactional(rollbackFor = Exception.class)
     public String deleteBatch(@RequestBody List<Long> ids) {
         try {
             if (ids == null || ids.isEmpty()) {
                 return jsonReturn.returnFailed("请选择要删除的学生");
             }
 
+            // 先查询需要删除的学生，获取对应的userId
+            List<Student> students = studentService.listByIds(ids);
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(userId -> userId != null)
+                    .toList();
+
             boolean success = studentService.removeByIds(ids);
+
+            // 同步删除用户账号
+            if (success && !userIds.isEmpty()) {
+                userService.removeByIds(userIds);
+            }
+
             if (success) {
                 return jsonReturn.returnSuccess("批量删除成功");
             } else {

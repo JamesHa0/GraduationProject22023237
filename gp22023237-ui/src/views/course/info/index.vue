@@ -39,6 +39,11 @@
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="课程编号" align="center" prop="courseNo" width="120" />
       <el-table-column label="课程名称" align="center" prop="name" :show-overflow-tooltip="true" />
+      <el-table-column label="授课教师" align="center" prop="teacherName" width="120">
+        <template #default="scope">
+          {{ scope.row.teacherName === '待定教师' ? '待定' : (scope.row.teacherName || '待定') }}
+        </template>
+      </el-table-column>
       <el-table-column label="学分" align="center" prop="credit" width="80" />
       <el-table-column label="学时" align="center" prop="hours" width="80" />
       <el-table-column label="学期" align="center" prop="semester" width="100" />
@@ -102,10 +107,20 @@
         </el-row>
         <el-row>
           <el-col :span="12">
+            <el-form-item label="授课教师" prop="teacherId">
+              <el-select v-model="form.teacherId" placeholder="请选择授课教师" style="width: 100%">
+                <el-option label="授课教师待定" :value="0" />
+                <el-option v-for="teacher in teacherList" :key="teacher.id" :label="teacher.teacherName" :value="teacher.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="最大人数" prop="maxStudents">
               <el-input-number v-model="form.maxStudents" :min="1" :max="200" style="width: 100%" />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row>
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
@@ -135,11 +150,12 @@
 </template>
 
 <script setup name="Course">
-import { listCourse, getCourse, addCourse, updateCourse, delCourse } from "@/api/course/course";
+import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse } from "@/api/course/course";
 
 const { proxy } = getCurrentInstance();
 
 const courseList = ref([]);
+const teacherList = ref([]);
 const open = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
@@ -152,12 +168,13 @@ const title = ref("");
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
   { key: 1, label: `课程名称`, visible: true },
-  { key: 2, label: `学分`, visible: true },
-  { key: 3, label: `学时`, visible: true },
-  { key: 4, label: `学期`, visible: true },
-  { key: 5, label: `学年`, visible: true },
-  { key: 6, label: `最大选课人数`, visible: true },
-  { key: 7, label: `状态`, visible: true }
+  { key: 2, label: `授课教师`, visible: true },
+  { key: 3, label: `学分`, visible: true },
+  { key: 4, label: `学时`, visible: true },
+  { key: 5, label: `学期`, visible: true },
+  { key: 6, label: `学年`, visible: true },
+  { key: 7, label: `最大选课人数`, visible: true },
+  { key: 8, label: `状态`, visible: true }
 ]);
 
 const data = reactive({
@@ -187,6 +204,12 @@ function getStatusTagType(status) {
 function getStatusText(status) {
   const textMap = { 0: "未开课", 1: "已开课", 2: "已结课" };
   return textMap[status] || "未知";
+}
+
+function getTeacherList() {
+  listTeachers().then(res => {
+    teacherList.value = res.data || [];
+  });
 }
 
 function getList() {
@@ -221,6 +244,7 @@ function reset() {
     name: undefined,
     credit: 1.0,
     hours: 32,
+    teacherId: 0,
     semester: undefined,
     year: new Date().getFullYear(),
     maxStudents: 50,
@@ -237,15 +261,21 @@ function cancel() {
 
 function handleAdd() {
   reset();
+  getTeacherList();
   open.value = true;
   title.value = "添加课程";
 }
 
 function handleUpdate(row) {
   reset();
+  getTeacherList();
   const id = row.id || ids.value;
   getCourse(id).then(res => {
     form.value = res.data;
+    // 如果teacherId对应的是"待定教师"，设置为0表示待定
+    if (form.value.teacherName === '待定教师') {
+      form.value.teacherId = 0;
+    }
     open.value = true;
     title.value = "修改课程";
   });
@@ -255,13 +285,21 @@ function submitForm() {
   proxy.$refs["courseRef"].validate(valid => {
     if (valid) {
       if (form.value.id != undefined) {
-        updateCourse(form.value).then(() => {
+        // 更新时删除日期字段，让后端处理
+        const updateData = { ...form.value };
+        delete updateData.createTime;
+        delete updateData.updateTime;
+        delete updateData.teacherName; // 这个字段不需要传到后端
+        updateCourse(updateData).then(() => {
           proxy.$modal.msgSuccess("修改成功");
           open.value = false;
           getList();
         });
       } else {
-        addCourse(form.value).then(() => {
+        // 新增时也删除不需要的字段
+        const addData = { ...form.value };
+        delete addData.teacherName;
+        addCourse(addData).then(() => {
           proxy.$modal.msgSuccess("新增成功");
           open.value = false;
           getList();

@@ -1,24 +1,36 @@
-package com.jameshao.gp22023237.po;
+package com.jameshao.gp22023237.DTO;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import java.util.Date;
 import lombok.Data;
 
 /**
- * 课程表
- * @TableName course
+ * 选课记录带课程详情DTO
  */
-@TableName(value ="course")
 @Data
-public class Course {
+public class CourseSelectionWithDetailsDTO {
+    /**
+     * 选课记录ID
+     */
+    private Long id;
+
+    /**
+     * 学生ID
+     */
+    private Long studentId;
+
     /**
      * 课程ID
      */
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    private Long courseId;
+
+    /**
+     * 选课时间
+     */
+    private String selectionTime;
+
+    /**
+     * 状态：1-正常，0-已退课
+     */
+    private Integer status;
 
     /**
      * 课程编号
@@ -46,6 +58,11 @@ public class Course {
     private Long teacherId;
 
     /**
+     * 授课教师姓名
+     */
+    private String teacherName;
+
+    /**
      * 学期
      */
     private String semester;
@@ -53,7 +70,7 @@ public class Course {
     /**
      * 学年
      */
-    private Integer year;
+    private Object year;
 
     /**
      * 最大选课人数
@@ -86,9 +103,9 @@ public class Course {
     private Double maxCredits;
 
     /**
-     * 状态：0-未开课，1-已开课，2-已结课
+     * 课程状态
      */
-    private Integer status;
+    private Integer courseStatus;
 
     /**
      * 课程描述
@@ -114,16 +131,4 @@ public class Course {
      * 备注
      */
     private String remark;
-
-    /**
-     * 创建时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date createTime;
-
-    /**
-     * 更新时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date updateTime;
 }

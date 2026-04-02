@@ -8,6 +8,13 @@ export function listCourse(query) {
   })
 }
 
+export function listTeachers() {
+  return request({
+    url: '/course/teachers',
+    method: 'get'
+  })
+}
+
 export function getCourse(id) {
   return request({
     url: '/course/' + id,

@@ -4,6 +4,8 @@
 /.settings/
 /.vscode/
 /bin/
+/.claude/
+*.bak
 
 .classpath
 .project

@@ -145,6 +145,16 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 
+const columns = ref([
+  { key: 0, label: `ID`, visible: true },
+  { key: 1, label: `学生ID`, visible: true },
+  { key: 2, label: `课程ID`, visible: true },
+  { key: 3, label: `平时成绩`, visible: true },
+  { key: 4, label: `期末成绩`, visible: true },
+  { key: 5, label: `总成绩`, visible: true },
+  { key: 6, label: `成绩等级`, visible: true }
+]);
+
 const data = reactive({
   form: {},
   queryParams: {
@@ -163,7 +173,7 @@ const data = reactive({
 const { queryParams, form, rules } = toRefs(data);
 
 function getGradeTagType(grade) {
-  const typeMap = { A: "success", B: "primary", C: "warning", D: "info", F: "danger" };
+  const typeMap = { A: "success", B: "primary", C: "warning", D: "info", E: "danger", F: "danger" };
   return typeMap[grade] || "info";
 }
 

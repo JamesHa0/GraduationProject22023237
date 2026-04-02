@@ -152,7 +152,7 @@
 <script setup name="GraduationAudit">
 import { listGraduationAudit, manualAuditGraduation, getGraduationStats } from '@/api/student/status'
 import { getCurrentInstance, ref, reactive, toRefs } from "vue"
-import { useUserStore } from "@/store/modules/user"
+import useUserStore from "@/store/modules/user"
 
 const { proxy } = getCurrentInstance()
 const userStore = useUserStore()
@@ -295,8 +295,8 @@ function submitForm() {
   proxy.$refs['auditRef'].validate(valid => {
     if (valid) {
       const { id, auditStatus, comment } = form.value
-      const auditorId = userStore.userInfo.id || 1
-      const auditorName = userStore.userInfo.name || '当前用户'
+      const auditorId = userStore.userId || 1
+      const auditorName = userStore.name || '当前用户'
 
       manualAuditGraduation(id, auditStatus, comment, auditorId, auditorName).then(res => {
         if (res.code === 200) {
