@@ -1,22 +1,8 @@
 <template>
   <div class="app-container">
-    <!-- 已提交提示 -->
-    <el-alert
-      v-if="hasSubmitted"
-      title="选课已提交"
-      type="success"
-      :closable="false"
-      show-icon
-      class="mb20"
-    >
-      <template #default>
-        您的选课已提交，无法再修改。如需调整，请联系教学秘书。
-      </template>
-    </el-alert>
-
     <!-- 选课资格提示 -->
     <el-alert
-      v-else-if="hasReachedMaxCourses"
+      v-if="hasReachedMaxCourses"
       title="您已完成选课"
       type="success"
       :closable="false"
@@ -37,15 +23,14 @@
           <el-tag
             v-for="course in selectedCourses"
             :key="course.id"
-            :closable="!hasSubmitted"
-            @close="!hasSubmitted && toggleCourseSelection(course, false)"
+            :closable="true"
+            @close="toggleCourseSelection(course, false)"
             class="course-tag"
           >
             {{ course.name }}
           </el-tag>
         </div>
         <el-button
-          v-if="!hasSubmitted"
           type="primary"
           size="large"
           :disabled="selectedCourses.length === 0"
@@ -86,10 +71,10 @@
         :data="availableCourses"
         border
         ref="courseTableRef"
-        @selection-change="!hasSubmitted && handleSelectionChange"
+        @selection-change="handleSelectionChange"
         row-key="id"
       >
-        <el-table-column v-if="!hasSubmitted" type="selection" width="50" align="center" :selectable="checkSelectable" />
+        <el-table-column type="selection" width="50" align="center" :selectable="checkSelectable" />
         <el-table-column label="序号" width="50" type="index" align="center">
           <template #default="scope">
             <span>{{ scope.$index + 1 }}</span>
@@ -161,7 +146,6 @@ const maxCourseCount = ref(3);
 const availableCourses = ref([]);
 const selectedCourses = ref([]);
 const hasReachedMaxCourses = ref(false);
-const hasSubmitted = ref(false);
 
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
@@ -185,9 +169,6 @@ const checkMaxCoursesReached = () => {
 };
 
 const checkSelectable = (row) => {
-  if (hasSubmitted.value) {
-    return false; // 已提交后所有课程都不可选
-  }
   if (row.selectedCount >= row.maxStudents) {
     return false;
   }
@@ -316,8 +297,6 @@ const getStudentChoices = () => {
 
   return getStudentCourseChoices({ studentId: id }).then(res => {
     const choices = res.data || [];
-    // 检查是否已有选课记录（如果有，则认为已提交）
-    hasSubmitted.value = choices.length > 0;
     const coursesToSelect = [];
     for (const choice of choices) {
       const course = availableCourses.value.find(c => c.id === choice.courseId);
@@ -329,7 +308,6 @@ const getStudentChoices = () => {
     checkMaxCoursesReached();
   }).catch(() => {
     selectedCourses.value = [];
-    hasSubmitted.value = false;
     checkMaxCoursesReached();
     return Promise.resolve();
   });
@@ -361,7 +339,7 @@ const getAvailableCourses = () => {
 };
 
 const restoreSelections = () => {
-  if (!courseTableRef.value || hasSubmitted.value) return;
+  if (!courseTableRef.value) return;
 
   for (const course of selectedCourses.value) {
     courseTableRef.value.toggleRowSelection(course, true);
