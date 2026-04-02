@@ -203,17 +203,23 @@ function generateSemesterOptions(admissionYear) {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
 
-  // 生成从入学年份到当前年份的所有学期
+  // 生成从入学年份到当前年份的所有学年
+  // 注意：year表示学年的起始年份，如2025表示2025-2026学年
   for (let year = admissionYear; year <= currentYear; year++) {
-    // 第一学期：9月-次年1月，只有当年份小于当前年份，或者当前年份且月份>=9时才显示
-    if (year < currentYear || (year === currentYear && currentMonth >= 9)) {
+    // 第一学期：year年9月 - year+1年1月
+    // 显示条件：已到year年9月，或者已过year+1年1月
+    const firstSemesterAvailable = (year < currentYear) || (year === currentYear && currentMonth >= 9);
+    if (firstSemesterAvailable) {
       options.push({
         label: `${year}-${year + 1}学年第一学期`,
         value: `${year}-${year + 1}-1`
       });
     }
-    // 第二学期：2月-7月，只有当年份小于当前年份，或者当前年份且月份>=2时才显示
-    if (year < currentYear || (year === currentYear && currentMonth >= 2)) {
+
+    // 第二学期：year+1年2月 - year+1年7月
+    // 显示条件：已到year+1年2月
+    const secondSemesterAvailable = (year + 1 < currentYear) || (year + 1 === currentYear && currentMonth >= 2);
+    if (secondSemesterAvailable) {
       options.push({
         label: `${year}-${year + 1}学年第二学期`,
         value: `${year}-${year + 1}-2`
