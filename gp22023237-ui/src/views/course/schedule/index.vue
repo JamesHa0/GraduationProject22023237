@@ -133,7 +133,6 @@
 
 <script setup name="CourseSchedule">
 import { listCourseSelection } from "@/api/course/selection";
-import { getCurrentStudent } from "@/api/student/info";
 import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
@@ -146,9 +145,6 @@ const displayMode = ref('table');
 
 // 加载状态
 const loading = ref(true);
-
-// 学生信息
-const studentInfo = ref(null);
 
 // 学期选项列表
 const semesterOptions = ref([]);
@@ -190,12 +186,11 @@ const scheduleData = ref([
 // 星期映射
 const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
 
-// 学生ID
-const studentId = ref(null);
-const getStudentId = () => {
+// 获取用户store中的学生信息
+const getUserRoleInfo = () => {
   const userStore = useUserStore();
   if (userStore.roleInfo && userStore.roleInfo[0]) {
-    return userStore.roleInfo[0].id;
+    return userStore.roleInfo[0];
   } else {
     return null;
   }
@@ -226,16 +221,16 @@ function generateSemesterOptions(admissionYear) {
 
 // 获取已选课程
 function getSelectedCourses() {
-  const id = getStudentId();
-  if (!id) {
+  const roleInfo = getUserRoleInfo();
+  if (!roleInfo || !roleInfo.id) {
     loading.value = false;
     return;
   }
 
   loading.value = true;
-  console.log('查询学生选课，studentId:', id, 'semester:', currentSemester.value);
+  console.log('查询学生选课，studentId:', roleInfo.id, 'semester:', currentSemester.value);
 
-  const params = { studentId: id, status: 1 };
+  const params = { studentId: roleInfo.id, status: 1 };
   if (currentSemester.value) {
     params.semester = currentSemester.value;
   }
@@ -316,24 +311,22 @@ function handleQuery() {
 
 // 初始化
 function init() {
-  const id = getStudentId();
-  if (!id) {
+  const roleInfo = getUserRoleInfo();
+  if (!roleInfo) {
     loading.value = false;
     return;
   }
-  studentId.value = id;
 
-  // 获取学生信息并生成学期选项
-  getCurrentStudent().then(res => {
-    studentInfo.value = res.data;
-    if (studentInfo.value && studentInfo.value.admissionYear) {
-      generateSemesterOptions(studentInfo.value.admissionYear);
-    }
-    getSelectedCourses();
-  }).catch(err => {
-    console.error('获取学生信息失败:', err);
-    getSelectedCourses();
-  });
+  // 从roleInfo中获取入学年份并生成学期选项
+  if (roleInfo.admissionYear) {
+    generateSemesterOptions(roleInfo.admissionYear);
+  } else {
+    // 如果没有入学年份，使用默认值（当前年份往前推3年）
+    const defaultYear = new Date().getFullYear() - 3;
+    generateSemesterOptions(defaultYear);
+  }
+
+  getSelectedCourses();
 }
 
 init();
