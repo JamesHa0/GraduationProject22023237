@@ -137,7 +137,7 @@ import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
 
-// 当前学期：空字符串表示"入学以来"
+// 当前学期
 const currentSemester = ref('');
 
 // 显示模式：table-表格模式，list-列表模式
@@ -213,10 +213,12 @@ function generateSemesterOptions(admissionYear) {
     });
   }
 
-  // 前置"入学以来"选项
-  options.unshift({ label: '入学以来', value: '' });
-
   semesterOptions.value = options;
+
+  // 默认选中第一个学期
+  if (options.length > 0 && !currentSemester.value) {
+    currentSemester.value = options[0].value;
+  }
 }
 
 // 获取已选课程
@@ -230,10 +232,7 @@ function getSelectedCourses() {
   loading.value = true;
   console.log('查询学生选课，studentId:', roleInfo.id, 'semester:', currentSemester.value);
 
-  const params = { studentId: roleInfo.id, status: 1 };
-  if (currentSemester.value) {
-    params.semester = currentSemester.value;
-  }
+  const params = { studentId: roleInfo.id, status: 1, semester: currentSemester.value };
 
   listCourseSelection(params).then(res => {
     console.log('选课返回数据:', res);
