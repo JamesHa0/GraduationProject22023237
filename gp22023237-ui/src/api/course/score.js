@@ -37,3 +37,19 @@ export function delScore(id) {
     method: 'delete'
   })
 }
+
+export function getMyScores(query) {
+  return request({
+    url: '/course/score/myScores',
+    method: 'get',
+    params: query
+  })
+}
+
+export function listScoreWithDetails(query) {
+  return request({
+    url: '/course/score/listWithDetails',
+    method: 'get',
+    params: query
+  })
+}

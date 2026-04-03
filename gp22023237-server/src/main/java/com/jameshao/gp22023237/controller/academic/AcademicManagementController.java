@@ -3,15 +3,31 @@ package com.jameshao.gp22023237.controller.academic;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.DTO.AcademicActivityWithDetailsDTO;
+import com.jameshao.gp22023237.DTO.AcademicAchievementWithDetailsDTO;
+import com.jameshao.gp22023237.DTO.InnovationProjectWithDetailsDTO;
+import com.jameshao.gp22023237.DTO.ReviewItemDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.mapper.AcademicActivityMapper;
+import com.jameshao.gp22023237.mapper.AcademicAchievementMapper;
+import com.jameshao.gp22023237.mapper.InnovationProjectMapper;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 import com.jameshao.gp22023237.po.AcademicAchievement;
 import com.jameshao.gp22023237.po.AcademicActivity;
 import com.jameshao.gp22023237.po.InnovationProject;
+import com.jameshao.gp22023237.po.MentorStudent;
+import com.jameshao.gp22023237.po.Student;
+import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.AcademicActivityService;
 import com.jameshao.gp22023237.service.AcademicAchievementService;
 import com.jameshao.gp22023237.service.InnovationProjectService;
+import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.TeacherService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,10 +48,140 @@ public class AcademicManagementController {
     private AcademicActivityService academicActivityService;
 
     @Autowired
+    private AcademicActivityMapper academicActivityMapper;
+
+    @Autowired
     private InnovationProjectService innovationProjectService;
 
     @Autowired
+    private InnovationProjectMapper innovationProjectMapper;
+
+    @Autowired
     private AcademicAchievementService academicAchievementService;
+
+    @Autowired
+    private AcademicAchievementMapper academicAchievementMapper;
+
+    @Autowired
+    private StudentService studentService;
+
+    @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
+    private MentorStudentService mentorStudentService;
+
+    /**
+     * 权限过滤结果类
+     */
+    private static class FilterResult {
+        Long studentId;
+        List<Long> studentIds;
+
+        FilterResult(Long studentId, List<Long> studentIds) {
+            this.studentId = studentId;
+            this.studentIds = studentIds;
+        }
+    }
+
+    // ==================== 权限辅助方法 ====================
+
+    /**
+     * 获取当前登录学生的ID
+     * 如果当前用户是学生角色，则返回对应的studentId
+     * 否则返回null
+     * @return 学生ID或null
+     */
+    private Long getCurrentStudentId() {
+        Integer roleId = CurrentUserUtil.getCurrentRoleId();
+        // 角色ID: 1-学生
+        if (roleId != null && roleId == 1) {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            if (userId != null) {
+                // 根据userId查询对应的student记录
+                LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(Student::getUserId, userId);
+                Student student = studentService.getOne(queryWrapper);
+                if (student != null) {
+                    return student.getId();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取当前登录导师的教师ID
+     * @return 教师ID或null
+     */
+    private Long getCurrentMentorTeacherId() {
+        Integer roleId = CurrentUserUtil.getCurrentRoleId();
+        // 角色ID: 3-指导教师
+        if (roleId != null && roleId == 3) {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            if (userId != null) {
+                // 根据userId查询对应的teacher记录
+                LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(Teacher::getUserId, userId);
+                Teacher teacher = teacherService.getOne(queryWrapper);
+                if (teacher != null) {
+                    return teacher.getId();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取导师的学生ID列表
+     * @param mentorId 导师ID
+     * @return 学生ID列表
+     */
+    private List<Long> getMentorStudentIds(Long mentorId) {
+        List<Long> studentIds = new ArrayList<>();
+        if (mentorId == null) {
+            return studentIds;
+        }
+        // 查询导师确认的学生关系（teacherStatus = 1 表示已确认）
+        LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(MentorStudent::getMentorId, mentorId)
+                .eq(MentorStudent::getTeacherStatus, 1);
+        List<MentorStudent> relations = mentorStudentService.list(queryWrapper);
+        for (MentorStudent relation : relations) {
+            if (relation.getStudentId() != null) {
+                studentIds.add(relation.getStudentId());
+            }
+        }
+        return studentIds;
+    }
+
+    /**
+     * 智能过滤学生ID参数
+     * - 学生角色：只能看到自己的数据
+     * - 导师角色：只能看到自己学生的数据
+     * - 其他角色：可以看到所有数据
+     * @param requestedStudentId 请求传入的studentId
+     * @return 过滤结果（包含单个studentId和studentIds列表）
+     */
+    private FilterResult filterStudentIds(Long requestedStudentId) {
+        // 首先检查是否是学生
+        Long currentStudentId = getCurrentStudentId();
+        if (currentStudentId != null) {
+            // 学生角色，只能看到自己的数据
+            return new FilterResult(currentStudentId, null);
+        }
+
+        // 然后检查是否是导师
+        Long mentorTeacherId = getCurrentMentorTeacherId();
+        if (mentorTeacherId != null) {
+            // 导师角色，获取自己的学生列表
+            List<Long> studentIds = getMentorStudentIds(mentorTeacherId);
+            return new FilterResult(null, studentIds);
+        }
+
+        // 其他角色，使用请求传入的参数（可以为null表示查看所有）
+        return new FilterResult(requestedStudentId, null);
+    }
 
     // ==================== 学术活动管理 ====================
 
@@ -47,6 +193,11 @@ public class AcademicManagementController {
     @PostMapping("/activity/submit")
     public String submitActivity(@RequestBody AcademicActivity activity) {
         try {
+            // 学生提交时自动设置studentId
+            Long currentStudentId = getCurrentStudentId();
+            if (currentStudentId != null) {
+                activity.setStudentId(currentStudentId);
+            }
             boolean success = academicActivityService.submitActivity(activity);
             return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
         } catch (Exception e) {
@@ -71,28 +222,22 @@ public class AcademicManagementController {
                                  @RequestParam(required = false) Integer activityType,
                                  @RequestParam(required = false) Integer status) {
         try {
-            Page<AcademicActivity> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<AcademicActivity> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(AcademicActivity::getSubmitTime);
+            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
+            FilterResult filterResult = filterStudentIds(studentId);
+            List<AcademicActivityWithDetailsDTO> list = academicActivityMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, activityType, status);
 
-            if (studentId != null) {
-                wrapper.eq(AcademicActivity::getStudentId, studentId);
-            }
-            if (activityType != null) {
-                wrapper.eq(AcademicActivity::getActivityType, activityType);
-            }
-            // status参数控制返回哪个审批状态的数据：1-导师，2-秘书，3-院长
-            if (status != null) {
-                if (status == 1) {
-                    wrapper.eq(AcademicActivity::getMentorStatus, 0);
-                } else if (status == 2) {
-                    wrapper.eq(AcademicActivity::getSecretaryStatus, 0);
-                } else if (status == 3) {
-                    wrapper.eq(AcademicActivity::getDeanStatus, 0);
-                }
-            }
+            // 手动分页
+            int total = list.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<AcademicActivityWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
 
-            IPage<AcademicActivity> result = academicActivityService.page(page, wrapper);
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -103,7 +248,7 @@ public class AcademicManagementController {
     @GetMapping("/activity/{id}")
     public String getActivityDetail(@PathVariable Long id) {
         try {
-            AcademicActivity activity = academicActivityService.getById(id);
+            AcademicActivityWithDetailsDTO activity = academicActivityMapper.getDetailWithDetails(id);
             return activity != null ? jsonReturn.returnSuccess(activity) : jsonReturn.returnFailed("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
@@ -185,6 +330,11 @@ public class AcademicManagementController {
     @PostMapping("/innovation/submit")
     public String submitProject(@RequestBody InnovationProject project) {
         try {
+            // 学生提交时自动设置studentId
+            Long currentStudentId = getCurrentStudentId();
+            if (currentStudentId != null) {
+                project.setStudentId(currentStudentId);
+            }
             boolean success = innovationProjectService.submitProject(project);
             return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
         } catch (Exception e) {
@@ -200,27 +350,22 @@ public class AcademicManagementController {
                                   @RequestParam(required = false) Integer projectType,
                                   @RequestParam(required = false) Integer status) {
         try {
-            Page<InnovationProject> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<InnovationProject> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(InnovationProject::getSubmitTime);
+            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
+            FilterResult filterResult = filterStudentIds(studentId);
+            List<InnovationProjectWithDetailsDTO> list = innovationProjectMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, projectType, status);
 
-            if (studentId != null) {
-                wrapper.eq(InnovationProject::getStudentId, studentId);
-            }
-            if (projectType != null) {
-                wrapper.eq(InnovationProject::getProjectType, projectType);
-            }
-            if (status != null) {
-                if (status == 1) {
-                    wrapper.eq(InnovationProject::getMentorStatus, 0);
-                } else if (status == 2) {
-                    wrapper.eq(InnovationProject::getSecretaryStatus, 0);
-                } else if (status == 3) {
-                    wrapper.eq(InnovationProject::getDeanStatus, 0);
-                }
-            }
+            // 手动分页
+            int total = list.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<InnovationProjectWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
 
-            IPage<InnovationProject> result = innovationProjectService.page(page, wrapper);
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -231,7 +376,7 @@ public class AcademicManagementController {
     @GetMapping("/innovation/{id}")
     public String getProjectDetail(@PathVariable Long id) {
         try {
-            InnovationProject project = innovationProjectService.getById(id);
+            InnovationProjectWithDetailsDTO project = innovationProjectMapper.getDetailWithDetails(id);
             return project != null ? jsonReturn.returnSuccess(project) : jsonReturn.returnFailed("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
@@ -283,6 +428,11 @@ public class AcademicManagementController {
     @PostMapping("/achievement/submit")
     public String submitAchievement(@RequestBody AcademicAchievement achievement) {
         try {
+            // 学生提交时自动设置studentId
+            Long currentStudentId = getCurrentStudentId();
+            if (currentStudentId != null) {
+                achievement.setStudentId(currentStudentId);
+            }
             boolean success = academicAchievementService.submitAchievement(achievement);
             return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
         } catch (Exception e) {
@@ -298,27 +448,22 @@ public class AcademicManagementController {
                                       @RequestParam(required = false) Integer achievementType,
                                       @RequestParam(required = false) Integer status) {
         try {
-            Page<AcademicAchievement> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<AcademicAchievement> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(AcademicAchievement::getSubmitTime);
+            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
+            FilterResult filterResult = filterStudentIds(studentId);
+            List<AcademicAchievementWithDetailsDTO> list = academicAchievementMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, achievementType, status);
 
-            if (studentId != null) {
-                wrapper.eq(AcademicAchievement::getStudentId, studentId);
-            }
-            if (achievementType != null) {
-                wrapper.eq(AcademicAchievement::getAchievementType, achievementType);
-            }
-            if (status != null) {
-                if (status == 1) {
-                    wrapper.eq(AcademicAchievement::getMentorStatus, 0);
-                } else if (status == 2) {
-                    wrapper.eq(AcademicAchievement::getSecretaryStatus, 0);
-                } else if (status == 3) {
-                    wrapper.eq(AcademicAchievement::getDeanStatus, 0);
-                }
-            }
+            // 手动分页
+            int total = list.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<AcademicAchievementWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
 
-            IPage<AcademicAchievement> result = academicAchievementService.page(page, wrapper);
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -329,7 +474,7 @@ public class AcademicManagementController {
     @GetMapping("/achievement/{id}")
     public String getAchievementDetail(@PathVariable Long id) {
         try {
-            AcademicAchievement achievement = academicAchievementService.getById(id);
+            AcademicAchievementWithDetailsDTO achievement = academicAchievementMapper.getDetailWithDetails(id);
             return achievement != null ? jsonReturn.returnSuccess(achievement) : jsonReturn.returnFailed("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
@@ -475,5 +620,240 @@ public class AcademicManagementController {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
+    }
+
+    // ==================== 统一审核管理 ====================
+
+    /**
+     * 获取统一审核列表
+     * 汇总学术活动、创新项目、学术成果三类待审批内容
+     * 根据当前用户角色返回对应待审批项
+     */
+    @GetMapping("/review/list")
+    public String getReviewList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                 @RequestParam(defaultValue = "10") Integer pageSize,
+                                 @RequestParam(required = false) Integer type,
+                                 @RequestParam(required = false) Integer status) {
+        try {
+            java.util.List<ReviewItemDTO> allItems = new java.util.ArrayList<>();
+
+            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
+            FilterResult filterResult = filterStudentIds(null);
+
+            // 查询学术活动
+            if (type == null || type == 1) {
+                List<AcademicActivityWithDetailsDTO> activities = academicActivityMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
+                for (AcademicActivityWithDetailsDTO activity : activities) {
+                    ReviewItemDTO item = convertToReviewItem(activity, 1);
+                    if (item != null && (status == null || item.getStatus() == status)) {
+                        allItems.add(item);
+                    }
+                }
+            }
+
+            // 查询创新项目
+            if (type == null || type == 2) {
+                List<InnovationProjectWithDetailsDTO> projects = innovationProjectMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
+                for (InnovationProjectWithDetailsDTO project : projects) {
+                    ReviewItemDTO item = convertToReviewItem(project, 2);
+                    if (item != null && (status == null || item.getStatus() == status)) {
+                        allItems.add(item);
+                    }
+                }
+            }
+
+            // 查询学术成果
+            if (type == null || type == 3) {
+                List<AcademicAchievementWithDetailsDTO> achievements = academicAchievementMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
+                for (AcademicAchievementWithDetailsDTO achievement : achievements) {
+                    ReviewItemDTO item = convertToReviewItem(achievement, 3);
+                    if (item != null && (status == null || item.getStatus() == status)) {
+                        allItems.add(item);
+                    }
+                }
+            }
+
+            // 按提交时间排序
+            allItems.sort((a, b) -> {
+                if (a.getSubmitTime() == null) return 1;
+                if (b.getSubmitTime() == null) return -1;
+                return b.getSubmitTime().compareTo(a.getSubmitTime());
+            });
+
+            // 手动分页
+            int total = allItems.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<ReviewItemDTO> pageList = allItems.subList(fromIndex, toIndex);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 统一审批接口
+     */
+    @PostMapping("/review/approve")
+    public String approveReview(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = Long.valueOf(params.get("id").toString());
+            Integer type = Integer.valueOf(params.get("type").toString());
+            Integer status = Integer.valueOf(params.get("status").toString());
+            String comment = params.get("comment") != null ? params.get("comment").toString() : null;
+
+            boolean success = false;
+
+            if (type == 1) {
+                // 学术活动审批
+                if (CurrentUserUtil.isMentor()) {
+                    success = academicActivityService.mentorApprove(id, status, comment);
+                } else if (CurrentUserUtil.isSecretary()) {
+                    success = academicActivityService.secretaryApprove(id, status, comment);
+                } else if (CurrentUserUtil.isDean()) {
+                    success = academicActivityService.deanApprove(id, status, comment);
+                }
+            } else if (type == 2) {
+                // 创新项目审批
+                if (CurrentUserUtil.isMentor()) {
+                    success = innovationProjectService.mentorApprove(id, status, comment);
+                } else if (CurrentUserUtil.isSecretary()) {
+                    success = innovationProjectService.secretaryApprove(id, status, comment);
+                } else if (CurrentUserUtil.isDean()) {
+                    success = innovationProjectService.deanApprove(id, status, comment);
+                }
+            } else if (type == 3) {
+                // 学术成果审批
+                if (CurrentUserUtil.isMentor()) {
+                    success = academicAchievementService.mentorApprove(id, status, comment);
+                } else if (CurrentUserUtil.isSecretary()) {
+                    success = academicAchievementService.secretaryApprove(id, status, comment);
+                } else if (CurrentUserUtil.isDean()) {
+                    success = academicAchievementService.deanApprove(id, status, comment);
+                }
+            }
+
+            if (success) {
+                return jsonReturn.returnSuccess("审批成功");
+            } else {
+                return jsonReturn.returnFailed("审批失败或无权限");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // 转换学术活动为审核项
+    private ReviewItemDTO convertToReviewItem(AcademicActivityWithDetailsDTO activity, Integer type) {
+        ReviewItemDTO item = new ReviewItemDTO();
+        item.setId(activity.getId());
+        item.setType(type);
+        item.setTitle(activity.getActivityName());
+        item.setStudentId(activity.getStudentId());
+        item.setStudentNo(activity.getStudentNo());
+        item.setStudentName(activity.getStudentName());
+        item.setSubmitTime(activity.getSubmitTime());
+        item.setCreateTime(activity.getCreateTime());
+        item.setDescription(activity.getContent());
+        item.setMentorStatus(activity.getMentorStatus());
+        item.setMentorComment(activity.getMentorComment());
+        item.setSecretaryStatus(activity.getSecretaryStatus());
+        item.setSecretaryComment(activity.getSecretaryComment());
+        item.setDeanStatus(activity.getDeanStatus());
+        item.setDeanComment(activity.getDeanComment());
+
+        // 计算统一状态
+        calculateUnifiedStatus(item);
+        return item;
+    }
+
+    // 转换创新项目为审核项
+    private ReviewItemDTO convertToReviewItem(InnovationProjectWithDetailsDTO project, Integer type) {
+        ReviewItemDTO item = new ReviewItemDTO();
+        item.setId(project.getId());
+        item.setType(type);
+        item.setTitle(project.getProjectName());
+        item.setStudentId(project.getStudentId());
+        item.setStudentNo(project.getStudentNo());
+        item.setStudentName(project.getStudentName());
+        item.setSubmitTime(project.getSubmitTime());
+        item.setCreateTime(project.getCreateTime());
+        item.setDescription(project.getDescription());
+        item.setMentorStatus(project.getMentorStatus());
+        item.setMentorComment(project.getMentorComment());
+        item.setSecretaryStatus(project.getSecretaryStatus());
+        item.setSecretaryComment(project.getSecretaryComment());
+        item.setDeanStatus(project.getDeanStatus());
+        item.setDeanComment(project.getDeanComment());
+
+        // 计算统一状态
+        calculateUnifiedStatus(item);
+        return item;
+    }
+
+    // 转换学术成果为审核项
+    private ReviewItemDTO convertToReviewItem(AcademicAchievementWithDetailsDTO achievement, Integer type) {
+        ReviewItemDTO item = new ReviewItemDTO();
+        item.setId(achievement.getId());
+        item.setType(type);
+        item.setTitle(achievement.getTitle());
+        item.setStudentId(achievement.getStudentId());
+        item.setStudentNo(achievement.getStudentNo());
+        item.setStudentName(achievement.getStudentName());
+        item.setSubmitTime(achievement.getSubmitTime());
+        item.setCreateTime(achievement.getCreateTime());
+        item.setDescription(achievement.getAbstractContent());
+        item.setMentorStatus(achievement.getMentorStatus());
+        item.setMentorComment(achievement.getMentorComment());
+        item.setSecretaryStatus(achievement.getSecretaryStatus());
+        item.setSecretaryComment(achievement.getSecretaryComment());
+        item.setDeanStatus(achievement.getDeanStatus());
+        item.setDeanComment(achievement.getDeanComment());
+
+        // 计算统一状态
+        calculateUnifiedStatus(item);
+        return item;
+    }
+
+    // 计算统一状态（根据当前用户角色和审批流程）
+    private void calculateUnifiedStatus(ReviewItemDTO item) {
+        // 检查是否已拒绝（任意阶段拒绝即算拒绝）
+        if (item.getMentorStatus() != null && item.getMentorStatus() == 2) {
+            item.setStatus(2);
+            item.setApprovalComment(item.getMentorComment());
+            return;
+        }
+        if (item.getSecretaryStatus() != null && item.getSecretaryStatus() == 2) {
+            item.setStatus(2);
+            item.setApprovalComment(item.getSecretaryComment());
+            return;
+        }
+        if (item.getDeanStatus() != null && item.getDeanStatus() == 2) {
+            item.setStatus(2);
+            item.setApprovalComment(item.getDeanComment());
+            return;
+        }
+
+        // 检查是否全部通过
+        boolean allApproved = (item.getMentorStatus() != null && item.getMentorStatus() == 1)
+                && (item.getSecretaryStatus() != null && item.getSecretaryStatus() == 1)
+                && (item.getDeanStatus() != null && item.getDeanStatus() == 1);
+        if (allApproved) {
+            item.setStatus(1);
+            item.setApprovalComment("审批通过");
+            return;
+        }
+
+        // 否则为待审批
+        item.setStatus(0);
     }
 }

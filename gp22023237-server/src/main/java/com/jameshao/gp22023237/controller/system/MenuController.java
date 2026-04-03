@@ -141,6 +141,7 @@ public class MenuController {
 
     /**
      * 构建菜单树
+     * 注意：parent_id关联的是menus_index，不是id
      */
     private List<Menu> buildMenuTree(List<Menu> menus) {
         List<Menu> tree = new ArrayList<>();
@@ -155,11 +156,12 @@ public class MenuController {
 
     /**
      * 添加子菜单
+     * 注意：parent_id关联的是menus_index，不是id
      */
     private void addChildren(Menu parent, List<Menu> menus) {
         List<Menu> children = new ArrayList<>();
         for (Menu menu : menus) {
-            if (parent.getId().equals(menu.getParentId())) {
+            if (parent.getMenusIndex() != null && parent.getMenusIndex().equals(menu.getParentId())) {
                 children.add(menu);
                 addChildren(menu, menus);
             }

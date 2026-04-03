@@ -28,7 +28,7 @@ export function approveStatusChangeMentor(id, status, comment) {
   return request({
     url: '/student/status/change/mentor/approve',
     method: 'post',
-    data: { id, status, comment }
+    params: { id, status, comment }
   })
 }
 
@@ -36,7 +36,7 @@ export function approveStatusChangeSecretary(id, status, comment) {
   return request({
     url: '/student/status/change/secretary/approve',
     method: 'post',
-    data: { id, status, comment }
+    params: { id, status, comment }
   })
 }
 
@@ -44,7 +44,7 @@ export function approveStatusChangeDean(id, status, comment) {
   return request({
     url: '/student/status/change/dean/approve',
     method: 'post',
-    data: { id, status, comment }
+    params: { id, status, comment }
   })
 }
 

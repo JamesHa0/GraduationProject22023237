@@ -83,7 +83,7 @@
         <el-row>
           <el-col :span="24">
             <el-form-item label="变更类型" prop="changeType">
-              <el-radio-group v-model="form.changeType">
+              <el-radio-group v-model="form.changeType" :disabled="isViewMode">
                 <el-radio :value="1">休学</el-radio>
                 <el-radio :value="2">复学</el-radio>
                 <el-radio :value="3">退学</el-radio>
@@ -95,41 +95,53 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="学号" prop="studentNo">
-              <el-input v-model="form.studentNo" placeholder="请输入学号" />
+              <el-input v-model="form.studentNo" placeholder="请输入学号" :disabled="isViewMode" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="姓名" prop="studentName">
-              <el-input v-model="form.studentName" placeholder="请输入姓名" />
+              <el-input v-model="form.studentName" placeholder="请输入姓名" :disabled="isViewMode" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="24">
             <el-form-item label="生效日期" prop="effectiveDate">
-              <el-date-picker v-model="form.effectiveDate" type="date" placeholder="选择生效日期" style="width: 100%" />
+              <el-date-picker v-model="form.effectiveDate" type="date" placeholder="选择生效日期" style="width: 100%" :disabled="isViewMode" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="24">
             <el-form-item label="变更原因" prop="reason">
-              <el-input v-model="form.reason" type="textarea" :rows="4" placeholder="请输入变更原因" />
+              <el-input v-model="form.reason" type="textarea" :rows="4" placeholder="请输入变更原因" :disabled="isViewMode" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row>
-          <el-col :span="24">
-            <el-form-item label="附件" prop="attachmentPath">
-              <el-input v-model="form.attachmentPath" placeholder="请上传附件" />
+        <el-row v-if="isViewMode">
+          <el-col :span="12">
+            <el-form-item label="导师审批">
+              <el-tag :type="getStatusType(form.mentorStatus)">
+                {{ getStatusText(form.mentorStatus) }}
+              </el-tag>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="教学秘书审批">
+              <el-tag :type="getStatusType(form.secretaryStatus)">
+                {{ getStatusText(form.secretaryStatus) }}
+              </el-tag>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
+        <div class="dialog-footer" v-if="!isViewMode">
           <el-button type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="cancel">取 消</el-button>
+        </div>
+        <div class="dialog-footer" v-else>
+          <el-button @click="cancel">关 闭</el-button>
         </div>
       </template>
     </el-dialog>
@@ -151,6 +163,7 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const isViewMode = ref(false);
 
 const columns = ref([
   { key: 0, label: `学号`, visible: true },
@@ -243,6 +256,7 @@ function reset() {
     secretaryStatus: 0,
     deanStatus: 0
   };
+  isViewMode.value = false;
   proxy.resetForm("changeRef");
 }
 
@@ -258,8 +272,12 @@ function handleAdd() {
 }
 
 function handleView(row) {
+  reset();
   getStatusChangeDetail(row.id).then(res => {
-    proxy.$modal.detail(res.data);
+    form.value = res.data;
+    isViewMode.value = true;
+    open.value = true;
+    title.value = "查看详情";
   });
 }
 
@@ -268,6 +286,7 @@ function handleUpdate(row) {
   const id = row.id || ids.value;
   getStatusChangeDetail(id).then(res => {
     form.value = res.data;
+    isViewMode.value = false;
     open.value = true;
     title.value = "修改申请";
   });

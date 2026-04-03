@@ -60,7 +60,8 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <el-dialog :title="title" v-model="open" width="800px" append-to-body>
-      <el-form :model="form" :rules="rules" ref="studentRef" label-width="100px">
+      <!-- 表单模式（新增/修改） -->
+      <el-form :model="form" :rules="rules" ref="studentRef" label-width="100px" v-if="!isView">
         <el-row>
           <el-col :span="12">
             <el-form-item label="学号" prop="studentNo">
@@ -125,10 +126,26 @@
           </el-col>
         </el-row>
       </el-form>
+
+      <!-- 详情模式 -->
+      <el-descriptions :column="1" border v-if="isView && currentRow">
+        <el-descriptions-item label="学号">{{ currentRow.studentNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ currentRow.studentName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="学院">{{ currentRow.department || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ currentRow.major || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="入学年份">{{ currentRow.admissionYear || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="毕业年份">{{ currentRow.graduationYear || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="研究方向">{{ currentRow.researchDirection || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusTagType(currentRow.status)">{{ getStatusText(currentRow.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="双选状态">{{ getSelectionStatusText(currentRow.selectionStatus) }}</el-descriptions-item>
+      </el-descriptions>
+
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button @click="cancel">{{ isView ? '关闭' : '取 消' }}</el-button>
+          <el-button type="primary" @click="submitForm" v-if="!isView">确 定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -150,6 +167,8 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const isView = ref(false);
+const currentRow = ref(null);
 
 const columns = ref([
   { key: 0, label: `学号`, visible: true },
@@ -194,6 +213,11 @@ function getStatusText(status) {
   return textMap[status] || "未知";
 }
 
+function getSelectionStatusText(status) {
+  const textMap = { 0: "未开始", 1: "第一轮", 2: "第二轮", 3: "已确定" };
+  return textMap[status] || "未知";
+}
+
 function getList() {
   loading.value = true;
   listStudent(queryParams.value).then(res => {
@@ -232,6 +256,8 @@ function reset() {
     status: 1,
     selectionStatus: 0
   };
+  isView.value = false;
+  currentRow.value = null;
   proxy.resetForm("studentRef");
 }
 
@@ -247,7 +273,10 @@ function handleAdd() {
 }
 
 function handleView(row) {
-  proxy.$modal.detail(row);
+  currentRow.value = row;
+  isView.value = true;
+  title.value = "学生详情";
+  open.value = true;
 }
 
 function handleUpdate(row) {

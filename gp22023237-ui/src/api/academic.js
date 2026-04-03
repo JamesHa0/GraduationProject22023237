@@ -9,6 +9,13 @@ export function listActivity(params) {
   })
 }
 
+export function getActivityDetail(id) {
+  return request({
+    url: `/academic/activity/${id}`,
+    method: 'get'
+  })
+}
+
 export function submitActivity(data) {
   return request({
     url: '/academic/activity/submit',
@@ -25,12 +32,43 @@ export function approveActivity(data) {
   })
 }
 
+export function approveActivityMentor(id, status, comment) {
+  return request({
+    url: '/academic/activity/mentor/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveActivitySecretary(id, status, comment) {
+  return request({
+    url: '/academic/activity/secretary/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveActivityDean(id, status, comment) {
+  return request({
+    url: '/academic/activity/dean/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
 // 创新实践项目相关API
 export function listInnovation(params) {
   return request({
     url: '/academic/innovation/list',
     method: 'get',
     params: params
+  })
+}
+
+export function getInnovationDetail(id) {
+  return request({
+    url: `/academic/innovation/${id}`,
+    method: 'get'
   })
 }
 
@@ -47,6 +85,30 @@ export function approveInnovation(data) {
     url: '/academic/innovation/approve',
     method: 'post',
     data: data
+  })
+}
+
+export function approveInnovationMentor(id, status, comment) {
+  return request({
+    url: '/academic/innovation/mentor/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveInnovationSecretary(id, status, comment) {
+  return request({
+    url: '/academic/innovation/secretary/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveInnovationDean(id, status, comment) {
+  return request({
+    url: '/academic/innovation/dean/approve',
+    method: 'post',
+    params: { id, status, comment }
   })
 }
 
@@ -67,6 +129,13 @@ export function listAchievement(params) {
   })
 }
 
+export function getAchievementDetail(id) {
+  return request({
+    url: `/academic/achievement/${id}`,
+    method: 'get'
+  })
+}
+
 export function submitAchievement(data) {
   return request({
     url: '/academic/achievement/submit',
@@ -83,10 +152,51 @@ export function approveAchievement(data) {
   })
 }
 
+export function approveAchievementMentor(id, status, comment) {
+  return request({
+    url: '/academic/achievement/mentor/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveAchievementSecretary(id, status, comment) {
+  return request({
+    url: '/academic/achievement/secretary/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
+export function approveAchievementDean(id, status, comment) {
+  return request({
+    url: '/academic/achievement/dean/approve',
+    method: 'post',
+    params: { id, status, comment }
+  })
+}
+
 export function delAchievement(id) {
   return request({
     url: '/academic/achievement/delete',
     method: 'post',
     data: { id }
+  })
+}
+
+// 统一审核相关API
+export function listReview(params) {
+  return request({
+    url: '/academic/review/list',
+    method: 'get',
+    params: params
+  })
+}
+
+export function approveReview(data) {
+  return request({
+    url: '/academic/review/approve',
+    method: 'post',
+    data: data
   })
 }

@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.student;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.DTO.StudentStatusChangeWithDetailsDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.mapper.StudentStatusChangeMapper;
 import com.jameshao.gp22023237.po.GraduationAudit;
 import com.jameshao.gp22023237.po.StudentStatusChange;
 import com.jameshao.gp22023237.service.GraduationAuditService;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +30,9 @@ public class StudentStatusController {
 
     @Autowired
     private StudentStatusChangeService studentStatusChangeService;
+
+    @Autowired
+    private StudentStatusChangeMapper studentStatusChangeMapper;
 
     @Autowired
     private GraduationAuditService graduationAuditService;
@@ -53,26 +59,30 @@ public class StudentStatusController {
     }
 
     /**
-     * 查询学籍异动申请列表
+     * 查询学籍异动申请列表（带学生详情）
      */
     @GetMapping("/change/list")
     public String getChangeList(@RequestParam(defaultValue = "1") Integer pageNum,
                                       @RequestParam(defaultValue = "10") Integer pageSize,
                                       @RequestParam(required = false) Long studentId,
-                                      @RequestParam(required = false) Integer changeType) {
+                                      @RequestParam(required = false) Integer changeType,
+                                      @RequestParam(required = false) String studentNo,
+                                      @RequestParam(required = false) String studentName) {
         try {
-            Page<StudentStatusChange> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<StudentStatusChange> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(StudentStatusChange::getCreateTime); // 使用数据库实际字段进行排序
+            List<StudentStatusChangeWithDetailsDTO> list = studentStatusChangeMapper.listWithDetails(studentId, changeType, studentNo, studentName);
 
-            if (studentId != null) {
-                wrapper.eq(StudentStatusChange::getStudentId, studentId);
-            }
-            if (changeType != null) {
-                wrapper.eq(StudentStatusChange::getChangeType, changeType);
-            }
+            // 手动分页
+            int total = list.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<StudentStatusChangeWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
 
-            IPage<StudentStatusChange> result = studentStatusChangeService.page(page, wrapper);
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,13 +91,12 @@ public class StudentStatusController {
     }
 
     /**
-     * 获取学籍异动申请详情
-
+     * 获取学籍异动申请详情（带学生信息）
      */
     @GetMapping("/change/{id}")
     public String getChangeDetail(@PathVariable Long id) {
         try {
-            StudentStatusChange application = studentStatusChangeService.getById(id);
+            StudentStatusChangeWithDetailsDTO application = studentStatusChangeMapper.getDetailWithDetails(id);
             if (application != null) {
                 return jsonReturn.returnSuccess(application);
             } else {

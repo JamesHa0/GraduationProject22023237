@@ -1,9 +1,9 @@
 <template>
   <div class="app-container">
-    <el-card>
+    <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>学术内容审核</span>
+          <span class="card-title">学术内容审核</span>
         </div>
       </template>
 
@@ -29,6 +29,8 @@
         </el-form-item>
       </el-form>
 
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+
       <!-- 数据表格 -->
       <el-table v-loading="loading" :data="dataList" border>
         <el-table-column type="index" label="序号" width="55" align="center" />
@@ -37,9 +39,13 @@
             <el-tag :type="getTypeTagType(row.type)">{{ getTypeName(row.type) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="标题" prop="title" align="center" show-overflow-tooltip />
-        <el-table-column label="申请人" prop="studentName" align="center" width="120" />
-        <el-table-column label="申请时间" prop="createTime" align="center" width="180" />
+        <el-table-column label="标题" prop="title" align="center" show-overflow-tooltip min-width="180" />
+        <el-table-column label="申请人" prop="studentName" align="center" width="100" />
+        <el-table-column label="申请时间" prop="submitTime" align="center" width="160">
+          <template #default="{ row }">
+            {{ parseDate(row.submitTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="审批状态" prop="status" align="center" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
@@ -48,13 +54,13 @@
         <el-table-column label="操作" align="center" width="200" class-name="small-padding fixed-width">
           <template #default="{ row }">
             <el-button link size="small" type="primary" @click="handleView(row)">详情</el-button>
-            <el-button link size="small" type="success" @click="handleApprove(row)" v-if="row.status === 0">通过</el-button>
-            <el-button link size="small" type="danger" @click="handleReject(row)" v-if="row.status === 0">拒绝</el-button>
+            <el-button link size="small" type="success" @click="handleApprove(row)" v-if="canApprove(row)">通过</el-button>
+            <el-button link size="small" type="danger" @click="handleReject(row)" v-if="canApprove(row)">拒绝</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <!-- 详情对话框 -->
@@ -63,23 +69,41 @@
         <el-descriptions-item label="内容类型">
           <el-tag :type="getTypeTagType(currentRow.type)">{{ getTypeName(currentRow.type) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="标题">{{ currentRow.title }}</el-descriptions-item>
-        <el-descriptions-item label="申请人">{{ currentRow.studentName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="申请时间">{{ currentRow.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="标题">{{ currentRow.title || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ currentRow.studentNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ currentRow.studentName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="申请时间">{{ parseDate(currentRow.submitTime) }}</el-descriptions-item>
         <el-descriptions-item label="详细描述">
           <div style="white-space: pre-wrap">{{ currentRow.description || '-' }}</div>
         </el-descriptions-item>
-        <el-descriptions-item label="审批状态">
-          <el-tag :type="getStatusType(currentRow.status)">{{ getStatusText(currentRow.status) }}</el-tag>
+        <el-descriptions-item label="导师审批">
+          <el-tag :type="getStatusType(currentRow.mentorStatus)">
+            {{ getStatusText(currentRow.mentorStatus) }}
+          </el-tag>
+          <span v-if="currentRow.mentorComment" style="margin-left: 10px">意见: {{ currentRow.mentorComment }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="审批意见" v-if="currentRow.approvalComment">
-          {{ currentRow.approvalComment }}
+        <el-descriptions-item label="教学秘书审批">
+          <el-tag :type="getStatusType(currentRow.secretaryStatus)">
+            {{ getStatusText(currentRow.secretaryStatus) }}
+          </el-tag>
+          <span v-if="currentRow.secretaryComment" style="margin-left: 10px">意见: {{ currentRow.secretaryComment }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="分管院长审批">
+          <el-tag :type="getStatusType(currentRow.deanStatus)">
+            {{ getStatusText(currentRow.deanStatus) }}
+          </el-tag>
+          <span v-if="currentRow.deanComment" style="margin-left: 10px">意见: {{ currentRow.deanComment }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="审批状态">
+          <el-tag :type="getStatusType(currentRow.status)">
+            {{ getStatusText(currentRow.status) }}
+          </el-tag>
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">关闭</el-button>
-          <template v-if="currentRow && currentRow.status === 0">
+          <template v-if="currentRow && canApprove(currentRow)">
             <el-button type="danger" @click="openRejectDialog">拒绝</el-button>
             <el-button type="primary" @click="handleApprove(currentRow)">通过</el-button>
           </template>
@@ -89,8 +113,8 @@
 
     <!-- 拒绝对话框 -->
     <el-dialog title="拒绝申请" v-model="rejectDialogVisible" width="500px" append-to-body>
-      <el-form :model="rejectForm" label-width="80px">
-        <el-form-item label="拒绝原因">
+      <el-form :model="rejectForm" :rules="rejectRules" ref="rejectFormRef" label-width="80px">
+        <el-form-item label="拒绝原因" prop="comment">
           <el-input v-model="rejectForm.comment" type="textarea" :rows="4" placeholder="请输入拒绝原因" />
         </el-form-item>
       </el-form>
@@ -105,8 +129,9 @@
 </template>
 
 <script setup name="AcademicReview">
-import { ref, reactive, getCurrentInstance } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, getCurrentInstance, toRefs } from 'vue'
+import { listReview, approveReview } from '@/api/academic'
+import useUserStore from '@/store/modules/user'
 
 const { proxy } = getCurrentInstance()
 
@@ -117,18 +142,28 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const currentRow = ref(null)
+const rejectFormRef = ref(null)
 
-const queryParams = reactive({
-  pageNum: 1,
-  pageSize: 10,
-  type: undefined,
-  status: undefined
+const data = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    type: undefined,
+    status: undefined
+  },
+  rejectForm: {
+    id: undefined,
+    type: undefined,
+    comment: ''
+  },
+  rejectRules: {
+    comment: [
+      { required: true, message: '请输入拒绝原因', trigger: 'blur' }
+    ]
+  }
 })
 
-const rejectForm = reactive({
-  id: undefined,
-  comment: ''
-})
+const { queryParams, rejectForm, rejectRules } = toRefs(data)
 
 function getTypeTagType(type) {
   const typeMap = { 1: 'primary', 2: 'success', 3: 'warning' }
@@ -141,8 +176,8 @@ function getTypeName(type) {
 }
 
 function getStatusText(status) {
-  const textMap = { 0: '待审批', 1: '已通过', 2: '已拒绝' }
-  return textMap[status] || '-'
+  const textMap = { 0: '待审批', 1: '已通过', 2: '已拒绝', null: '-', undefined: '-' }
+  return textMap[status] !== undefined ? textMap[status] : '-'
 }
 
 function getStatusType(status) {
@@ -150,30 +185,70 @@ function getStatusType(status) {
   return typeMap[status] || 'info'
 }
 
+function parseDate(dateStr) {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleString('zh-CN')
+}
+
+function getCurrentUserRoleId() {
+  const userStore = useUserStore()
+  if (userStore.roles !== undefined && userStore.roles !== null) {
+    // 兼容数组和单个数字两种情况
+    if (Array.isArray(userStore.roles)) {
+      return userStore.roles.length > 0 ? userStore.roles[0] : null
+    } else {
+      return userStore.roles
+    }
+  }
+  return null
+}
+
+function canApprove(row) {
+  if (!row || row.status !== 0) return false
+
+  const roleId = getCurrentUserRoleId()
+  if (!roleId) return false
+
+  // 老师/导师(7)或任课教师(8)可以审批导师阶段
+  if (roleId === 7 || roleId === 8) {
+    return row.mentorStatus === 0
+  }
+
+  // 研究生秘书(5)或综合管理员(4)可以审批秘书阶段（需导师已通过）
+  if (roleId === 5 || roleId === 4) {
+    return row.mentorStatus === 1 && row.secretaryStatus === 0
+  }
+
+  // 分管院长(2)或超级管理员(1)可以最终审批（需导师、秘书已通过）
+  if (roleId === 2 || roleId === 1) {
+    return row.mentorStatus === 1 && row.secretaryStatus === 1 && (row.deanStatus === 0 || row.deanStatus === null || row.deanStatus === undefined)
+  }
+
+  return false
+}
+
 function getList() {
   loading.value = true
-  // TODO: 调用实际的审核列表 API
-  setTimeout(() => {
-    dataList.value = [
-      { id: 1, type: 1, title: '人工智能学术讲座', studentName: '张三', createTime: '2024-03-15 10:30:00', status: 0, description: '邀请李教授做关于人工智能最新进展的学术讲座' },
-      { id: 2, type: 2, title: '智能家居创新项目', studentName: '李四', createTime: '2024-03-14 14:20:00', status: 0, description: '基于物联网技术的智能家居控制系统' },
-      { id: 3, type: 3, title: '深度学习论文发表', studentName: '王五', createTime: '2024-03-13 09:15:00', status: 1, description: '在顶级会议上发表的深度学习研究成果', approvalComment: '研究成果优秀，同意通过' },
-      { id: 4, type: 1, title: '区块链技术研讨会', studentName: '赵六', createTime: '2024-03-12 16:45:00', status: 2, description: '组织区块链技术交流研讨会', approvalComment: '主题与专业方向不符，建议重新申请' }
-    ]
-    total.value = dataList.value.length
+  listReview(queryParams.value).then(res => {
     loading.value = false
-  }, 500)
+    dataList.value = res.data.records || res.data || []
+    total.value = res.data.total || dataList.value.length
+  }).catch(() => {
+    loading.value = false
+  })
 }
 
 function handleQuery() {
-  queryParams.pageNum = 1
+  queryParams.value.pageNum = 1
   getList()
 }
 
 function resetQuery() {
   proxy.resetForm('queryRef')
-  queryParams.type = undefined
-  queryParams.status = undefined
+  queryParams.value.type = undefined
+  queryParams.value.status = undefined
   handleQuery()
 }
 
@@ -184,36 +259,69 @@ function handleView(row) {
 
 function handleApprove(row) {
   proxy.$modal.confirm('确认通过该申请？').then(() => {
-    // TODO: 调用审批通过 API
-    ElMessage.success('审批通过')
-    getList()
-    dialogVisible.value = false
+    const params = {
+      id: row.id,
+      type: row.type,
+      status: 1,
+      comment: '审批通过'
+    }
+    approveReview(params).then(() => {
+      proxy.$modal.msgSuccess('审批通过')
+      dialogVisible.value = false
+      getList()
+    }).catch(() => {
+      proxy.$modal.msgError('审批失败')
+    })
   }).catch(() => {})
 }
 
 function handleReject(row) {
-  rejectForm.id = row.id
-  rejectForm.comment = ''
+  rejectForm.value.id = row.id
+  rejectForm.value.type = row.type
+  rejectForm.value.comment = ''
   rejectDialogVisible.value = true
 }
 
 function openRejectDialog() {
   dialogVisible.value = false
-  rejectForm.id = currentRow.value.id
-  rejectForm.comment = ''
+  rejectForm.value.id = currentRow.value.id
+  rejectForm.value.type = currentRow.value.type
+  rejectForm.value.comment = ''
   rejectDialogVisible.value = true
 }
 
 function submitReject() {
-  if (!rejectForm.comment.trim()) {
-    ElMessage.warning('请输入拒绝原因')
-    return
-  }
-  // TODO: 调用拒绝 API
-  ElMessage.success('已拒绝申请')
-  rejectDialogVisible.value = false
-  getList()
+  proxy.$refs['rejectFormRef'].validate(valid => {
+    if (valid) {
+      const params = {
+        id: rejectForm.value.id,
+        type: rejectForm.value.type,
+        status: 2,
+        comment: rejectForm.value.comment
+      }
+      approveReview(params).then(() => {
+        proxy.$modal.msgSuccess('已拒绝申请')
+        rejectDialogVisible.value = false
+        getList()
+      }).catch(() => {
+        proxy.$modal.msgError('操作失败')
+      })
+    }
+  })
 }
 
 getList()
 </script>
+
+<style scoped>
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: bold;
+}
+</style>

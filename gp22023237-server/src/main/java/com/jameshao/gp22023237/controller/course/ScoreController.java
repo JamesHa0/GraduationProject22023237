@@ -2,7 +2,9 @@ package com.jameshao.gp22023237.controller.course;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.jameshao.gp22023237.DTO.ScoreWithDetailsDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.mapper.ScoreMapper;
 import com.jameshao.gp22023237.po.Score;
 import com.jameshao.gp22023237.service.ScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,9 @@ public class ScoreController {
 
     @Autowired
     private ScoreService scoreService;
+
+    @Autowired
+    private ScoreMapper scoreMapper;
 
     @GetMapping("/list")
     public String list(Long studentId, Long courseId, String grade) {
@@ -155,6 +160,37 @@ public class ScoreController {
             } else {
                 return jsonReturn.returnFailed("删除失败");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 学生查询自己的成绩（带详情）
+     */
+    @GetMapping("/myScores")
+    public String myScores(Long studentId, String grade, String semester) {
+        try {
+            if (studentId == null) {
+                return jsonReturn.returnError("学生ID不能为空");
+            }
+            List<ScoreWithDetailsDTO> list = scoreMapper.listScoreWithDetails(studentId, null, grade, semester);
+            return jsonReturn.returnSuccess(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 查询成绩列表（带详情）- 管理员/教师使用
+     */
+    @GetMapping("/listWithDetails")
+    public String listWithDetails(Long studentId, Long courseId, String grade, String semester) {
+        try {
+            List<ScoreWithDetailsDTO> list = scoreMapper.listScoreWithDetails(studentId, courseId, grade, semester);
+            return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

@@ -165,6 +165,12 @@ export const constantRoutes = [
         component: () => import('@/views/course/schedule/index'),
         name: 'CourseSchedule',
         meta: { title: '课程表查询', icon: 'date' }
+      },
+      {
+        path: 'student-score',
+        component: () => import('@/views/course/student-score/index'),
+        name: 'StudentScore',
+        meta: { title: '学业成绩', icon: 'score' }
       }
     ]
   },
