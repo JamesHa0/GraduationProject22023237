@@ -23,20 +23,6 @@ public class DegreeApplicationServiceImpl extends ServiceImpl<DegreeApplicationM
     }
 
     @Override
-    public boolean recordDefenseResult(Long id, Integer result, Double score, String comment, String qaRecord) {
-        DegreeApplication application = getById(id);
-        if (application == null) return false;
-
-        application.setDefenseResult(result);
-        application.setDefenseScore(score);
-        application.setDefenseCommitteeComment(comment);
-        application.setQaRecord(qaRecord);
-        application.setUpdateTime(new Date());
-
-        return updateById(application);
-    }
-
-    @Override
     public boolean committeeApprove(Long id, Integer status, String comment) {
         DegreeApplication application = getById(id);
         if (application == null) return false;

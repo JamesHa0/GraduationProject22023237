@@ -27,23 +27,23 @@ public class ThesisManagementController {
     private JSONReturn jsonReturn;
 
     @Autowired
-    private ThesisProposalService thesisProposalService;
+    private ThesisProgressService thesisProgressService;
 
     @Autowired
-    private ThesisMidtermService thesisMidtermService;
+    private ThesisDefenseService thesisDefenseService;
 
     @Autowired
-    private ThesisPreDefenseService thesisPreDefenseService;
+    private ThesisExternalReviewService thesisExternalReviewService;
 
     @Autowired
     private DegreeApplicationService degreeApplicationService;
 
-    // ==================== 开题报告管理 ====================
+    // ==================== 论文进展管理（开题、中期、预答辩统一接口）====================
 
-    @PostMapping("/proposal/submit")
-    public String submitProposal(@RequestBody ThesisProposal proposal) {
+    @PostMapping("/progress/submit")
+    public String submitProgress(@RequestBody ThesisProgress progress) {
         try {
-            boolean success = thesisProposalService.submitProposal(proposal);
+            boolean success = thesisProgressService.submitProgress(progress);
             return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -51,24 +51,28 @@ public class ThesisManagementController {
         }
     }
 
-    @GetMapping("/proposal/list")
-    public String getProposalList(@RequestParam(defaultValue = "1") Integer pageNum,
+    @GetMapping("/progress/list")
+    public String getProgressList(@RequestParam(defaultValue = "1") Integer pageNum,
                                   @RequestParam(defaultValue = "10") Integer pageSize,
                                   @RequestParam(required = false) Long studentId,
+                                  @RequestParam(required = false) Integer progressType,
                                   @RequestParam(required = false) Integer overallStatus) {
         try {
-            Page<ThesisProposal> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<ThesisProposal> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(ThesisProposal::getSubmitTime);
+            Page<ThesisProgress> page = new Page<>(pageNum, pageSize);
+            LambdaQueryWrapper<ThesisProgress> wrapper = new LambdaQueryWrapper<>();
+            wrapper.orderByDesc(ThesisProgress::getSubmitTime);
 
             if (studentId != null) {
-                wrapper.eq(ThesisProposal::getStudentId, studentId);
+                wrapper.eq(ThesisProgress::getStudentId, studentId);
+            }
+            if (progressType != null) {
+                wrapper.eq(ThesisProgress::getProgressType, progressType);
             }
             if (overallStatus != null) {
-                wrapper.eq(ThesisProposal::getOverallStatus, overallStatus);
+                wrapper.eq(ThesisProgress::getOverallStatus, overallStatus);
             }
 
-            IPage<ThesisProposal> result = thesisProposalService.page(page, wrapper);
+            IPage<ThesisProgress> result = thesisProgressService.page(page, wrapper);
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -76,23 +80,23 @@ public class ThesisManagementController {
         }
     }
 
-    @GetMapping("/proposal/{id}")
-    public String getProposalDetail(@PathVariable Long id) {
+    @GetMapping("/progress/{id}")
+    public String getProgressDetail(@PathVariable Long id) {
         try {
-            ThesisProposal proposal = thesisProposalService.getById(id);
-            return proposal != null ? jsonReturn.returnSuccess(proposal) : jsonReturn.returnFailed("未找到记录");
+            ThesisProgress progress = thesisProgressService.getById(id);
+            return progress != null ? jsonReturn.returnSuccess(progress) : jsonReturn.returnFailed("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
     }
 
-    @PostMapping("/proposal/mentor/approve")
-    public String proposalMentorApprove(@RequestParam Long id,
+    @PostMapping("/progress/mentor/approve")
+    public String progressMentorApprove(@RequestParam Long id,
                                          @RequestParam Integer status,
                                          @RequestParam(required = false) String comment) {
         try {
-            boolean success = thesisProposalService.mentorApprove(id, status, comment);
+            boolean success = thesisProgressService.mentorApprove(id, status, comment);
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -100,12 +104,12 @@ public class ThesisManagementController {
         }
     }
 
-    @PostMapping("/proposal/secretary/approve")
-    public String proposalSecretaryApprove(@RequestParam Long id,
+    @PostMapping("/progress/secretary/approve")
+    public String progressSecretaryApprove(@RequestParam Long id,
                                         @RequestParam Integer status,
                                         @RequestParam(required = false) String comment) {
         try {
-            boolean success = thesisProposalService.secretaryApprove(id, status, comment);
+            boolean success = thesisProgressService.secretaryApprove(id, status, comment);
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -113,180 +117,12 @@ public class ThesisManagementController {
         }
     }
 
-    @PostMapping("/proposal/dean/approve")
-    public String proposalDeanApprove(@RequestParam Long id,
+    @PostMapping("/progress/dean/approve")
+    public String progressDeanApprove(@RequestParam Long id,
                                      @RequestParam Integer status,
                                      @RequestParam(required = false) String comment) {
         try {
-            boolean success = thesisProposalService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    // ==================== 中期检查管理 ====================
-
-    @PostMapping("/midterm/submit")
-    public String submitMidterm(@RequestBody ThesisMidterm midterm) {
-        try {
-            boolean success = thesisMidtermService.submitMidterm(midterm);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @GetMapping("/midterm/list")
-    public String getMidtermList(@RequestParam(defaultValue = "1") Integer pageNum,
-                                  @RequestParam(defaultValue = "10") Integer pageSize,
-                                  @RequestParam(required = false) Long studentId,
-                                  @RequestParam(required = false) Integer overallStatus) {
-        try {
-            Page<ThesisMidterm> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<ThesisMidterm> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(ThesisMidterm::getSubmitTime);
-
-            if (studentId != null) {
-                wrapper.eq(ThesisMidterm::getStudentId, studentId);
-            }
-            if (overallStatus != null) {
-                wrapper.eq(ThesisMidterm::getOverallStatus, overallStatus);
-            }
-
-            IPage<ThesisMidterm> result = thesisMidtermService.page(page, wrapper);
-            return jsonReturn.returnSuccess(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/midterm/mentor/approve")
-    public String midtermMentorApprove(@RequestParam Long id,
-                                      @RequestParam Integer status,
-                                      @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisMidtermService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/midterm/secretary/approve")
-    public String midtermSecretaryApprove(@RequestParam Long id,
-                                         @RequestParam Integer status,
-                                         @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisMidtermService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/midterm/dean/approve")
-    public String midtermDeanApprove(@RequestParam Long id,
-                                     @RequestParam Integer status,
-                                     @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisMidtermService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    // ==================== 预答辩管理 ====================
-
-    @PostMapping("/preDefense/submit")
-    public String submitPreDefense(@RequestBody ThesisPreDefense preDefense) {
-        try {
-            boolean success = thesisPreDefenseService.submitPreDefense(preDefense);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @GetMapping("/preDefense/list")
-    public String getPreDefenseList(@RequestParam(defaultValue = "1") Integer pageNum,
-                                     @RequestParam(defaultValue = "10") Integer pageSize,
-                                     @RequestParam(required = false) Long studentId,
-                                     @RequestParam(required = false) Integer overallStatus) {
-        try {
-            Page<ThesisPreDefense> page = new Page<>(pageNum, pageSize);
-            LambdaQueryWrapper<ThesisPreDefense> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(ThesisPreDefense::getSubmitTime);
-
-            if (studentId != null) {
-                wrapper.eq(ThesisPreDefense::getStudentId, studentId);
-            }
-            if (overallStatus != null) {
-                wrapper.eq(ThesisPreDefense::getOverallStatus, overallStatus);
-            }
-
-            IPage<ThesisPreDefense> result = thesisPreDefenseService.page(page, wrapper);
-            return jsonReturn.returnSuccess(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/preDefense/record")
-    public String recordDefenseResult(@RequestParam Long id,
-                                    @RequestParam Integer result,
-                                    @RequestParam(required = false) String comment,
-                                    @RequestParam(required = false) String qaRecord) {
-        try {
-            boolean success = thesisPreDefenseService.recordDefenseResult(id, result, comment, qaRecord);
-            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/preDefense/mentor/approve")
-    public String preDefenseMentorApprove(@RequestParam Long id,
-                                            @RequestParam Integer status,
-                                            @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisPreDefenseService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/preDefense/secretary/approve")
-    public String preDefenseSecretaryApprove(@RequestParam Long id,
-                                               @RequestParam Integer status,
-                                               @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisPreDefenseService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/preDefense/dean/approve")
-    public String preDefenseDeanApprove(@RequestParam Long id,
-                                              @RequestParam Integer status,
-                                              @RequestParam(required = false) String comment) {
-        try {
-            boolean success = thesisPreDefenseService.deanApprove(id, status, comment);
+            boolean success = thesisProgressService.deanApprove(id, status, comment);
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -296,42 +132,34 @@ public class ThesisManagementController {
 
     // ==================== 答辩条件检查 ====================
 
-    /**
-     * 检查学生是否满足学位论文答辩条件
-     * 答辩条件包括：
-     * 1. 开题报告已完成且通过（overallStatus=4）
-     * 2. 中期检查已完成且通过（overallStatus=4）
-     * 3. 预答辩已完成且通过（overallStatus=4）
-     * 4. 课程学分达标（简化实现，实际需查询培养方案）
-     * @param studentId 学生ID
-     * @return 检查结果，包含是否合格及各条件的详细状态
-     */
     @GetMapping("/degree/checkEligibility")
     public String checkDefenseEligibility(@RequestParam Long studentId) {
         try {
             // 检查学生是否满足答辩条件
-            // 条件1：已完成开题报告且通过
-            // 条件2：已完成中期检查且通过
-            // 条件3：已完成预答辩且通过
+            // 条件1：已完成开题报告且通过（progressType=1, overallStatus=4）
+            // 条件2：已完成中期检查且通过（progressType=2, overallStatus=4）
+            // 条件3：已完成预答辩且通过（progressType=3, overallStatus=4）
             // 条件4：课程学分达标
 
-            LambdaQueryWrapper<ThesisProposal> proposalWrapper = new LambdaQueryWrapper<>();
-            proposalWrapper.eq(ThesisProposal::getStudentId, studentId);
-            proposalWrapper.eq(ThesisProposal::getOverallStatus, 4); // 4表示已通过
+            LambdaQueryWrapper<ThesisProgress> proposalWrapper = new LambdaQueryWrapper<>();
+            proposalWrapper.eq(ThesisProgress::getStudentId, studentId);
+            proposalWrapper.eq(ThesisProgress::getProgressType, 1);
+            proposalWrapper.eq(ThesisProgress::getOverallStatus, 4);
 
-            LambdaQueryWrapper<ThesisMidterm> midtermWrapper = new LambdaQueryWrapper<>();
-            midtermWrapper.eq(ThesisMidterm::getStudentId, studentId);
-            midtermWrapper.eq(ThesisMidterm::getOverallStatus, 4); // 4表示已通过
+            LambdaQueryWrapper<ThesisProgress> midtermWrapper = new LambdaQueryWrapper<>();
+            midtermWrapper.eq(ThesisProgress::getStudentId, studentId);
+            midtermWrapper.eq(ThesisProgress::getProgressType, 2);
+            midtermWrapper.eq(ThesisProgress::getOverallStatus, 4);
 
-            LambdaQueryWrapper<ThesisPreDefense> preDefenseWrapper = new LambdaQueryWrapper<>();
-            preDefenseWrapper.eq(ThesisPreDefense::getStudentId, studentId);
-            preDefenseWrapper.eq(ThesisPreDefense::getOverallStatus, 4); // 4表示已通过
+            LambdaQueryWrapper<ThesisProgress> preDefenseWrapper = new LambdaQueryWrapper<>();
+            preDefenseWrapper.eq(ThesisProgress::getStudentId, studentId);
+            preDefenseWrapper.eq(ThesisProgress::getProgressType, 3);
+            preDefenseWrapper.eq(ThesisProgress::getOverallStatus, 4);
 
-            boolean proposalPassed = thesisProposalService.count(proposalWrapper) > 0;
-            boolean midtermPassed = thesisMidtermService.count(midtermWrapper) > 0;
-            boolean preDefensePassed = thesisPreDefenseService.count(preDefenseWrapper) > 0;
+            boolean proposalPassed = thesisProgressService.count(proposalWrapper) > 0;
+            boolean midtermPassed = thesisProgressService.count(midtermWrapper) > 0;
+            boolean preDefensePassed = thesisProgressService.count(preDefenseWrapper) > 0;
 
-            // 检查学分达标情况（简化实现，实际应检查培养方案）
             boolean creditsQualified = true;
 
             Map<String, Object> result = new HashMap<>();
@@ -388,20 +216,6 @@ public class ThesisManagementController {
         }
     }
 
-    @PostMapping("/degree/defense/record")
-    public String recordDefenseResult(@RequestParam Long id,
-                                   @RequestParam Integer result,
-                                   @RequestParam Double score,
-                                   @RequestParam(required = false) String comment,
-                                   @RequestParam(required = false) String qaRecord) {
-        try {
-            boolean success = degreeApplicationService.recordDefenseResult(id, result, score, comment, qaRecord);
-            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
 
     @PostMapping("/degree/committee/approve")
     public String committeeApprove(@RequestParam Long id,
@@ -422,6 +236,156 @@ public class ThesisManagementController {
         try {
             boolean success = degreeApplicationService.grantDegree(id, certificateNo);
             return success ? jsonReturn.returnSuccess("学位授予成功") : jsonReturn.returnFailed("学位授予失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // ==================== 论文答辩管理 ====================
+
+    @PostMapping("/defense/submit")
+    public String submitDefense(@RequestBody ThesisDefense defense) {
+        try {
+            boolean success = thesisDefenseService.submitDefense(defense);
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @GetMapping("/defense/list")
+    public String getDefenseList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                 @RequestParam(defaultValue = "10") Integer pageSize,
+                                 @RequestParam(required = false) Long studentId,
+                                 @RequestParam(required = false) Integer status) {
+        try {
+            Page<ThesisDefense> page = new Page<>(pageNum, pageSize);
+            LambdaQueryWrapper<ThesisDefense> wrapper = new LambdaQueryWrapper<>();
+            wrapper.orderByDesc(ThesisDefense::getCreateTime);
+
+            if (studentId != null) {
+                wrapper.eq(ThesisDefense::getStudentId, studentId);
+            }
+            if (status != null) {
+                wrapper.eq(ThesisDefense::getStatus, status);
+            }
+
+            IPage<ThesisDefense> result = thesisDefenseService.page(page, wrapper);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @GetMapping("/defense/{id}")
+    public String getDefenseDetail(@PathVariable Long id) {
+        try {
+            ThesisDefense defense = thesisDefenseService.getById(id);
+            return defense != null ? jsonReturn.returnSuccess(defense) : jsonReturn.returnFailed("未找到记录");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/defense/tutor/approve")
+    public String defenseTutorApprove(@RequestParam Long id,
+                                      @RequestParam Integer status) {
+        try {
+            boolean success = thesisDefenseService.tutorApprove(id, status);
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/defense/dean/approve")
+    public String defenseDeanApprove(@RequestParam Long id,
+                                     @RequestParam Integer status) {
+        try {
+            boolean success = thesisDefenseService.deanApprove(id, status);
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/defense/record")
+    public String recordDefenseResult(@RequestParam Long id,
+                                      @RequestParam Integer result,
+                                      @RequestParam Double score,
+                                      @RequestParam(required = false) String comment,
+                                      @RequestParam(required = false) String qaRecord) {
+        try {
+            boolean success = thesisDefenseService.recordDefenseResult(id, result, score, comment, qaRecord);
+            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    // ==================== 论文外审管理 ====================
+
+    @PostMapping("/externalReview/submit")
+    public String submitExternalReview(@RequestBody ThesisExternalReview review) {
+        try {
+            boolean success = thesisExternalReviewService.submitReview(review);
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @GetMapping("/externalReview/list")
+    public String getExternalReviewList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                         @RequestParam(defaultValue = "10") Integer pageSize,
+                                         @RequestParam(required = false) Long studentId,
+                                         @RequestParam(required = false) Integer status) {
+        try {
+            Page<ThesisExternalReview> page = new Page<>(pageNum, pageSize);
+            LambdaQueryWrapper<ThesisExternalReview> wrapper = new LambdaQueryWrapper<>();
+            wrapper.orderByDesc(ThesisExternalReview::getCreateTime);
+
+            if (studentId != null) {
+                wrapper.eq(ThesisExternalReview::getStudentId, studentId);
+            }
+            if (status != null) {
+                wrapper.eq(ThesisExternalReview::getStatus, status);
+            }
+
+            IPage<ThesisExternalReview> result = thesisExternalReviewService.page(page, wrapper);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @GetMapping("/externalReview/{id}")
+    public String getExternalReviewDetail(@PathVariable Long id) {
+        try {
+            ThesisExternalReview review = thesisExternalReviewService.getById(id);
+            return review != null ? jsonReturn.returnSuccess(review) : jsonReturn.returnFailed("未找到记录");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/externalReview/record")
+    public String recordExternalReviewResult(@RequestParam Long id,
+                                             @RequestParam Integer result,
+                                             @RequestParam(required = false) String comments) {
+        try {
+            boolean success = thesisExternalReviewService.recordReviewResult(id, result, comments);
+            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

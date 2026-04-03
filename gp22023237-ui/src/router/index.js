@@ -246,19 +246,19 @@ export const constantRoutes = [
     children: [
       {
         path: 'proposal',
-        component: () => import('@/views/degree/proposal/index'),
+        component: () => import('@/views/degree/progress/index'),
         name: 'ThesisProposal',
         meta: { title: '论文开题', icon: 'document' }
       },
       {
         path: 'midterm',
-        component: () => import('@/views/degree/midterm/index'),
+        component: () => import('@/views/degree/progress/index'),
         name: 'ThesisMidterm',
         meta: { title: '论文中期检查', icon: 'date' }
       },
       {
         path: 'predefense',
-        component: () => import('@/views/degree/predefense/index'),
+        component: () => import('@/views/degree/progress/index'),
         name: 'ThesisPreDefense',
         meta: { title: '论文预答辩', icon: 'chat-dot-round' }
       },

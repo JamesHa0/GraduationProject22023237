@@ -1,154 +1,130 @@
 import request from '@/utils/request'
 
-// 开题报告相关API
-export function listProposal(params) {
+// 论文进展相关API（开题、中期、预答辩统一接口）
+export function listProgress(params) {
   return request({
-    url: '/thesis/proposal/list',
+    url: '/thesis/progress/list',
     method: 'get',
     params: params
   })
 }
 
-export function getProposalDetail(id) {
+export function getProgressDetail(id) {
   return request({
-    url: `/thesis/proposal/${id}`,
+    url: `/thesis/progress/${id}`,
     method: 'get'
   })
 }
 
-export function submitProposal(data) {
+export function submitProgress(data) {
   return request({
-    url: '/thesis/proposal/submit',
+    url: '/thesis/progress/submit',
     method: 'post',
     data: data
   })
 }
 
-export function approveProposalMentor(id, status, comment) {
+export function approveProgressMentor(id, status, comment) {
   return request({
-    url: '/thesis/proposal/mentor/approve',
+    url: '/thesis/progress/mentor/approve',
     method: 'post',
     data: { id, status, comment }
   })
 }
 
-export function approveProposalSecretary(id, status, comment) {
+export function approveProgressSecretary(id, status, comment) {
   return request({
-    url: '/thesis/proposal/secretary/approve',
+    url: '/thesis/progress/secretary/approve',
     method: 'post',
     data: { id, status, comment }
   })
 }
 
-export function approveProposalDean(id, status, comment) {
+export function approveProgressDean(id, status, comment) {
   return request({
-    url: '/thesis/proposal/dean/approve',
+    url: '/thesis/progress/dean/approve',
     method: 'post',
     data: { id, status, comment }
   })
 }
 
-// 中期检查相关API
-export function listMidterm(params) {
+// 论文答辩相关API
+export function listDefense(params) {
   return request({
-    url: '/thesis/midterm/list',
+    url: '/thesis/defense/list',
     method: 'get',
     params: params
   })
 }
 
-export function getMidtermDetail(id) {
+export function getDefenseDetail(id) {
   return request({
-    url: `/thesis/midterm/${id}`,
+    url: `/thesis/defense/${id}`,
     method: 'get'
   })
 }
 
-export function submitMidterm(data) {
+export function submitDefense(data) {
   return request({
-    url: '/thesis/midterm/submit',
+    url: '/thesis/defense/submit',
     method: 'post',
     data: data
   })
 }
 
-export function approveMidtermMentor(id, status, comment) {
+export function approveDefenseTutor(id, status) {
   return request({
-    url: '/thesis/midterm/mentor/approve',
+    url: '/thesis/defense/tutor/approve',
     method: 'post',
-    data: { id, status, comment }
+    data: { id, status }
   })
 }
 
-export function approveMidtermSecretary(id, status, comment) {
+export function approveDefenseDean(id, status) {
   return request({
-    url: '/thesis/midterm/secretary/approve',
+    url: '/thesis/defense/dean/approve',
     method: 'post',
-    data: { id, status, comment }
+    data: { id, status }
   })
 }
 
-export function approveMidtermDean(id, status, comment) {
+export function recordDefenseResult(id, result, score, comment, qaRecord) {
   return request({
-    url: '/thesis/midterm/dean/approve',
+    url: '/thesis/defense/record',
     method: 'post',
-    data: { id, status, comment }
+    data: { id, result, score, comment, qaRecord }
   })
 }
 
-// 预答辩相关API
-export function listPreDefense(params) {
+// 论文外审相关API
+export function listExternalReview(params) {
   return request({
-    url: '/thesis/preDefense/list',
+    url: '/thesis/externalReview/list',
     method: 'get',
     params: params
   })
 }
 
-export function getPreDefenseDetail(id) {
+export function getExternalReviewDetail(id) {
   return request({
-    url: `/thesis/preDefense/${id}`,
+    url: `/thesis/externalReview/${id}`,
     method: 'get'
   })
 }
 
-export function submitPreDefense(data) {
+export function submitExternalReview(data) {
   return request({
-    url: '/thesis/preDefense/submit',
+    url: '/thesis/externalReview/submit',
     method: 'post',
     data: data
   })
 }
 
-export function recordPreDefenseResult(id, result, comment, qaRecord) {
+export function recordExternalReviewResult(id, result, comments) {
   return request({
-    url: '/thesis/preDefense/record',
+    url: '/thesis/externalReview/record',
     method: 'post',
-    data: { id, result, comment, qaRecord }
-  })
-}
-
-export function approvePreDefenseMentor(id, status, comment) {
-  return request({
-    url: '/thesis/preDefense/mentor/approve',
-    method: 'post',
-    data: { id, status, comment }
-  })
-}
-
-export function approvePreDefenseSecretary(id, status, comment) {
-  return request({
-    url: '/thesis/preDefense/secretary/approve',
-    method: 'post',
-    data: { id, status, comment }
-  })
-}
-
-export function approvePreDefenseDean(id, status, comment) {
-  return request({
-    url: '/thesis/preDefense/dean/approve',
-    method: 'post',
-    data: { id, status, comment }
+    data: { id, result, comments }
   })
 }
 
@@ -166,14 +142,6 @@ export function submitDegreeApplication(data) {
     url: '/thesis/degree/submit',
     method: 'post',
     data: data
-  })
-}
-
-export function recordDefenseResult(id, result, score, comment, qaRecord) {
-  return request({
-    url: '/thesis/degree/defense/record',
-    method: 'post',
-    data: { id, result, score, comment, qaRecord }
   })
 }
 

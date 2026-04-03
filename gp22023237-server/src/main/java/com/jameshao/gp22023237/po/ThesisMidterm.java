@@ -8,9 +8,9 @@ import java.util.Date;
 
 /**
  * 学位论文中期检查表
- * @TableName thesis_midterm_check
+ * @TableName thesis_midterm
  */
-@TableName(value = "thesis_midterm_check")
+@TableName(value = "thesis_midterm")
 @Data
 public class ThesisMidterm {
     /**
