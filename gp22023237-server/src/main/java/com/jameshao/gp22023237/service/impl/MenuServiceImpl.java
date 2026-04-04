@@ -40,10 +40,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuMapper, Menu>
 
         // 把子菜单分配给对应的父菜单
         // 注意：parent_id 关联的是 menu.menus_index 字段，不是 id 字段！
-        // 所以需要用 menus_index 的字符串形式作为 key 来匹配 parent_id(Integer)
-        Map<String, List<Menu>> childrenMap = allMenus.stream()
+        Map<Integer, List<Menu>> childrenMap = allMenus.stream()
                 .filter(menu -> menu.getParentId() != null && menu.getParentId() != 0)
-                .collect(Collectors.groupingBy(menu -> menu.getParentId().toString()));
+                .collect(Collectors.groupingBy(Menu::getParentId));
 
         for (Menu root : rootMenus) {
             List<Menu> children = childrenMap.get(root.getMenusIndex());

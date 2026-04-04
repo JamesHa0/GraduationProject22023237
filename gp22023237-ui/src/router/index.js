@@ -335,6 +335,12 @@ export const constantRoutes = [
         component: () => import('@/views/system/field/index'),
         name: 'FieldManage',
         meta: { title: '系统字段', icon: 'form' }
+      },
+      {
+        path: 'permission',
+        component: () => import('@/views/system/permission/index'),
+        name: 'PermissionManage',
+        meta: { title: '权限管理', icon: 'lock' }
       }
     ]
   },
@@ -367,6 +373,12 @@ export const constantRoutes = [
         component: () => import('@/views/selection/confirm/index'),
         name: 'ConfirmStudent',
         meta: { title: '确认学生', icon: 'list' }
+      },
+      {
+        path: 'relationship',
+        component: () => import('@/views/selection/relationship/index'),
+        name: 'MentorStudentRelationship',
+        meta: { title: '导师学生关系管理', icon: 'team' }
       }
     ]
   }

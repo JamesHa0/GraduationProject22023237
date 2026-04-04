@@ -5,11 +5,14 @@ import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.Menu;
 import com.jameshao.gp22023237.service.MenuService;
+import com.jameshao.gp22023237.service.RoleMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/system/menu")
@@ -17,6 +20,8 @@ public class MenuController {
 
     @Autowired
     private MenuService menuService;
+    @Autowired
+    private RoleMenuService roleMenuService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -167,5 +172,50 @@ public class MenuController {
             }
         }
         parent.setChildren(children);
+    }
+
+    /**
+     * 获取角色菜单数据（包含菜单树和已选菜单ID）
+     */
+    @GetMapping("/roleMenu/{roleId}")
+    public String getRoleMenu(@PathVariable Integer roleId) {
+        try {
+            // 1. 获取所有菜单并构建树
+            LambdaQueryWrapper<Menu> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.orderByAsc(Menu::getMenusIndex);
+            List<Menu> allMenus = menuService.list(queryWrapper);
+            List<Menu> menuTree = buildMenuTree(allMenus);
+
+            // 2. 获取角色已选的菜单ID
+            List<Integer> checkedKeys = roleMenuService.getMenuIdsByRoleId(roleId);
+
+            // 3. 返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("menus", menuTree);
+            result.put("checkedKeys", checkedKeys);
+
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 保存角色菜单权限
+     */
+    @PostMapping("/roleMenu/{roleId}")
+    public String saveRoleMenu(@PathVariable Integer roleId, @RequestBody List<Integer> menuIds) {
+        try {
+            boolean success = roleMenuService.saveRoleMenu(roleId, menuIds);
+            if (success) {
+                return jsonReturn.returnSuccess("保存成功");
+            } else {
+                return jsonReturn.returnError("保存失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
     }
 }

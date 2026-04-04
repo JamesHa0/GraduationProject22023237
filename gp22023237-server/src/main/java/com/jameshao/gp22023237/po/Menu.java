@@ -25,7 +25,7 @@ public class Menu {
      * 一级菜单索引
      */
     @TableField(value = "menus_index")
-    private String menusIndex;
+    private Integer menusIndex;
 
     /**
      * 菜单标题

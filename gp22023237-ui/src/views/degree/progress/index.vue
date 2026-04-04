@@ -370,7 +370,21 @@ function getList() {
   loading.value = true
   listProgress({ ...queryParams.value, progressType: progressType.value }).then(res => {
     loading.value = false
-    dataList.value = res.data.records || res.data || []
+    let list = res.data.records || res.data || []
+    // 解析每条记录的content字段
+    list = list.map(item => {
+      const itemData = { ...item }
+      if (item.content) {
+        try {
+          const contentData = JSON.parse(item.content)
+          Object.assign(itemData, contentData)
+        } catch (e) {
+          console.warn('解析content失败', e)
+        }
+      }
+      return itemData
+    })
+    dataList.value = list
     total.value = res.data.total || dataList.value.length
   }).catch(() => {
     loading.value = false
@@ -426,7 +440,17 @@ function handleAdd() {
 }
 
 function handleView(row) {
-  currentRow.value = row
+  // 从content字段解析数据
+  const rowData = { ...row }
+  if (row.content) {
+    try {
+      const contentData = JSON.parse(row.content)
+      Object.assign(rowData, contentData)
+    } catch (e) {
+      console.warn('解析content失败', e)
+    }
+  }
+  currentRow.value = rowData
   isView.value = true
   approvalType.value = 'approve'
   approvalForm.value.id = row.id
@@ -496,7 +520,36 @@ function submitApproval() {
 function handleSubmit() {
   proxy.$refs['formRef'].validate(valid => {
     if (valid) {
-      submitProgress(form.value).then(() => {
+      // 将表单字段组装为JSON对象存入content字段
+      const contentData = {}
+      if (progressType.value === 1) {
+        // 开题报告
+        contentData.background = form.value.background
+        contentData.researchStatus = form.value.researchStatus
+        contentData.researchContent = form.value.researchContent
+        contentData.researchMethod = form.value.researchMethod
+        contentData.expectedResults = form.value.expectedResults
+        contentData.researchPlan = form.value.researchPlan
+        contentData.references = form.value.references
+      } else if (progressType.value === 2) {
+        // 中期检查
+        contentData.completedWork = form.value.completedWork
+        contentData.remainingWork = form.value.remainingWork
+        contentData.problems = form.value.problems
+        contentData.nextPlan = form.value.nextPlan
+        contentData.draftProgress = form.value.draftProgress
+        contentData.progressReport = form.value.progressReport
+      } else if (progressType.value === 3) {
+        // 预答辩
+        contentData.abstractContent = form.value.abstractContent
+      }
+
+      const submitData = {
+        ...form.value,
+        content: JSON.stringify(contentData)
+      }
+
+      submitProgress(submitData).then(() => {
         proxy.$modal.msgSuccess('提交成功')
         dialogVisible.value = false
         getList()

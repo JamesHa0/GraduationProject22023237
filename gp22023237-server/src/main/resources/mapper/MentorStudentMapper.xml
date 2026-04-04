@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.MentorStudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.jameshao.gp22023237.po.MentorStudent">
+            <id property="id" column="id" />
+            <result property="mentorId" column="mentor_id" />
+            <result property="studentId" column="student_id" />
+            <result property="mentorType" column="mentor_type" />
+            <result property="round" column="round" />
+            <result property="studentChoiceOrder" column="student_choice_order" />
+            <result property="studentStatus" column="student_status" />
+            <result property="teacherStatus" column="teacher_status" />
+            <result property="selectionTime" column="selection_time" />
+            <result property="confirmTime" column="confirm_time" />
+            <result property="createTime" column="create_time" />
+            <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,mentor_id,student_id,mentor_type,round,student_choice_order,
+        student_status,teacher_status,selection_time,confirm_time,create_time,update_time
+    </sql>
+
+    <!-- 分页查询导师学生关系（关联学生和导师信息） -->
+    <select id="pageRelationship" resultType="java.util.Map">
+        SELECT
+            ms.id,
+            ms.mentor_id AS mentorId,
+            ms.student_id AS studentId,
+            ms.mentor_type AS mentorType,
+            ms.round,
+            ms.student_choice_order AS studentChoiceOrder,
+            ms.student_status AS studentStatus,
+            ms.teacher_status AS teacherStatus,
+            ms.selection_time AS selectionTime,
+            ms.confirm_time AS confirmTime,
+            ms.create_time AS createTime,
+            ms.update_time AS updateTime,
+            s.student_no AS studentNo,
+            s.student_name AS studentName,
+            s.department AS studentDepartment,
+            s.major,
+            t.teacher_name AS teacherName,
+            t.teacher_no AS teacherNo,
+            t.title,
+            t.department AS mentorDepartment,
+            t.research_field AS researchField
+        FROM mentor_student ms
+        LEFT JOIN student s ON ms.student_id = s.id
+        LEFT JOIN teacher t ON ms.mentor_id = t.id
+        <where>
+            <if test="studentId != null">
+                AND ms.student_id = #{studentId}
+            </if>
+            <if test="mentorId != null">
+                AND ms.mentor_id = #{mentorId}
+            </if>
+        </where>
+        ORDER BY ms.create_time DESC
+    </select>
+
+    <!-- 获取可选学生列表（还没有确定导师的学生） -->
+    <select id="listAvailableStudents" resultType="java.util.Map">
+        SELECT
+            s.id,
+            s.student_no AS studentNo,
+            s.student_name AS studentName,
+            s.department,
+            s.major,
+            s.admission_year AS admissionYear
+        FROM student s
+        WHERE s.status = 1
+        AND NOT EXISTS (
+            SELECT 1 FROM mentor_student ms
+            WHERE ms.student_id = s.id
+            AND ms.student_status = 1
+            AND ms.teacher_status = 1
+        )
+        ORDER BY s.student_no
+    </select>
+
+    <!-- 获取可选导师列表（还有剩余名额的导师） -->
+    <select id="listAvailableMentors" resultType="java.util.Map">
+        SELECT
+            t.id,
+            t.teacher_no AS teacherNo,
+            t.teacher_name AS teacherName,
+            t.title,
+            t.department,
+            t.research_field AS researchField,
+            t.quota,
+            t.remaining_quota AS remainingQuota
+        FROM teacher t
+        WHERE t.is_mentor = 1
+        AND t.remaining_quota > 0
+        ORDER BY t.teacher_name
+    </select>
+
+</mapper>

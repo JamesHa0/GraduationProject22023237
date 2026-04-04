@@ -44,10 +44,12 @@ public class ThesisManagementController {
     public String submitProgress(@RequestBody ThesisProgress progress) {
         try {
             boolean success = thesisProgressService.submitProgress(progress);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnError("提交失败");
+        } catch (IllegalStateException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("提交失败：" + e.getMessage());
         }
     }
 
@@ -84,7 +86,7 @@ public class ThesisManagementController {
     public String getProgressDetail(@PathVariable Long id) {
         try {
             ThesisProgress progress = thesisProgressService.getById(id);
-            return progress != null ? jsonReturn.returnSuccess(progress) : jsonReturn.returnFailed("未找到记录");
+            return progress != null ? jsonReturn.returnSuccess(progress) : jsonReturn.returnError("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -97,10 +99,12 @@ public class ThesisManagementController {
                                          @RequestParam(required = false) String comment) {
         try {
             boolean success = thesisProgressService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("审批失败：" + e.getMessage());
         }
     }
 
@@ -110,10 +114,12 @@ public class ThesisManagementController {
                                         @RequestParam(required = false) String comment) {
         try {
             boolean success = thesisProgressService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("审批失败：" + e.getMessage());
         }
     }
 
@@ -123,10 +129,12 @@ public class ThesisManagementController {
                                      @RequestParam(required = false) String comment) {
         try {
             boolean success = thesisProgressService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("审批失败：" + e.getMessage());
         }
     }
 
@@ -184,7 +192,7 @@ public class ThesisManagementController {
     public String submitDegreeApplication(@RequestBody DegreeApplication application) {
         try {
             boolean success = degreeApplicationService.submitApplication(application);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnError("提交失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -223,7 +231,7 @@ public class ThesisManagementController {
                                   @RequestParam(required = false) String comment) {
         try {
             boolean success = degreeApplicationService.committeeApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -235,7 +243,7 @@ public class ThesisManagementController {
                              @RequestParam String certificateNo) {
         try {
             boolean success = degreeApplicationService.grantDegree(id, certificateNo);
-            return success ? jsonReturn.returnSuccess("学位授予成功") : jsonReturn.returnFailed("学位授予失败");
+            return success ? jsonReturn.returnSuccess("学位授予成功") : jsonReturn.returnError("学位授予失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -248,7 +256,7 @@ public class ThesisManagementController {
     public String submitDefense(@RequestBody ThesisDefense defense) {
         try {
             boolean success = thesisDefenseService.submitDefense(defense);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnError("提交失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -284,7 +292,7 @@ public class ThesisManagementController {
     public String getDefenseDetail(@PathVariable Long id) {
         try {
             ThesisDefense defense = thesisDefenseService.getById(id);
-            return defense != null ? jsonReturn.returnSuccess(defense) : jsonReturn.returnFailed("未找到记录");
+            return defense != null ? jsonReturn.returnSuccess(defense) : jsonReturn.returnError("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -296,7 +304,7 @@ public class ThesisManagementController {
                                       @RequestParam Integer status) {
         try {
             boolean success = thesisDefenseService.tutorApprove(id, status);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -308,7 +316,7 @@ public class ThesisManagementController {
                                      @RequestParam Integer status) {
         try {
             boolean success = thesisDefenseService.deanApprove(id, status);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnError("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -323,7 +331,7 @@ public class ThesisManagementController {
                                       @RequestParam(required = false) String qaRecord) {
         try {
             boolean success = thesisDefenseService.recordDefenseResult(id, result, score, comment, qaRecord);
-            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
+            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnError("记录失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -336,7 +344,7 @@ public class ThesisManagementController {
     public String submitExternalReview(@RequestBody ThesisExternalReview review) {
         try {
             boolean success = thesisExternalReviewService.submitReview(review);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnError("提交失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -372,7 +380,7 @@ public class ThesisManagementController {
     public String getExternalReviewDetail(@PathVariable Long id) {
         try {
             ThesisExternalReview review = thesisExternalReviewService.getById(id);
-            return review != null ? jsonReturn.returnSuccess(review) : jsonReturn.returnFailed("未找到记录");
+            return review != null ? jsonReturn.returnSuccess(review) : jsonReturn.returnError("未找到记录");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -385,7 +393,7 @@ public class ThesisManagementController {
                                              @RequestParam(required = false) String comments) {
         try {
             boolean success = thesisExternalReviewService.recordReviewResult(id, result, comments);
-            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnFailed("记录失败");
+            return success ? jsonReturn.returnSuccess("记录成功") : jsonReturn.returnError("记录失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
