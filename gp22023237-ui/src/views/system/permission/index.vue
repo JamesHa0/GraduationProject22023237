@@ -116,9 +116,7 @@
               >
                 <template #default="{ node, data }">
                   <span class="tree-node-content">
-                    <el-icon v-if="data.icon" class="menu-icon">
-                      <component :is="data.icon" />
-                    </el-icon>
+                    <svg-icon v-if="data.icon" :icon-class="data.icon" class="menu-icon" />
                     <el-icon v-else class="menu-icon default-icon">
                       <Document />
                     </el-icon>
