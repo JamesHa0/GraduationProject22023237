@@ -99,4 +99,21 @@
         ORDER BY t.teacher_name
     </select>
 
+    <!-- 获取学生当前的导师信息 -->
+    <select id="getStudentCurrentMentor" resultType="java.util.Map">
+        SELECT
+            t.id,
+            t.teacher_no AS teacherNo,
+            t.teacher_name AS teacherName,
+            t.title,
+            t.department,
+            t.research_field AS researchField
+        FROM mentor_student ms
+        LEFT JOIN teacher t ON ms.mentor_id = t.id
+        WHERE ms.student_id = #{studentId}
+        AND ms.student_status = 1
+        AND ms.teacher_status = 1
+        LIMIT 1
+    </select>
+
 </mapper>

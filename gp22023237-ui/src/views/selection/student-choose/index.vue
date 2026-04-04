@@ -76,7 +76,6 @@
                         <el-tag v-else type="info">不可选</el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column label="剩余名额" align="center" prop="remainingQuota" :show-overflow-tooltip="true" />
                 <el-table-column fixed="right" label="操作" align="center" class-name="small-padding fixed-width">
                     <template #default="scope">
                         <el-button v-if="isMentorSelectedInAnyChoice(scope.row.id)" text type="warning" icon="Check" disabled>

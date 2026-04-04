@@ -379,6 +379,12 @@ export const constantRoutes = [
         component: () => import('@/views/selection/relationship/index'),
         name: 'MentorStudentRelationship',
         meta: { title: '导师学生关系管理', icon: 'team' }
+      },
+      {
+        path: 'mentor-change',
+        component: () => import('@/views/selection/mentor-change/index'),
+        name: 'MentorChange',
+        meta: { title: '导师更换申请', icon: 'people' }
       }
     ]
   }
@@ -469,4 +475,4 @@ const router = createRouter({
   },
 });
 
-export default router;
+export default router

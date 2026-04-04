@@ -37,6 +37,7 @@
     </el-row>
 
     <el-table
+      v-if="refreshTable"
       v-loading="loading"
       :data="menuList"
       row-key="id"
@@ -91,7 +92,14 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="图标" prop="icon">
-              <el-input v-model="form.icon" placeholder="请输入图标" />
+              <el-select v-model="form.icon" placeholder="请选择图标" clearable style="width: 100%">
+                <el-option v-for="icon in iconOptions" :key="icon" :value="icon">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg-icon :icon-class="icon" />
+                    <span>{{ icon }}</span>
+                  </div>
+                </el-option>
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -113,6 +121,7 @@
 
 <script setup name="Menu">
 import request from '@/utils/request'
+import iconOptions from '@/components/IconSelect/requireIcons'
 
 const { proxy } = getCurrentInstance()
 
@@ -122,6 +131,7 @@ const open = ref(false)
 const loading = ref(true)
 const showSearch = ref(true)
 const isExpandAll = ref(true)
+const refreshTable = ref(true)
 const title = ref('')
 
 const data = reactive({
@@ -183,10 +193,10 @@ function treeselect() {
   })
 }
 
-// 查询菜单列表
+// 查询菜单列表 - 使用 treeselect 接口直接获取树形结构
 function getList() {
   loading.value = true
-  listMenu(queryParams.value).then(res => {
+  treeselect().then(res => {
     loading.value = false
     menuList.value = res.data || []
   })
@@ -212,7 +222,11 @@ function resetQuery() {
 
 // 展开/折叠
 function toggleExpandAll() {
+  refreshTable.value = false
   isExpandAll.value = !isExpandAll.value
+  nextTick(() => {
+    refreshTable.value = true
+  })
 }
 
 // 新增按钮操作

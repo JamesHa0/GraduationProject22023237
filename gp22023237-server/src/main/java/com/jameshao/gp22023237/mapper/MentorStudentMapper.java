@@ -33,6 +33,11 @@ public interface MentorStudentMapper extends BaseMapper<MentorStudent> {
      * 获取可选导师列表（还有剩余名额的导师）
      */
     List<Map<String, Object>> listAvailableMentors();
+
+    /**
+     * 获取学生当前的导师信息
+     */
+    Map<String, Object> getStudentCurrentMentor(@Param("studentId") Long studentId);
 }
 
 

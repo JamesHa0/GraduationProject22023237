@@ -67,7 +67,7 @@
           </el-card>
         </el-col>
 
-        <!-- 右侧菜单树 -->
+        <!-- 右侧菜单列表 -->
         <el-col :span="18">
           <el-card class="menu-card" shadow="hover">
             <template #header>
@@ -100,30 +100,77 @@
               </el-empty>
             </div>
 
-            <div v-else class="menu-tree-wrapper">
-              <el-tree
-                ref="menuTreeRef"
-                v-loading="menuLoading"
-                :data="menuTree"
-                :props="treeProps"
-                show-checkbox
-                node-key="menusIndex"
-                :default-checked-keys="checkedKeys"
-                :default-expand-all="false"
-                :indent="30"
-                @check="handleMenuCheck"
-                class="menu-tree"
-              >
-                <template #default="{ node, data }">
-                  <span class="tree-node-content">
-                    <svg-icon v-if="data.icon" :icon-class="data.icon" class="menu-icon" />
-                    <el-icon v-else class="menu-icon default-icon">
-                      <Document />
-                    </el-icon>
-                    <span class="node-label">{{ node.label }}</span>
-                  </span>
+            <div v-else class="menu-list-wrapper" v-loading="menuLoading">
+              <div class="menu-list">
+                <template v-for="menu in menuTree" :key="menu.menusIndex">
+                  <div class="menu-item">
+                    <div class="menu-item-content">
+                      <span class="expand-icon" v-if="hasChildren(menu)" @click="toggleExpand(menu.menusIndex)">
+                        <el-icon><ArrowRight v-if="!isExpanded(menu.menusIndex)" /><ArrowDown v-else /></el-icon>
+                      </span>
+                      <span class="expand-placeholder" v-else></span>
+                      <span class="menu-icon-wrapper">
+                        <svg-icon v-if="menu.icon" :icon-class="menu.icon" class="menu-icon" />
+                        <el-icon v-else class="menu-icon default-icon"><Document /></el-icon>
+                      </span>
+                      <el-checkbox
+                        v-if="!hasChildren(menu)"
+                        :model-value="isChecked(menu.menusIndex)"
+                        @change="(val) => handleCheck(menu.menusIndex, val)"
+                        class="menu-checkbox"
+                      >
+                        <span class="menu-label">{{ menu.title }}</span>
+                      </el-checkbox>
+                      <span v-else class="menu-label parent-label">{{ menu.title }}</span>
+                    </div>
+                    <div v-if="hasChildren(menu) && isExpanded(menu.menusIndex)" class="menu-children">
+                      <template v-for="child in menu.children" :key="child.menusIndex">
+                        <div class="menu-item">
+                          <div class="menu-item-content">
+                            <span class="expand-icon" v-if="hasChildren(child)" @click="toggleExpand(child.menusIndex)">
+                              <el-icon><ArrowRight v-if="!isExpanded(child.menusIndex)" /><ArrowDown v-else /></el-icon>
+                            </span>
+                            <span class="expand-placeholder" v-else></span>
+                            <span class="menu-icon-wrapper">
+                              <svg-icon v-if="child.icon" :icon-class="child.icon" class="menu-icon" />
+                              <el-icon v-else class="menu-icon default-icon"><Document /></el-icon>
+                            </span>
+                            <el-checkbox
+                              v-if="!hasChildren(child)"
+                              :model-value="isChecked(child.menusIndex)"
+                              @change="(val) => handleCheck(child.menusIndex, val)"
+                              class="menu-checkbox"
+                            >
+                              <span class="menu-label">{{ child.title }}</span>
+                            </el-checkbox>
+                            <span v-else class="menu-label parent-label">{{ child.title }}</span>
+                          </div>
+                          <div v-if="hasChildren(child) && isExpanded(child.menusIndex)" class="menu-children">
+                            <template v-for="grandchild in child.children" :key="grandchild.menusIndex">
+                              <div class="menu-item">
+                                <div class="menu-item-content">
+                                  <span class="expand-placeholder"></span>
+                                  <span class="menu-icon-wrapper">
+                                    <svg-icon v-if="grandchild.icon" :icon-class="grandchild.icon" class="menu-icon" />
+                                    <el-icon v-else class="menu-icon default-icon"><Document /></el-icon>
+                                  </span>
+                                  <el-checkbox
+                                    :model-value="isChecked(grandchild.menusIndex)"
+                                    @change="(val) => handleCheck(grandchild.menusIndex, val)"
+                                    class="menu-checkbox"
+                                  >
+                                    <span class="menu-label">{{ grandchild.title }}</span>
+                                  </el-checkbox>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
                 </template>
-              </el-tree>
+              </div>
             </div>
 
             <template #footer v-if="currentRoleId">
@@ -167,7 +214,9 @@ import {
   Document,
   CircleCheck,
   RefreshLeft,
-  Check
+  Check,
+  ArrowRight,
+  ArrowDown
 } from '@element-plus/icons-vue'
 
 const { proxy } = getCurrentInstance()
@@ -179,19 +228,11 @@ const currentRoleId = ref(null)
 const menuTree = ref([])
 const checkedKeys = ref([])
 const originalCheckedKeys = ref([])
+const expandedKeys = ref([])
 
 // 状态
 const menuLoading = ref(false)
 const saveLoading = ref(false)
-
-// 引用
-const menuTreeRef = ref(null)
-
-// 树形配置
-const treeProps = {
-  children: 'children',
-  label: 'title'
-}
 
 // 计算属性
 const filteredRoles = computed(() => {
@@ -206,6 +247,19 @@ const filteredRoles = computed(() => {
 const currentRole = computed(() => {
   return roleList.value.find(r => r.id === currentRoleId.value)
 })
+
+// 辅助函数
+function hasChildren(menu) {
+  return menu.children && menu.children.length > 0
+}
+
+function isExpanded(menuIndex) {
+  return expandedKeys.value.includes(menuIndex)
+}
+
+function isChecked(menuIndex) {
+  return checkedKeys.value.includes(menuIndex)
+}
 
 // 获取角色头像（占位图）
 function getRoleAvatar(name) {
@@ -246,13 +300,8 @@ function loadRoleMenu() {
     menuTree.value = res.data?.menus || []
     checkedKeys.value = res.data?.checkedKeys || []
     originalCheckedKeys.value = [...checkedKeys.value]
-
-    // 等待 DOM 更新后设置选中状态
-    nextTick(() => {
-      if (menuTreeRef.value) {
-        menuTreeRef.value.setCheckedKeys(checkedKeys.value)
-      }
-    })
+    // 默认展开所有
+    expandAll()
   }).catch(() => {
     proxy.$modal.msgError('获取菜单权限失败')
   }).finally(() => {
@@ -260,32 +309,43 @@ function loadRoleMenu() {
   })
 }
 
-// 菜单选中变化
-function handleMenuCheck() {
-  if (menuTreeRef.value) {
-    const checked = menuTreeRef.value.getCheckedKeys(true)
-    const halfChecked = menuTreeRef.value.getHalfCheckedKeys()
-    checkedKeys.value = [...checked, ...halfChecked]
+// 切换展开状态
+function toggleExpand(menuIndex) {
+  const index = expandedKeys.value.indexOf(menuIndex)
+  if (index > -1) {
+    expandedKeys.value.splice(index, 1)
+  } else {
+    expandedKeys.value.push(menuIndex)
   }
 }
 
 // 展开全部
 function expandAll() {
-  if (menuTreeRef.value) {
-    const nodes = menuTreeRef.value.store.nodesMap
-    Object.keys(nodes).forEach(key => {
-      menuTreeRef.value.store.nodesMap[key].expanded = true
-    })
+  const keys = []
+  function traverse(nodes) {
+    for (const node of nodes) {
+      if (node.children && node.children.length > 0) {
+        keys.push(node.menusIndex)
+        traverse(node.children)
+      }
+    }
   }
+  traverse(menuTree.value)
+  expandedKeys.value = keys
 }
 
 // 折叠全部
 function collapseAll() {
-  if (menuTreeRef.value) {
-    const nodes = menuTreeRef.value.store.nodesMap
-    Object.keys(nodes).forEach(key => {
-      menuTreeRef.value.store.nodesMap[key].expanded = false
-    })
+  expandedKeys.value = []
+}
+
+// 处理复选框变化
+function handleCheck(menuIndex, checked) {
+  const index = checkedKeys.value.indexOf(menuIndex)
+  if (checked && index === -1) {
+    checkedKeys.value.push(menuIndex)
+  } else if (!checked && index > -1) {
+    checkedKeys.value.splice(index, 1)
   }
 }
 
@@ -296,16 +356,9 @@ function handleSave() {
     return
   }
 
-  if (!menuTreeRef.value) {
-    return
-  }
-
-  // 获取所有选中的菜单（包括一级和二级）
-  const allCheckedKeys = getAllCheckedKeys()
-
   proxy.$modal.confirm(`确认保存角色「${currentRole.value?.name}」的菜单权限吗？`).then(() => {
     saveLoading.value = true
-    saveRoleMenu(currentRoleId.value, allCheckedKeys).then(() => {
+    saveRoleMenu(currentRoleId.value, checkedKeys.value).then(() => {
       proxy.$modal.msgSuccess('保存成功')
       originalCheckedKeys.value = [...checkedKeys.value]
       loadRoleMenu()
@@ -317,33 +370,9 @@ function handleSave() {
   }).catch(() => {})
 }
 
-// 获取所有选中的菜单的 menusIndex（包括一级和二级菜单）
-function getAllCheckedKeys() {
-  const result = []
-
-  function traverse(nodes) {
-    for (const node of nodes) {
-      if (checkedKeys.value.includes(node.menusIndex)) {
-        result.push(node.menusIndex)
-      }
-      if (node.children && node.children.length > 0) {
-        traverse(node.children)
-      }
-    }
-  }
-
-  traverse(menuTree.value)
-  return result
-}
-
 // 重置
 function handleReset() {
   checkedKeys.value = [...originalCheckedKeys.value]
-  nextTick(() => {
-    if (menuTreeRef.value) {
-      menuTreeRef.value.setCheckedKeys(checkedKeys.value)
-    }
-  })
 }
 
 // 初始化
@@ -496,7 +525,7 @@ getRoleList()
   color: #c0c4cc;
 }
 
-.menu-tree-wrapper {
+.menu-list-wrapper {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -504,18 +533,51 @@ getRoleList()
   min-height: 0;
 }
 
-.menu-tree {
+.menu-list {
   padding: 8px;
 }
 
-.tree-node-content {
+.menu-item {
+  user-select: none;
+}
+
+.menu-item-content {
   display: flex;
   align-items: center;
-  padding: 4px 0;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.menu-item-content:hover {
+  background-color: #f5f7fa;
+}
+
+.expand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  cursor: pointer;
+  color: #909399;
+}
+
+.expand-icon:hover {
+  color: #409eff;
+}
+
+.expand-placeholder {
+  width: 24px;
+}
+
+.menu-icon-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
 }
 
 .menu-icon {
-  margin-right: 8px;
   color: #409eff;
   font-size: 16px;
 }
@@ -524,9 +586,22 @@ getRoleList()
   color: #909399;
 }
 
-.node-label {
+.menu-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.menu-label {
   font-size: 14px;
   color: #303133;
+}
+
+.menu-label.parent-label {
+  font-weight: 500;
+}
+
+.menu-children {
+  padding-left: 24px;
 }
 
 .card-footer {
@@ -547,33 +622,18 @@ getRoleList()
 
 /* 滚动条美化 */
 .role-list-wrapper::-webkit-scrollbar,
-.menu-tree-wrapper::-webkit-scrollbar {
+.menu-list-wrapper::-webkit-scrollbar {
   width: 6px;
 }
 
 .role-list-wrapper::-webkit-scrollbar-thumb,
-.menu-tree-wrapper::-webkit-scrollbar-thumb {
+.menu-list-wrapper::-webkit-scrollbar-thumb {
   background-color: #dcdfe6;
   border-radius: 3px;
 }
 
 .role-list-wrapper::-webkit-scrollbar-track,
-.menu-tree-wrapper::-webkit-scrollbar-track {
+.menu-list-wrapper::-webkit-scrollbar-track {
   background-color: #f5f7fa;
-}
-
-/* Element Plus 树组件样式优化 */
-.menu-tree :deep(.el-tree-node__content) {
-  height: 36px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.menu-tree :deep(.el-tree-node__content:hover) {
-  background-color: #f5f7fa;
-}
-
-.menu-tree :deep(.el-checkbox__label) {
-  padding-left: 6px;
 }
 </style>

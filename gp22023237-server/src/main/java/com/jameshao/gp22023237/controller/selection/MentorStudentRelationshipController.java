@@ -142,4 +142,18 @@ public class MentorStudentRelationshipController {
             return jsonReturn.returnError(e.getMessage());
         }
     }
+
+    /**
+     * 获取学生当前的导师信息
+     */
+    @GetMapping("/student-current-mentor/{studentId}")
+    public String getStudentCurrentMentor(@PathVariable Long studentId) {
+        try {
+            Map<String, Object> mentor = mentorStudentService.getStudentCurrentMentor(studentId);
+            return jsonReturn.returnSuccess(mentor);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
 }
