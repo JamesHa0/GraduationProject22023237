@@ -73,6 +73,8 @@ service.interceptors.request.use(config => {
 
 // 响应拦截器
 service.interceptors.response.use(res => {
+  console.log('Raw response:', res.data);
+
   // 二进制数据则直接返回
   if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
     return res.data
@@ -81,7 +83,7 @@ service.interceptors.response.use(res => {
   // 兼容两种响应格式
   // 格式1: { "code": 200, "data": {...}, "msg": "..." }
   // 格式2: { "result": "success", "data": {...}, "error": "..." }
-  const code = res.data.code || (res.data.result === 'success' ? 200 : 500);
+  const code = res.data.code || (res.data.result === 'success' || res.data.result === 'success' ? 200 : 500);
   // 获取错误信息
   const msg = errorCode[code] || res.data.msg || res.data.error || errorCode['default']
 
@@ -116,31 +118,41 @@ service.interceptors.response.use(res => {
     // 如果后端返回 { "result": "success", "data": {...} }
     // 转换为 { "code": 200, "data": {...}, "msg": "..." }
 
-    const responseData = res.data.data
+    // 获取正确的 data 字段，兼容不同的返回格式
+    let responseData = res.data.data;
+    // 如果 data 字段不存在，尝试使用 msg 字段（某些旧接口用 msg 返回数据）
+    if (responseData === undefined || responseData === null) {
+      responseData = res.data.msg;
+    }
+
+    console.log('Processed responseData:', responseData);
 
     // 检查是否是分页对象结构 { current, pages, records, size, total }
     if (responseData && typeof responseData === 'object' &&
         'current' in responseData && 'records' in responseData) {
       // 分页对象，将records作为data返回
-      return Promise.resolve({
+      const result = {
         code: 200,
         data: responseData.records || [],
         msg: msg,
-        // 保留分页信息供需要时使用
         pagination: {
           current: responseData.current,
           pages: responseData.pages,
           size: responseData.size,
           total: responseData.total
         }
-      })
+      };
+      console.log('Returning pagination result:', result);
+      return Promise.resolve(result);
     }
 
-    return Promise.resolve({
+    const result = {
       code: 200,
       data: responseData,
       msg: msg
-    })
+    };
+    console.log('Returning result:', result);
+    return Promise.resolve(result);
   }
 },
   error => {

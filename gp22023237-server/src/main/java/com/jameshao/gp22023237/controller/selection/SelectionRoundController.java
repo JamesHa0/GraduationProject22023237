@@ -34,14 +34,14 @@ public class SelectionRoundController {
     }
 
     /**
-     * 切换轮次（仅教学秘书）
+     * 切换轮次（仅超级管理员、综合管理员、教学秘书）
      */
     @PostMapping("/switch")
     public String switchRound(@RequestBody Map<String, Integer> params) {
         try {
-            // 校验是否为教学秘书
-            if (!CurrentUserUtil.isSecretary()) {
-                return jsonReturn.returnError("只有教学秘书可以切换轮次");
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以切换轮次");
             }
 
             Integer targetRound = params.get("targetRound");
@@ -76,14 +76,14 @@ public class SelectionRoundController {
     }
 
     /**
-     * 更新轮次配置（仅教学秘书）
+     * 更新轮次配置（仅超级管理员、综合管理员、教学秘书）
      */
     @PostMapping("/config/update")
     public String updateRoundConfig(@RequestBody Map<String, String> params) {
         try {
-            // 校验是否为教学秘书
-            if (!CurrentUserUtil.isSecretary()) {
-                return jsonReturn.returnError("只有教学秘书可以修改配置");
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以修改配置");
             }
 
             String configKey = params.get("configKey");
@@ -106,14 +106,14 @@ public class SelectionRoundController {
     }
 
     /**
-     * 推进被拒绝学生到下一轮（仅教学秘书）
+     * 推进被拒绝学生到下一轮（仅超级管理员、综合管理员、教学秘书）
      */
     @PostMapping("/advanceRejected")
     public String advanceRejectedStudents() {
         try {
-            // 校验是否为教学秘书
-            if (!CurrentUserUtil.isSecretary()) {
-                return jsonReturn.returnError("只有教学秘书可以执行此操作");
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
             }
 
             int count = selectionRoundService.advanceRejectedStudents();
@@ -139,14 +139,14 @@ public class SelectionRoundController {
     }
 
     /**
-     * 手动分配导师（仅教学秘书）
+     * 手动分配导师（仅超级管理员、综合管理员、教学秘书）
      */
     @PostMapping("/manualAssign")
     public String manualAssignMentor(@RequestBody Map<String, Long> params) {
         try {
-            // 校验是否为教学秘书
-            if (!CurrentUserUtil.isSecretary()) {
-                return jsonReturn.returnError("只有教学秘书可以执行此操作");
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
             }
 
             Long studentId = params.get("studentId");
@@ -176,6 +176,111 @@ public class SelectionRoundController {
         try {
             Map<String, Object> stats = selectionRoundService.getRoundStatistics();
             return jsonReturn.returnSuccess(stats);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取最大轮次配置
+     */
+    @GetMapping("/maxRound")
+    public String getMaxRound() {
+        try {
+            int maxRound = selectionRoundService.getMaxRound();
+            return jsonReturn.returnSuccess(maxRound);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 推进到下一轮
+     */
+    @PostMapping("/advance")
+    public String advanceRound(@RequestBody Map<String, String> params) {
+        try {
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
+            }
+
+            String endTimeStudent = params.get("endTimeStudent");
+            String endTimeTutor = params.get("endTimeTutor");
+
+            boolean success = selectionRoundService.advanceToNextRound(endTimeStudent, endTimeTutor);
+            if (success) {
+                return jsonReturn.returnSuccess("推进成功");
+            } else {
+                return jsonReturn.returnFailed("推进失败，已达到最大轮次");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 重置双选
+     */
+    @PostMapping("/reset")
+    public String resetRounds() {
+        try {
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
+            }
+
+            boolean success = selectionRoundService.resetRounds();
+            if (success) {
+                return jsonReturn.returnSuccess("重置成功");
+            } else {
+                return jsonReturn.returnFailed("重置失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 判断学生是否可以选择
+     */
+    @GetMapping("/canStudentSelect")
+    public String canStudentSelect() {
+        try {
+            boolean canSelect = selectionRoundService.canStudentSelect();
+            return jsonReturn.returnSuccess(canSelect);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 判断导师是否可以选择
+     */
+    @GetMapping("/canMentorSelect")
+    public String canMentorSelect() {
+        try {
+            boolean canSelect = selectionRoundService.canMentorSelect();
+            return jsonReturn.returnSuccess(canSelect);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前阶段状态
+     */
+    @GetMapping("/currentPhase")
+    public String getCurrentPhase() {
+        try {
+            int phase = selectionRoundService.getCurrentPhase();
+            return jsonReturn.returnSuccess(phase);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

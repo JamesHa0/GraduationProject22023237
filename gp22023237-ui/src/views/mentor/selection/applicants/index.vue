@@ -22,9 +22,14 @@
                     当前：{{ roundName }}
                 </el-tag>
             </el-col>
-            <el-col :span="6">
+            <el-col :span="4">
+                <el-tag :type="phaseTagType" effect="dark" size="large">
+                    {{ phaseText }}
+                </el-tag>
+            </el-col>
+            <el-col :span="3">
                 <el-tag type="danger" effect="plain" size="large">
-                    第一轮导师确认截止时间：{{ deadlineTime }}
+                    导师确认截止：{{ deadlineTime }}
                 </el-tag>
             </el-col>
             <el-col :span="2">
@@ -39,6 +44,14 @@
             </el-col>
         </el-row>
 
+        <el-alert
+            v-if="!canSubmit"
+            :title="phaseAlertText"
+            type="warning"
+            :closable="false"
+            show-icon
+            class="mb-20"
+        />
 
         <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
             style="width: 100%;">
@@ -58,10 +71,10 @@
                         详细信息
                     </el-button>
                     <template v-if="scope.row.teacherStatus === 0">
-                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)">
+                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)" :disabled="!canSubmit">
                             同意
                         </el-button>
-                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)">
+                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)" :disabled="!canSubmit">
                             拒绝
                         </el-button>
                     </template>
@@ -113,7 +126,7 @@
 import { listStudents as initData, submitSelection } from "@/api/mentor/selection";
 import { listById as getUserById } from '@/api/user/user';
 import { getConfigKey } from "@/api/system/config";
-import { getCurrentRound } from "@/api/selection/round";
+import { getCurrentRound, getCurrentPhase, canMentorSelect } from "@/api/selection/round";
 import { getUserInfo, updateUserData } from '@/utils/userInfo';
 import { onMounted } from "vue";
 
@@ -127,13 +140,39 @@ const quota = ref(0); // 导师名额
 const confirmedQuota = ref(0); // 已确认名额
 const currentRound = ref(1); // 当前轮次
 const roundName = ref('第一轮'); // 当前轮次名称
-
-const loading = ref(true);
+const currentPhase = ref(2); // 当前阶段
+const canSubmit = ref(true); // 是否可以提交
 
 const getRoundName = (round) => {
     const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
     return names[round] || '第一轮';
 };
+
+// 阶段文本
+const phaseText = computed(() => {
+    const texts = ['未开始', '学生选择中', '导师确认中', '等待推进', '已结束'];
+    return texts[currentPhase.value] || '';
+});
+
+// 阶段标签颜色
+const phaseTagType = computed(() => {
+    const types = ['info', 'success', 'primary', 'warning', 'danger'];
+    return types[currentPhase.value] || 'info';
+});
+
+// 阶段警告文本
+const phaseAlertText = computed(() => {
+    if (currentPhase.value === 1) {
+        return '当前处于学生选择阶段，导师无法操作，请等待';
+    } else if (currentPhase.value === 3) {
+        return '当前轮次已截止，等待教学秘书推进到下一轮';
+    } else if (currentPhase.value === 4) {
+        return '双选已结束';
+    } else if (currentPhase.value === 0) {
+        return '双选尚未开始';
+    }
+    return '';
+});
 
 const detailVisible = ref(false); // 学生详细信息弹窗显示控制
 const currentStudent = ref({}); // 当前查看的学生信息
@@ -193,6 +232,11 @@ const showDetail = (row) => {
 
 /** 选择学生 */
 const selectStudent = (row, status) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前阶段无法操作');
+        return;
+    }
+
     console.log('选择学生，row数据:', row);
     const data = {
         id: row.id,
@@ -306,8 +350,28 @@ function loadCurrentRound() {
     });
 }
 
+// 获取当前阶段状态
+function loadCurrentPhase() {
+    getCurrentPhase().then(response => {
+        currentPhase.value = Number(response.data);
+    }).catch(() => {
+        console.error('获取当前阶段失败');
+    });
+}
+
+// 检查是否可以提交
+function checkCanSubmit() {
+    canMentorSelect().then(response => {
+        canSubmit.value = response.data === true;
+    }).catch(() => {
+        canSubmit.value = false;
+    });
+}
+
 getList(); // 获取导师列表
 loadCurrentRound(); // 获取当前轮次
+loadCurrentPhase(); // 获取当前阶段
+checkCanSubmit(); // 检查是否可以提交
 
 onMounted(() => {
     quota.value = getQuota();
@@ -316,6 +380,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.mb-20 {
+    margin-bottom: 20px;
+}
+
 .footer {
     margin-top: 20px;
     margin-right: 50px;

@@ -39,7 +39,7 @@ public class StudentSelectionController {
     @RequestMapping("/listMentor")
     public String listMentor(String name){
         try{
-            int currentRound = selectionRoundService.getCurrentRound();
+            int currentRound = selectionRoundService.getQueryRound();
             System.out.println("学生查询可选导师，当前轮次: " + currentRound);
 
             LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
@@ -107,8 +107,13 @@ public class StudentSelectionController {
         try {
             System.out.println("学生提交选择:"+mentorStudent);
 
-            // 获取当前轮次
-            int currentRound = selectionRoundService.getCurrentRound();
+            // 检查是否在学生选择时间内
+            if (!selectionRoundService.canStudentSelect()) {
+                return jsonReturn.returnError("当前不在学生选择时间内，无法提交志愿");
+            }
+
+            // 获取用于查询的实际轮次
+            int currentRound = selectionRoundService.getQueryRound();
             System.out.println("当前轮次: " + currentRound);
 
             // 如果前端没有设置round，使用当前轮次
@@ -200,6 +205,11 @@ public class StudentSelectionController {
         try {
             System.out.println("学生批量提交志愿:" + batchDTO);
 
+            // 检查是否在学生选择时间内
+            if (!selectionRoundService.canStudentSelect()) {
+                return jsonReturn.returnError("当前不在学生选择时间内，无法提交志愿");
+            }
+
             // 验证参数
             if (batchDTO.getStudentId() == null) {
                 return jsonReturn.returnError("学生ID不能为空");
@@ -208,7 +218,7 @@ public class StudentSelectionController {
                 return jsonReturn.returnError("志愿列表不能为空");
             }
 
-            // 获取当前轮次
+            // 获取当前轮次（这里只是打印，不用于设置round字段）
             int currentRound = selectionRoundService.getCurrentRound();
             System.out.println("当前轮次: " + currentRound);
 

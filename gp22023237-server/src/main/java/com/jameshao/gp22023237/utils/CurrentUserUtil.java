@@ -121,6 +121,17 @@ public class CurrentUserUtil {
     }
 
     /**
+     * 判断当前用户是否是轮次管理员（超级管理员、综合管理员或教学秘书）
+     * 角色ID: 1=超级管理员, 4=综合管理员, 5=教学秘书
+     *
+     * @return true: 是轮次管理员, false: 不是轮次管理员
+     */
+    public static boolean isRoundAdmin() {
+        Integer roleId = getCurrentRoleId();
+        return roleId != null && (roleId == 1 || roleId == 4 || roleId == 5);
+    }
+
+    /**
      * 判断当前用户是否是分管院长
      * 角色ID: 2
      *

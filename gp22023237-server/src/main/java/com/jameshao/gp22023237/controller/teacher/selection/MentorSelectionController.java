@@ -43,8 +43,8 @@ public class MentorSelectionController {
         try{
             System.out.println("导师查询可选学生:"+mentorStudent);
 
-            // 获取当前轮次
-            int currentRound = selectionRoundService.getCurrentRound();
+            // 获取用于查询的实际轮次
+            int currentRound = selectionRoundService.getQueryRound();
             System.out.println("当前轮次: " + currentRound);
 
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
@@ -107,6 +107,11 @@ public class MentorSelectionController {
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
             System.out.println("导师提交选中，接收到的参数: " + mentorStudent);
+
+            // 检查是否在导师确认时间内
+            if (!selectionRoundService.canMentorSelect()) {
+                return jsonReturn.returnError("当前不在导师确认时间内，无法操作");
+            }
 
             // 获取原始记录以确定是否为确认状态变化
             MentorStudent originalRecord = null;

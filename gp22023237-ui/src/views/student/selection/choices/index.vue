@@ -5,8 +5,19 @@
                 <el-tag type="primary" effect="dark" size="large">
                     当前：{{ roundName }}
                 </el-tag>
+                <el-tag :type="phaseTagType" effect="dark" size="large" style="margin-left: 10px;">
+                    {{ phaseText }}
+                </el-tag>
             </el-col>
         </el-row>
+        <el-alert
+            v-if="!canSubmit"
+            :title="phaseAlertText"
+            type="warning"
+            :closable="false"
+            show-icon
+            class="mb-20"
+        />
         <div class="card-container">
             <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
                 v-if="maxChoiceCount > 0">
@@ -21,10 +32,10 @@
                 <p v-else>未选择</p>
                 <template #footer>
                     <div class="card-footer">
-                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1, 1)">
+                        <el-button v-if="!isChoiceSelected(index)" type="primary" @click="submit(index - 1, 1)" :disabled="!canSubmit">
                             提交
                         </el-button>
-                        <el-button v-else type="danger" @click="submit(index - 1, 0)">
+                        <el-button v-else type="danger" @click="submit(index - 1, 0)" :disabled="!canSubmit">
                             放弃
                         </el-button>
                     </div>
@@ -68,10 +79,10 @@
                         已提交
                     </el-button>
                     <el-button v-else-if="selectedMentor !== scope.row.id" text type="primary" icon="Plus"
-                        @click="selectMentor(scope.row)" :disabled="scope.row.status === 2">
+                        @click="selectMentor(scope.row)" :disabled="scope.row.status === 2 || !canSubmit">
                         选中
                     </el-button>
-                    <el-button v-else text type="danger" icon="Close" @click="cancelSelection()">
+                    <el-button v-else text type="danger" icon="Close" @click="cancelSelection()" :disabled="!canSubmit">
                         取消
                     </el-button>
                 </template>
@@ -85,7 +96,7 @@
 
 <script setup>
 import { listMentor as initData, submitSelection, studentChoices } from "@/api/student/selection";
-import { getCurrentRound } from "@/api/selection/round";
+import { getCurrentRound, getCurrentPhase, canStudentSelect } from "@/api/selection/round";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
@@ -94,11 +105,39 @@ const { proxy } = getCurrentInstance();
 const mentorList = ref([]);
 const currentRound = ref(1); // 当前轮次
 const roundName = ref('第一轮'); // 当前轮次名称
+const currentPhase = ref(1); // 当前阶段
+const canSubmit = ref(true); // 是否可以提交
 
 const getRoundName = (round) => {
     const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
     return names[round] || '第一轮';
 };
+
+// 阶段文本
+const phaseText = computed(() => {
+    const texts = ['未开始', '学生选择中', '导师确认中', '等待推进', '已结束'];
+    return texts[currentPhase.value] || '';
+});
+
+// 阶段标签颜色
+const phaseTagType = computed(() => {
+    const types = ['info', 'success', 'primary', 'warning', 'danger'];
+    return types[currentPhase.value] || 'info';
+});
+
+// 阶段警告文本
+const phaseAlertText = computed(() => {
+    if (currentPhase.value === 2) {
+        return '当前处于导师确认阶段，学生无法提交志愿，请等待推进到下一轮';
+    } else if (currentPhase.value === 3) {
+        return '当前轮次已截止，等待教学秘书推进到下一轮';
+    } else if (currentPhase.value === 4) {
+        return '双选已结束';
+    } else if (currentPhase.value === 0) {
+        return '双选尚未开始';
+    }
+    return '';
+});
 
 const maxChoiceCount = ref(0); // 最大志愿数
 const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
@@ -152,6 +191,10 @@ const isMaxChoicesReached = () => {
 };
 // 选中导师函数
 const selectMentor = (row) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前阶段无法选择导师');
+        return;
+    }
     // 检查是否已达到最大选择数
     if (isMaxChoicesReached()) {
         proxy.$modal.msgWarning(`已达到最大志愿数 (${maxChoiceCount.value})，无法继续选择`);
@@ -280,6 +323,11 @@ function resetQuery() {
 /** 提交按钮操作 */
 function submit(choiceIndex, studentStatus) {
 
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前阶段无法提交志愿');
+        return;
+    }
+
     if (!studentId.value) {
         proxy.$modal.msgError('学生信息尚未加载')
         return;
@@ -346,7 +394,6 @@ function submit(choiceIndex, studentStatus) {
 
 
 
-
 }
 
 // 获取当前轮次
@@ -359,8 +406,28 @@ function loadCurrentRound() {
     });
 }
 
+// 获取当前阶段状态
+function loadCurrentPhase() {
+    getCurrentPhase().then(response => {
+        currentPhase.value = Number(response.data);
+    }).catch(() => {
+        console.error('获取当前阶段失败');
+    });
+}
+
+// 检查是否可以提交
+function checkCanSubmit() {
+    canStudentSelect().then(response => {
+        canSubmit.value = response.data === true;
+    }).catch(() => {
+        canSubmit.value = false;
+    });
+}
+
 getList(); // 获取导师列表
 loadCurrentRound(); // 获取当前轮次
+loadCurrentPhase(); // 获取当前阶段
+checkCanSubmit(); // 检查是否可以提交
 </script>
 
 <style scoped>
