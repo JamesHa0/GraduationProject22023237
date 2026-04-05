@@ -76,6 +76,26 @@ public class CourseSelectionController {
         }
     }
 
+    /**
+     * 查询学生是否已提交选课
+     */
+    @GetMapping("/getSubmitStatus")
+    public String getSubmitStatus(Long studentId) {
+        try {
+            if (studentId == null) {
+                return jsonReturn.returnError("学生ID不能为空");
+            }
+            LambdaQueryWrapper<CourseSelection> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(CourseSelection::getStudentId, studentId)
+                    .isNotNull(CourseSelection::getSubmitTime);
+            long count = courseSelectionService.count(wrapper);
+            return jsonReturn.returnSuccess(count > 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
     @PostMapping("/save")
     @Transactional(rollbackFor = Exception.class)
     public String save(@RequestBody BatchCourseSelectionDTO batchDTO) {
@@ -87,6 +107,15 @@ public class CourseSelectionController {
             }
             if (batchDTO.getChoices() == null || batchDTO.getChoices().isEmpty()) {
                 return jsonReturn.returnError("选课列表不能为空");
+            }
+
+            // 检查是否已提交
+            LambdaQueryWrapper<CourseSelection> checkSubmitWrapper = new LambdaQueryWrapper<>();
+            checkSubmitWrapper.eq(CourseSelection::getStudentId, batchDTO.getStudentId())
+                    .isNotNull(CourseSelection::getSubmitTime);
+            long submittedCount = courseSelectionService.count(checkSubmitWrapper);
+            if (submittedCount > 0) {
+                return jsonReturn.returnError("您已提交选课，不可修改");
             }
 
             Date now = new Date();
@@ -137,6 +166,7 @@ public class CourseSelectionController {
                 cs.setCourseId(choice.getCourseId());
                 cs.setStatus(1);
                 cs.setSelectionTime(now);
+                cs.setSubmitTime(now);
                 cs.setCreateTime(now);
                 cs.setUpdateTime(now);
 

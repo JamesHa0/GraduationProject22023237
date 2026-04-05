@@ -77,3 +77,11 @@ export function saveCourseSelections(data) {
     data: data
   })
 }
+
+export function getSubmitStatus(query) {
+  return request({
+    url: '/course/selection/getSubmitStatus',
+    method: 'get',
+    params: query
+  })
+}

@@ -1,8 +1,22 @@
 <template>
   <div class="app-container">
+    <!-- 已提交提示 -->
+    <el-alert
+      v-if="isSubmitted"
+      title="您已完成选课提交"
+      type="success"
+      :closable="false"
+      show-icon
+      class="mb20"
+    >
+      <template #default>
+        您的选课已提交，不可再修改。如有特殊情况，请联系教务管理员。
+      </template>
+    </el-alert>
+
     <!-- 选课资格提示 -->
     <el-alert
-      v-if="hasReachedMaxCourses"
+      v-if="hasReachedMaxCourses && !isSubmitted"
       title="您已完成选课"
       type="success"
       :closable="false"
@@ -23,7 +37,7 @@
           <el-tag
             v-for="course in selectedCourses"
             :key="course.id"
-            :closable="true"
+            :closable="!isSubmitted"
             @close="toggleCourseSelection(course, false)"
             class="course-tag"
           >
@@ -33,10 +47,10 @@
         <el-button
           type="primary"
           size="large"
-          :disabled="selectedCourses.length === 0"
+          :disabled="selectedCourses.length === 0 || isSubmitted"
           @click="handleSave"
         >
-          保存选课
+          {{ isSubmitted ? '已提交' : '保存选课' }}
         </el-button>
       </div>
     </el-card>
@@ -115,7 +129,7 @@
 
 <script setup name="StudentCourseSelect">
 import { listCourse } from "@/api/course/course";
-import { listCourseSelection, getStudentCourseChoices, saveCourseSelections } from "@/api/course/selection";
+import { listCourseSelection, getStudentCourseChoices, saveCourseSelections, getSubmitStatus } from "@/api/course/selection";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
@@ -146,6 +160,7 @@ const maxCourseCount = ref(3);
 const availableCourses = ref([]);
 const selectedCourses = ref([]);
 const hasReachedMaxCourses = ref(false);
+const isSubmitted = ref(false);
 
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
@@ -169,6 +184,9 @@ const checkMaxCoursesReached = () => {
 };
 
 const checkSelectable = (row) => {
+  if (isSubmitted.value) {
+    return false; // 已提交后不可选择
+  }
   if (row.selectedCount >= row.maxStudents) {
     return false;
   }
@@ -205,6 +223,9 @@ const handleSelectionChange = (selection) => {
 };
 
 const toggleCourseSelection = (course, selected) => {
+  if (isSubmitted.value) {
+    return;
+  }
   if (courseTableRef.value) {
     courseTableRef.value.toggleRowSelection(course, selected);
   }
@@ -216,7 +237,7 @@ const handleSave = () => {
     return;
   }
 
-  proxy.$modal.confirm('确认保存选课？').then(() => {
+  proxy.$modal.confirm('确认保存选课？保存后将不可修改。').then(() => {
     const data = {
       studentId: studentId.value,
       choices: selectedCourses.value.map((course) => ({
@@ -225,12 +246,26 @@ const handleSave = () => {
     };
 
     saveCourseSelections(data).then(() => {
-      proxy.$modal.msgSuccess('保存成功');
+      proxy.$modal.msgSuccess('保存成功，选课已提交');
+      isSubmitted.value = true;
       getList();
     }).catch(error => {
       proxy.$modal.msgError(error.msg || '保存失败');
     });
   }).catch(() => {});
+};
+
+const checkSubmitStatus = () => {
+  const id = getStudentId();
+  if (!id) {
+    return Promise.resolve();
+  }
+  return getSubmitStatus({ studentId: id }).then(res => {
+    isSubmitted.value = res.data === true;
+  }).catch(() => {
+    isSubmitted.value = false;
+    return Promise.resolve();
+  });
 };
 
 const hasTimeConflict = (newCourse, currentSelection = null) => {
@@ -363,7 +398,9 @@ const getList = () => {
     return;
   }
   studentId.value = id;
-  getAvailableCourses();
+  checkSubmitStatus().then(() => {
+    getAvailableCourses();
+  });
 };
 
 getMaxCourseCount();

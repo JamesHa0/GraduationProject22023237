@@ -35,6 +35,11 @@ public class CourseSelection {
     private Date selectionTime;
 
     /**
+     * 提交时间，不为空表示已提交
+     */
+    private Date submitTime;
+
+    /**
      * 状态：1-正常，0-已退课
      */
     private Integer status;
