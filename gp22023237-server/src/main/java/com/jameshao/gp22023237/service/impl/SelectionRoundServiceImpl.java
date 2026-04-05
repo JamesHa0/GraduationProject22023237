@@ -38,9 +38,20 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     private TeacherService teacherService;
 
     private static final String CONFIG_CURRENT_ROUND = "current_round";
-    private static final String CONFIG_ROUND_1_END = "round_1_end_tutor";
-    private static final String CONFIG_ROUND_2_END = "round_2_end_tutor";
+    private static final String CONFIG_ENABLE_EXTRA_ROUND = "enable_extra_round";
+    // 第一轮配置
+    private static final String CONFIG_FIRST_ROUND_START = "first_round_start";
+    private static final String CONFIG_FIRST_ROUND_END_STUDENT = "first_round_end_student";
+    private static final String CONFIG_FIRST_ROUND_END_TUTOR = "first_round_end_tutor";
+    // 第二轮配置
+    private static final String CONFIG_SECOND_ROUND_START = "second_round_start";
+    private static final String CONFIG_SECOND_ROUND_END_STUDENT = "second_round_end_student";
+    private static final String CONFIG_SECOND_ROUND_END_TUTOR = "second_round_end_tutor";
+    // 第三轮配置
+    private static final String CONFIG_THIRD_ROUND_START = "third_round_start";
+    private static final String CONFIG_THIRD_ROUND_END_STUDENT = "third_round_end_student";
     private static final String CONFIG_ROUND_3_END = "round_3_end_tutor";
+    // 补选配置
     private static final String CONFIG_SUPPLEMENTARY_START = "supplementary_start";
     private static final String CONFIG_SUPPLEMENTARY_END = "supplementary_end";
 
@@ -103,7 +114,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             }
 
             // 检查第二轮结束时间
-            SystemConfig round2End = systemConfigService.getConfigByKey(CONFIG_ROUND_2_END);
+            SystemConfig round2End = systemConfigService.getConfigByKey(CONFIG_SECOND_ROUND_END_TUTOR);
             if (round2End != null && round2End.getConfigValue() != null && !round2End.getConfigValue().isEmpty()) {
                 LocalDateTime endTime = LocalDateTime.parse(round2End.getConfigValue(), formatter);
                 if (now.isAfter(endTime)) {
@@ -112,7 +123,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             }
 
             // 检查第一轮结束时间
-            SystemConfig round1End = systemConfigService.getConfigByKey(CONFIG_ROUND_1_END);
+            SystemConfig round1End = systemConfigService.getConfigByKey(CONFIG_FIRST_ROUND_END_TUTOR);
             if (round1End != null && round1End.getConfigValue() != null && !round1End.getConfigValue().isEmpty()) {
                 LocalDateTime endTime = LocalDateTime.parse(round1End.getConfigValue(), formatter);
                 if (now.isAfter(endTime)) {
@@ -153,9 +164,20 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         Map<String, String> config = new HashMap<>();
         String[] keys = {
                 CONFIG_CURRENT_ROUND,
-                CONFIG_ROUND_1_END,
-                CONFIG_ROUND_2_END,
+                CONFIG_ENABLE_EXTRA_ROUND,
+                // 第一轮
+                CONFIG_FIRST_ROUND_START,
+                CONFIG_FIRST_ROUND_END_STUDENT,
+                CONFIG_FIRST_ROUND_END_TUTOR,
+                // 第二轮
+                CONFIG_SECOND_ROUND_START,
+                CONFIG_SECOND_ROUND_END_STUDENT,
+                CONFIG_SECOND_ROUND_END_TUTOR,
+                // 第三轮
+                CONFIG_THIRD_ROUND_START,
+                CONFIG_THIRD_ROUND_END_STUDENT,
                 CONFIG_ROUND_3_END,
+                // 补选
                 CONFIG_SUPPLEMENTARY_START,
                 CONFIG_SUPPLEMENTARY_END
         };

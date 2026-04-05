@@ -64,57 +64,152 @@
                             <span>时间配置</span>
                         </div>
                     </template>
-                    <el-form label-width="150px">
-                        <el-form-item label="第一轮截止时间">
-                            <el-date-picker
-                                v-model="roundConfig.round_1_end_tutor"
-                                type="datetime"
-                                placeholder="选择截止时间"
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                @change="updateConfig('round_1_end_tutor', roundConfig.round_1_end_tutor)"
+                    <el-form label-width="130px">
+                        <el-form-item label="开启额外轮次">
+                            <el-switch
+                                v-model="extraRoundEnabled"
+                                active-text="是"
+                                inactive-text="否"
+                                @change="updateExtraRoundSwitch"
                             />
+                            <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+                                开启后，落选学生可参与额外轮次
+                            </div>
                         </el-form-item>
-                        <el-form-item label="第二轮截止时间">
-                            <el-date-picker
-                                v-model="roundConfig.round_2_end_tutor"
-                                type="datetime"
-                                placeholder="选择截止时间"
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                @change="updateConfig('round_2_end_tutor', roundConfig.round_2_end_tutor)"
-                            />
-                        </el-form-item>
-                        <el-form-item label="第三轮截止时间">
-                            <el-date-picker
-                                v-model="roundConfig.round_3_end_tutor"
-                                type="datetime"
-                                placeholder="选择截止时间"
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                @change="updateConfig('round_3_end_tutor', roundConfig.round_3_end_tutor)"
-                            />
-                        </el-form-item>
-                        <el-form-item label="补选开始时间">
-                            <el-date-picker
-                                v-model="roundConfig.supplementary_start"
-                                type="datetime"
-                                placeholder="选择开始时间"
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                @change="updateConfig('supplementary_start', roundConfig.supplementary_start)"
-                            />
-                        </el-form-item>
-                        <el-form-item label="补选结束时间">
-                            <el-date-picker
-                                v-model="roundConfig.supplementary_end"
-                                type="datetime"
-                                placeholder="选择结束时间"
-                                format="YYYY-MM-DD HH:mm:ss"
-                                value-format="YYYY-MM-DD HH:mm:ss"
-                                @change="updateConfig('supplementary_end', roundConfig.supplementary_end)"
-                            />
-                        </el-form-item>
+
+                        <el-divider />
+
+                        <div class="round-section">
+                            <div class="round-title">第一轮</div>
+                            <el-form-item label="开始时间">
+                                <el-date-picker
+                                    v-model="roundConfig.first_round_start"
+                                    type="datetime"
+                                    placeholder="选择开始时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('first_round_start', roundConfig.first_round_start)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="学生截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.first_round_end_student"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('first_round_end_student', roundConfig.first_round_end_student)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="导师截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.first_round_end_tutor"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('first_round_end_tutor', roundConfig.first_round_end_tutor)"
+                                />
+                            </el-form-item>
+                        </div>
+
+                        <el-divider />
+
+                        <div class="round-section">
+                            <div class="round-title">第二轮</div>
+                            <el-form-item label="开始时间">
+                                <el-date-picker
+                                    v-model="roundConfig.second_round_start"
+                                    type="datetime"
+                                    placeholder="选择开始时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('second_round_start', roundConfig.second_round_start)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="学生截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.second_round_end_student"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('second_round_end_student', roundConfig.second_round_end_student)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="导师截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.second_round_end_tutor"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('second_round_end_tutor', roundConfig.second_round_end_tutor)"
+                                />
+                            </el-form-item>
+                        </div>
+
+                        <el-divider />
+
+                        <div class="round-section">
+                            <div class="round-title">第三轮</div>
+                            <el-form-item label="开始时间">
+                                <el-date-picker
+                                    v-model="roundConfig.third_round_start"
+                                    type="datetime"
+                                    placeholder="选择开始时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('third_round_start', roundConfig.third_round_start)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="学生截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.third_round_end_student"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('third_round_end_student', roundConfig.third_round_end_student)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="导师截止时间">
+                                <el-date-picker
+                                    v-model="roundConfig.round_3_end_tutor"
+                                    type="datetime"
+                                    placeholder="选择截止时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('round_3_end_tutor', roundConfig.round_3_end_tutor)"
+                                />
+                            </el-form-item>
+                        </div>
+
+                        <el-divider />
+
+                        <div class="round-section">
+                            <div class="round-title">补选阶段</div>
+                            <el-form-item label="开始时间">
+                                <el-date-picker
+                                    v-model="roundConfig.supplementary_start"
+                                    type="datetime"
+                                    placeholder="选择开始时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('supplementary_start', roundConfig.supplementary_start)"
+                                />
+                            </el-form-item>
+                            <el-form-item label="结束时间">
+                                <el-date-picker
+                                    v-model="roundConfig.supplementary_end"
+                                    type="datetime"
+                                    placeholder="选择结束时间"
+                                    format="YYYY-MM-DD HH:mm:ss"
+                                    value-format="YYYY-MM-DD HH:mm:ss"
+                                    @change="updateConfig('supplementary_end', roundConfig.supplementary_end)"
+                                />
+                            </el-form-item>
+                        </div>
                     </el-form>
                 </el-card>
             </el-col>
@@ -153,7 +248,7 @@
             <el-divider />
             <el-statistic title="未匹配学生数" :value="statistics.unmatchedStudents || 0">
                 <template #suffix>
-                    <el-button type="primary" link @click="goToManualAssign">
+                    <el-button type="primary" link @click="goToRelationship">
                         前往手动分配
                     </el-button>
                 </template>
@@ -176,14 +271,33 @@ const advanceLoading = ref(false);
 
 const roundConfig = ref({
     current_round: '1',
-    round_1_end_tutor: '',
-    round_2_end_tutor: '',
+    enable_extra_round: 'false',
+    // 第一轮
+    first_round_start: '',
+    first_round_end_student: '',
+    first_round_end_tutor: '',
+    // 第二轮
+    second_round_start: '',
+    second_round_end_student: '',
+    second_round_end_tutor: '',
+    // 第三轮
+    third_round_start: '',
+    third_round_end_student: '',
     round_3_end_tutor: '',
+    // 补选
     supplementary_start: '',
     supplementary_end: ''
 });
 
 const statistics = ref({});
+
+// 计算属性：处理布尔值转换
+const extraRoundEnabled = computed({
+    get: () => roundConfig.value.enable_extra_round === 'true',
+    set: (val) => {
+        roundConfig.value.enable_extra_round = val ? 'true' : 'false';
+    }
+});
 
 const getRoundName = (round) => {
     const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
@@ -261,8 +375,19 @@ const updateConfig = (key, value) => {
     });
 };
 
-const goToManualAssign = () => {
-    router.push('/selection/manual-assign');
+const updateExtraRoundSwitch = () => {
+    updateRoundConfig({
+        configKey: 'enable_extra_round',
+        configValue: roundConfig.value.enable_extra_round
+    }).then(() => {
+        proxy.$modal.msgSuccess('配置更新成功');
+    }).catch(() => {
+        proxy.$modal.msgError('配置更新失败');
+    });
+};
+
+const goToRelationship = () => {
+    router.push('/selection/relationship');
 };
 
 onMounted(() => {
@@ -293,5 +418,16 @@ onMounted(() => {
 
 .current-round {
     border: 2px solid var(--el-color-primary);
+}
+
+.round-section {
+    margin-bottom: 16px;
+}
+
+.round-title {
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 12px;
+    font-size: 14px;
 }
 </style>

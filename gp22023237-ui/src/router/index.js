@@ -385,6 +385,12 @@ export const constantRoutes = [
         component: () => import('@/views/selection/mentor-change/index'),
         name: 'MentorChange',
         meta: { title: '导师更换申请', icon: 'people' }
+      },
+      {
+        path: 'round-manage',
+        component: () => import('@/views/selection/round-manage/index'),
+        name: 'RoundChange',
+        meta: { title: '双选轮次管理', icon: 'build' }
       }
     ]
   }

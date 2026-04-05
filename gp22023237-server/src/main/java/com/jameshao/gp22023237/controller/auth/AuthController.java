@@ -38,8 +38,8 @@ public class AuthController {
             if (users != null && !users.isEmpty()){//登录成功
                 //生成Token
                 String token = TokenUtil.createToken();
-                redisUtils.set(token, "token token", 60*60*3);
                 User loginUser = users.get(0);
+                redisUtils.set(token, loginUser, 60*60*3);
                 redisUtils.set(loginUser.getUsername(), loginUser, 60*60*3);
 
                 loginUser.setToken(token);

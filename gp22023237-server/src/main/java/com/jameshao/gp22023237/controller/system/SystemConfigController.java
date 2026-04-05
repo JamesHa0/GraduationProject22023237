@@ -7,6 +7,7 @@ import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.SystemConfig;
 import com.jameshao.gp22023237.service.SystemConfigService;
 import com.jameshao.gp22023237.utils.ConfigUtil;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,6 +83,7 @@ public class SystemConfigController {
     public String add(@RequestBody SystemConfig config) {
         try {
             config.setUpdateTime(new Date());
+            config.setUpdateUser(CurrentUserUtil.getCurrentUserId());
             systemConfigService.save(config);
             // 更新缓存
             if (config.getConfigKey() != null) {
@@ -101,6 +103,7 @@ public class SystemConfigController {
     public String edit(@RequestBody SystemConfig config) {
         try {
             config.setUpdateTime(new Date());
+            config.setUpdateUser(CurrentUserUtil.getCurrentUserId());
             systemConfigService.updateConfig(config);
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
