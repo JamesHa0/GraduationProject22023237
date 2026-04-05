@@ -1,5 +1,6 @@
 package com.jameshao.gp22023237.utils;
 
+import com.alibaba.fastjson.JSONObject;
 import com.jameshao.gp22023237.po.User;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,17 +40,25 @@ public class CurrentUserUtil {
             String token = request.getHeader("token");
             if (token == null || token.isEmpty()) {
                 // 如果请求头中没有，尝试从参数中获取
-                token = request.getParameter("token");
+                token = request.getHeader("Token");
             }
 
             if (token == null || token.isEmpty()) {
                 return null;
             }
 
-            // 从Redis中获取用户信息
-            // 当前项目中，登录时用户信息以token为key存储在Redis中
             if (redisUtils != null && redisUtils.hasKey(token)) {
-                return (User) redisUtils.get(token);
+                Object obj = redisUtils.get(token);
+                if (obj instanceof User) {
+                    return (User) obj;
+                } else if (obj instanceof JSONObject) {
+                    // 兼容 fastjson 序列化的情况
+                    JSONObject jsonObj = (JSONObject) obj;
+                    return jsonObj.toJavaObject(User.class);
+                } else {
+                    // 兼容旧数据：如果Redis中存的不是User对象，删除旧key
+                    redisUtils.del(token);
+                }
             }
 
             return null;
@@ -91,35 +100,46 @@ public class CurrentUserUtil {
 
     /**
      * 判断当前用户是否是导师
-     * 角色ID: 3
+     * 角色ID: 7
      *
      * @return true: 是导师, false: 不是导师
      */
     public static boolean isMentor() {
         Integer roleId = getCurrentRoleId();
-        return roleId != null && roleId == 3;
+        return roleId != null && roleId == 7;
     }
 
     /**
      * 判断当前用户是否是教学秘书
-     * 角色ID: 2
+     * 角色ID: 5
      *
      * @return true: 是教学秘书, false: 不是教学秘书
      */
     public static boolean isSecretary() {
         Integer roleId = getCurrentRoleId();
-        return roleId != null && roleId == 2;
+        return roleId != null && roleId == 5;
     }
 
     /**
      * 判断当前用户是否是分管院长
-     * 角色ID: 5
+     * 角色ID: 2
      *
      * @return true: 是分管院长, false: 不是分管院长
      */
     public static boolean isDean() {
         Integer roleId = getCurrentRoleId();
-        return roleId != null && roleId == 5;
+        return roleId != null && roleId == 2;
+    }
+
+    /**
+     * 判断当前用户是否是学生
+     * 角色ID: 6
+     *
+     * @return true: 是学生, false: 不是学生
+     */
+    public static boolean isStudent() {
+        Integer roleId = getCurrentRoleId();
+        return roleId != null && roleId == 6;
     }
 
     /**
