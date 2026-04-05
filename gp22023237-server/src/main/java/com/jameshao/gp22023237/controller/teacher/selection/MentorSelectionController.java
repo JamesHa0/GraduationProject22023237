@@ -194,6 +194,31 @@ public class MentorSelectionController {
                 selectionRoundService.advanceStudentToNextRound(originalRecord.getStudentId());
             }
 
+            // 如果是同意操作，自动拒绝该学生的后续志愿
+            if (mentorStudent.getTeacherStatus() == 1 && originalRecord.getTeacherStatus() == 0) {
+                System.out.println("学生被同意，拒绝后续志愿: studentId=" + originalRecord.getStudentId());
+                LambdaQueryWrapper<MentorStudent> studentChoicesWrapper = new LambdaQueryWrapper<>();
+                studentChoicesWrapper.eq(MentorStudent::getStudentId, originalRecord.getStudentId())
+                        .eq(MentorStudent::getStudentStatus, 1)
+                        .orderByAsc(MentorStudent::getStudentChoiceOrder);
+                List<MentorStudent> allChoices = mentorStudentService.list(studentChoicesWrapper);
+
+                // 找到当前志愿的序号
+                Integer currentOrder = originalRecord.getStudentChoiceOrder();
+
+                // 拒绝后续所有志愿
+                for (MentorStudent choice : allChoices) {
+                    if (choice.getStudentChoiceOrder() != null && choice.getStudentChoiceOrder() > currentOrder) {
+                        UpdateWrapper<MentorStudent> rejectWrapper = new UpdateWrapper<>();
+                        rejectWrapper.eq("id", choice.getId())
+                                .set("teacher_status", 2)
+                                .set("confirm_time", LocalDateTime.now());
+                        mentorStudentService.update(null, rejectWrapper);
+                        System.out.println("已拒绝学生 " + originalRecord.getStudentId() + " 的志愿 " + choice.getStudentChoiceOrder());
+                    }
+                }
+            }
+
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
