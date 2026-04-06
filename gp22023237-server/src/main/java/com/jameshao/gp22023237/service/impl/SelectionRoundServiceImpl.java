@@ -102,8 +102,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             // 直接从配置获取
             SystemConfig config = systemConfigService.getConfigByKey(CONFIG_CURRENT_ROUND);
             if (config != null && config.getConfigValue() != null) {
-                int configuredRound = Integer.parseInt(config.getConfigValue());
-                return configuredRound;
+                return Integer.parseInt(config.getConfigValue());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -677,10 +676,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             // 截止时间已过，检查是否有下一轮
             int maxRound = getMaxRound();
             if (round < maxRound && round < 4) {
-                // 自动将 current_round 更新为中间阶段值
-                int intermediatePhase = getNextIntermediatePhase(round);
-                System.out.println("时间截止，自动更新为中间阶段: " + round + " -> " + intermediatePhase);
-                switchRound(intermediatePhase);
+                // 不再自动更新轮次值，只返回等待推进状态
+                // 由管理员手动推进轮次
                 return 3; // 中间状态，等待推进
             }
 
