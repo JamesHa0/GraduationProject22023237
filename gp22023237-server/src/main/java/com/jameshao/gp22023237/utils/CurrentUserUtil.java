@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import java.util.Map;
 
 /**
  * 当前用户信息获取工具类
@@ -55,6 +56,9 @@ public class CurrentUserUtil {
                     // 兼容 fastjson 序列化的情况
                     JSONObject jsonObj = (JSONObject) obj;
                     return jsonObj.toJavaObject(User.class);
+                } else if (obj instanceof Map) {
+                    // 兼容 Redis 反序列化为 Map 的情况
+                    return JSONObject.parseObject(JSONObject.toJSONString(obj), User.class);
                 } else {
                     // 兼容旧数据：如果Redis中存的不是User对象，删除旧key
                     redisUtils.del(token);

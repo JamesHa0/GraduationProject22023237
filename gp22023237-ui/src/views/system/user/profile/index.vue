@@ -14,24 +14,20 @@
                   </div>
                   <ul class="list-group list-group-striped">
                      <li class="list-group-item">
-                        <svg-icon icon-class="user" />用户名称
-                        <div class="pull-right">{{ state.user.userName }}</div>
+                        <svg-icon icon-class="user" />姓名
+                        <div class="pull-right">{{ state.user.name }}</div>
                      </li>
                      <li class="list-group-item">
                         <svg-icon icon-class="phone" />手机号码
-                        <div class="pull-right">{{ state.user.phonenumber }}</div>
+                        <div class="pull-right">{{ state.user.phone }}</div>
                      </li>
                      <li class="list-group-item">
                         <svg-icon icon-class="email" />用户邮箱
                         <div class="pull-right">{{ state.user.email }}</div>
                      </li>
                      <li class="list-group-item">
-                        <svg-icon icon-class="tree" />所属部门
-                        <div class="pull-right" v-if="state.user.dept">{{ state.user.dept.deptName }} / {{ state.postGroup }}</div>
-                     </li>
-                     <li class="list-group-item">
-                        <svg-icon icon-class="peoples" />所属角色
-                        <div class="pull-right">{{ state.roleGroup }}</div>
+                        <svg-icon icon-class="peoples" />性别
+                        <div class="pull-right">{{ state.user.gender === 1 ? "男" : state.user.gender === 2 ? "女" : "未设置" }}</div>
                      </li>
                      <li class="list-group-item">
                         <svg-icon icon-class="date" />创建日期
@@ -70,16 +66,12 @@ import { getUserProfile } from "@/api/system/user";
 
 const activeTab = ref("userinfo");
 const state = reactive({
-  user: {},
-  roleGroup: {},
-  postGroup: {}
+  user: {}
 });
 
 function getUser() {
   getUserProfile().then(response => {
     state.user = response.data;
-    state.roleGroup = response.roleGroup;
-    state.postGroup = response.postGroup;
   });
 };
 

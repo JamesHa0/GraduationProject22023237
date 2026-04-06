@@ -149,7 +149,7 @@ function realTime(data) {
 /** 关闭窗口 */
 function closeDialog() {
   options.img = userStore.avatar;
-  options.visible = false;
+  visible.value = false;
 }
 </script>
 

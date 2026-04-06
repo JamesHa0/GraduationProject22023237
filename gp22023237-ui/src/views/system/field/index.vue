@@ -200,7 +200,7 @@
                <el-input v-model="form.defaultValue" placeholder="请输入默认值" />
             </el-form-item>
             <el-form-item label="选项值" prop="options" v-if="form.fieldType === 'select'">
-               <el-input v-model="form.options" type="textarea" placeholder="请输入选项值，JSON格式，如：[{\"label\":\"选项1\",\"value\":\"1\"}]" />
+               <el-input v-model="form.options" type="textarea" placeholder='请输入选项值，JSON格式，如：[{&quot;label&quot;:&quot;选项1&quot;,&quot;value&quot;:&quot;1&quot;}]' />
             </el-form-item>
             <el-form-item label="备注" prop="remark">
                <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" />
