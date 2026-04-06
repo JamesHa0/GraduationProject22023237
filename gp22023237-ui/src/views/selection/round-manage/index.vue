@@ -554,10 +554,13 @@ const loadCurrentRound = () => {
     getCurrentRound().then(response => {
         let round = Number(response.data);
         if (isNaN(round)) {
-            round = 1;
+            round = 0;
         }
         currentRound.value = round;
-        if (round > 0 && round <= 4) {
+        // 根据轮次值设置标签页
+        if (round === 9 || round === 91) {
+            activeTab.value = '9';
+        } else if (round >= 1 && round <= 4) {
             activeTab.value = String(round);
         }
     }).catch(() => {
