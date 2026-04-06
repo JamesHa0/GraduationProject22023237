@@ -34,6 +34,7 @@
                 <el-col :span="16">
                     <div class="round-progress">
                         <el-steps :active="displayStep" finish-status="success" simple>
+                            <el-step title="学生预选" />
                             <el-step title="第一轮" />
                             <el-step title="第二轮" />
                             <el-step title="第三轮" />
@@ -148,6 +149,33 @@
                     </template>
 
                     <el-tabs v-model="activeTab" type="border-card">
+                        <el-tab-pane label="学生预选" name="9">
+                            <div class="tab-content">
+                                <el-form label-width="130px">
+                                    <el-form-item label="开始时间">
+                                        <el-date-picker
+                                            v-model="roundConfig.student_pre_start"
+                                            type="datetime"
+                                            placeholder="选择开始时间"
+                                            format="YYYY-MM-DD HH:mm:ss"
+                                            value-format="YYYY-MM-DD HH:mm:ss"
+                                            @change="updateConfig('student_pre_start', roundConfig.student_pre_start)"
+                                        />
+                                    </el-form-item>
+                                    <el-form-item label="学生截止时间">
+                                        <el-date-picker
+                                            v-model="roundConfig.student_pre_end"
+                                            type="datetime"
+                                            placeholder="选择截止时间"
+                                            format="YYYY-MM-DD HH:mm:ss"
+                                            value-format="YYYY-MM-DD HH:mm:ss"
+                                            @change="updateConfig('student_pre_end', roundConfig.student_pre_end)"
+                                        />
+                                    </el-form-item>
+                                </el-form>
+                            </div>
+                        </el-tab-pane>
+
                         <el-tab-pane label="第一轮" name="1">
                             <div class="tab-content">
                                 <el-form label-width="130px">
@@ -159,16 +187,6 @@
                                             format="YYYY-MM-DD HH:mm:ss"
                                             value-format="YYYY-MM-DD HH:mm:ss"
                                             @change="updateConfig('first_round_start', roundConfig.first_round_start)"
-                                        />
-                                    </el-form-item>
-                                    <el-form-item label="学生截止时间">
-                                        <el-date-picker
-                                            v-model="roundConfig.first_round_end_student"
-                                            type="datetime"
-                                            placeholder="选择截止时间"
-                                            format="YYYY-MM-DD HH:mm:ss"
-                                            value-format="YYYY-MM-DD HH:mm:ss"
-                                            @change="updateConfig('first_round_end_student', roundConfig.first_round_end_student)"
                                         />
                                     </el-form-item>
                                     <el-form-item label="导师截止时间">
@@ -198,16 +216,6 @@
                                             @change="updateConfig('second_round_start', roundConfig.second_round_start)"
                                         />
                                     </el-form-item>
-                                    <el-form-item label="学生截止时间">
-                                        <el-date-picker
-                                            v-model="roundConfig.second_round_end_student"
-                                            type="datetime"
-                                            placeholder="选择截止时间"
-                                            format="YYYY-MM-DD HH:mm:ss"
-                                            value-format="YYYY-MM-DD HH:mm:ss"
-                                            @change="updateConfig('second_round_end_student', roundConfig.second_round_end_student)"
-                                        />
-                                    </el-form-item>
                                     <el-form-item label="导师截止时间">
                                         <el-date-picker
                                             v-model="roundConfig.second_round_end_tutor"
@@ -233,16 +241,6 @@
                                             format="YYYY-MM-DD HH:mm:ss"
                                             value-format="YYYY-MM-DD HH:mm:ss"
                                             @change="updateConfig('third_round_start', roundConfig.third_round_start)"
-                                        />
-                                    </el-form-item>
-                                    <el-form-item label="学生截止时间">
-                                        <el-date-picker
-                                            v-model="roundConfig.third_round_end_student"
-                                            type="datetime"
-                                            placeholder="选择截止时间"
-                                            format="YYYY-MM-DD HH:mm:ss"
-                                            value-format="YYYY-MM-DD HH:mm:ss"
-                                            @change="updateConfig('third_round_end_student', roundConfig.third_round_end_student)"
                                         />
                                     </el-form-item>
                                     <el-form-item label="导师截止时间">
@@ -346,7 +344,8 @@
                         style="width: 100%;"
                     />
                 </el-form-item>
-                <el-form-item v-if="targetRoundForAdvance !== 4" label="学生截止时间" prop="endTimeStudent">
+                <!-- 学生预选轮：只有学生截止时间 -->
+                <el-form-item v-if="targetRoundForAdvance === 9 || targetRoundForAdvance === 91" label="学生截止时间" prop="endTimeStudent">
                     <el-date-picker
                         v-model="advanceForm.endTimeStudent"
                         type="datetime"
@@ -356,7 +355,8 @@
                         style="width: 100%;"
                     />
                 </el-form-item>
-                <el-form-item v-if="targetRoundForAdvance !== 4" label="导师截止时间" prop="endTimeTutor">
+                <!-- 导师轮(1/2/3)：只有导师截止时间 -->
+                <el-form-item v-if="targetRoundForAdvance >= 1 && targetRoundForAdvance <= 3" label="导师截止时间" prop="endTimeTutor">
                     <el-date-picker
                         v-model="advanceForm.endTimeTutor"
                         type="datetime"
@@ -366,6 +366,7 @@
                         style="width: 100%;"
                     />
                 </el-form-item>
+                <!-- 补选：只有结束时间 -->
                 <el-form-item v-if="targetRoundForAdvance === 4" label="结束时间" prop="endTimeStudent">
                     <el-date-picker
                         v-model="advanceForm.endTimeStudent"
@@ -402,17 +403,21 @@ const advanceDialogVisible = ref(false);
 const advanceFormRef = ref(null);
 
 const roundConfig = ref({
-    current_round: '1',
+    current_round: '0',
     enable_extra_round: 'false',
+    // 学生预选轮
+    student_pre_start: '',
+    student_pre_end: '',
+    // 第一轮（导师选择）
     first_round_start: '',
-    first_round_end_student: '',
     first_round_end_tutor: '',
+    // 第二轮（导师选择）
     second_round_start: '',
-    second_round_end_student: '',
     second_round_end_tutor: '',
+    // 第三轮（导师选择）
     third_round_start: '',
-    third_round_end_student: '',
     round_3_end_tutor: '',
+    // 补选
     supplementary_start: '',
     supplementary_end: ''
 });
@@ -431,10 +436,12 @@ const advanceRules = {
 };
 
 const targetRoundForAdvance = computed(() => {
-    if (currentRound.value === 0) return 1;
+    if (currentRound.value === 0) return 9;  // 推进到学生预选轮
     if (isIntermediatePhase(currentRound.value)) {
         return getTargetRoundFromIntermediate(currentRound.value);
     }
+    // 如果是学生预选轮(9)，推进到中间阶段(91)
+    if (currentRound.value === 9) return 91;
     return currentRound.value + 1;
 });
 
@@ -445,6 +452,8 @@ const canAdvance = computed(() => {
 
 const advanceButtonText = computed(() => {
     if (currentRound.value === 0) {
+        return '开始学生预选';
+    } else if (currentRound.value === 9) {
         return '开始第一轮';
     } else if (canAdvance.value) {
         return '推进到下一轮';
@@ -455,7 +464,9 @@ const advanceButtonText = computed(() => {
 
 const advanceButtonDesc = computed(() => {
     if (currentRound.value === 0) {
-        return '开始第一轮双选，设置第一轮截止时间';
+        return '开始学生预选阶段，设置学生截止时间';
+    } else if (currentRound.value === 9) {
+        return '结束学生预选，开始第一轮导师选择';
     } else if (canAdvance.value) {
         return `从${getRoundName(currentRound.value)}推进到${getRoundName(targetRoundForAdvance.value)}`;
     } else {
@@ -472,8 +483,12 @@ const advanceDialogTitle = computed(() => {
 
 // 用于进度条显示的步骤
 const displayStep = computed(() => {
-    const actual = getActualRound(currentRound.value);
-    return actual > 0 ? actual - 1 : -1;
+    const round = currentRound.value;
+    if (round === 0) return -1;
+    if (round === 9) return 0;  // 学生预选
+    if (round === 91) return 0; // 学生预选结束
+    if (round >= 1 && round <= 4) return round; // 第一轮到补选
+    return -1;
 });
 
 const extraRoundEnabled = computed({
@@ -484,21 +499,25 @@ const extraRoundEnabled = computed({
 });
 
 const getRoundName = (round) => {
+    if (round === 91) return '学生预选结束';
     if (round === 12) return '第一轮结束';
     if (round === 23) return '第二轮结束';
     if (round === 34) return '第三轮结束';
     const names = ['双选未开始', '第一轮', '第二轮', '第三轮', '补选阶段'];
+    if (round === 9) return '学生预选轮';
     return names[round] || '';
 };
 
 const getRoundType = (round) => {
-    if (round === 12 || round === 23 || round === 34) return 'warning';
+    if (round === 91 || round === 12 || round === 23 || round === 34) return 'warning';
+    if (round === 9) return 'primary';
     const types = ['info', 'primary', 'success', 'warning', 'danger'];
     return types[round] || 'info';
 };
 
 // 获取实际轮次（处理中间阶段值）
 const getActualRound = (round) => {
+    if (round === 91) return 9;
     if (round === 12) return 1;
     if (round === 23) return 2;
     if (round === 34) return 3;
@@ -507,11 +526,12 @@ const getActualRound = (round) => {
 
 // 判断是否为中间阶段
 const isIntermediatePhase = (round) => {
-    return round === 12 || round === 23 || round === 34;
+    return round === 91 || round === 12 || round === 23 || round === 34;
 };
 
 // 从中间阶段值获取目标轮次
 const getTargetRoundFromIntermediate = (round) => {
+    if (round === 91) return 1;
     if (round === 12) return 2;
     if (round === 23) return 3;
     if (round === 34) return 4;

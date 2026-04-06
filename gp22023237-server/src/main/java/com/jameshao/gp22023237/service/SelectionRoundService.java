@@ -10,7 +10,9 @@ public interface SelectionRoundService {
 
     /**
      * 获取当前轮次
-     * @return 当前轮次（0=未开始, 1=第一轮, 2=第二轮, 3=第三轮, 4=补选）
+     * @return 当前轮次（0=未开始, 9=学生预选, 91=学生预选结束,
+     *                  1=第一轮, 12=第一轮结束, 2=第二轮, 23=第二轮结束,
+     *                  3=第三轮, 34=第三轮结束, 4=补选）
      */
     int getCurrentRound();
 
