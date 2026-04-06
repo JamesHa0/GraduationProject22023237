@@ -99,29 +99,16 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     @Override
     public int getCurrentRound() {
         try {
-            // 首先从配置获取
+            // 直接从配置获取
             SystemConfig config = systemConfigService.getConfigByKey(CONFIG_CURRENT_ROUND);
             if (config != null && config.getConfigValue() != null) {
                 int configuredRound = Integer.parseInt(config.getConfigValue());
-
-                // 如果是0（双选未开始），尝试用时间自动判断
-                if (configuredRound == 0) {
-                    LocalDateTime now = LocalDateTime.now();
-                    Integer autoRound = calculateRoundByTime(now);
-                    if (autoRound != null) {
-                        return autoRound;
-                    }
-                    return 0;
-                }
-
-                // 如果已手动设置轮次（>0），直接返回配置的轮次，不做时间自动判断
-                // 手动切换优先级高于时间自动判断
                 return configuredRound;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return 1; // 默认第一轮
+        return 0; // 默认未开始
     }
 
     /**
@@ -273,65 +260,6 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         }
     }
 
-    /**
-     * 根据时间计算当前应该是第几轮
-     */
-    private Integer calculateRoundByTime(LocalDateTime now) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-            // 检查补选结束时间
-            SystemConfig supplementaryEnd = systemConfigService.getConfigByKey(CONFIG_SUPPLEMENTARY_END);
-            if (supplementaryEnd != null && supplementaryEnd.getConfigValue() != null && !supplementaryEnd.getConfigValue().isEmpty()) {
-                LocalDateTime endTime = LocalDateTime.parse(supplementaryEnd.getConfigValue(), formatter);
-                if (now.isAfter(endTime)) {
-                    return null; // 已结束
-                }
-            }
-
-            // 检查补选开始时间
-            SystemConfig supplementaryStart = systemConfigService.getConfigByKey(CONFIG_SUPPLEMENTARY_START);
-            if (supplementaryStart != null && supplementaryStart.getConfigValue() != null && !supplementaryStart.getConfigValue().isEmpty()) {
-                LocalDateTime startTime = LocalDateTime.parse(supplementaryStart.getConfigValue(), formatter);
-                if (now.isAfter(startTime)) {
-                    return 4; // 补选阶段
-                }
-            }
-
-            // 检查第三轮结束时间
-            SystemConfig round3End = systemConfigService.getConfigByKey(CONFIG_ROUND_3_END);
-            if (round3End != null && round3End.getConfigValue() != null && !round3End.getConfigValue().isEmpty()) {
-                LocalDateTime endTime = LocalDateTime.parse(round3End.getConfigValue(), formatter);
-                if (now.isAfter(endTime)) {
-                    return 4; // 进入补选
-                }
-            }
-
-            // 检查第二轮结束时间
-            SystemConfig round2End = systemConfigService.getConfigByKey(CONFIG_SECOND_ROUND_END_TUTOR);
-            if (round2End != null && round2End.getConfigValue() != null && !round2End.getConfigValue().isEmpty()) {
-                LocalDateTime endTime = LocalDateTime.parse(round2End.getConfigValue(), formatter);
-                if (now.isAfter(endTime)) {
-                    return 3; // 第三轮
-                }
-            }
-
-            // 检查第一轮结束时间
-            SystemConfig round1End = systemConfigService.getConfigByKey(CONFIG_FIRST_ROUND_END_TUTOR);
-            if (round1End != null && round1End.getConfigValue() != null && !round1End.getConfigValue().isEmpty()) {
-                LocalDateTime endTime = LocalDateTime.parse(round1End.getConfigValue(), formatter);
-                if (now.isAfter(endTime)) {
-                    return 2; // 第二轮
-                }
-            }
-
-            return 1; // 默认第一轮
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     @Override
     @Transactional
     public boolean switchRound(int targetRound) {
@@ -359,18 +287,18 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         String[] keys = {
                 CONFIG_CURRENT_ROUND,
                 CONFIG_ENABLE_EXTRA_ROUND,
-                // 第一轮
+                // 学生预选轮
+                CONFIG_STUDENT_PRE_START,
+                CONFIG_STUDENT_PRE_END,
+                // 第一轮（导师选择）
                 CONFIG_FIRST_ROUND_START,
-                CONFIG_FIRST_ROUND_END_STUDENT,
                 CONFIG_FIRST_ROUND_END_TUTOR,
-                // 第二轮
+                // 第二轮（导师选择）
                 CONFIG_SECOND_ROUND_START,
-                CONFIG_SECOND_ROUND_END_STUDENT,
                 CONFIG_SECOND_ROUND_END_TUTOR,
-                // 第三轮
+                // 第三轮（导师选择）
                 CONFIG_THIRD_ROUND_START,
-                CONFIG_THIRD_ROUND_END_STUDENT,
-                CONFIG_ROUND_3_END,
+                CONFIG_ROUND_3_END_TUTOR,
                 // 补选
                 CONFIG_SUPPLEMENTARY_START,
                 CONFIG_SUPPLEMENTARY_END
