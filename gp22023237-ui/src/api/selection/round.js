@@ -8,14 +8,6 @@ export function getCurrentRound() {
   })
 }
 
-// 获取最大轮次
-export function getMaxRound() {
-  return request({
-    url: '/selection/round/maxRound',
-    method: 'get'
-  })
-}
-
 // 切换轮次（旧接口，保留兼容）
 export function switchRound(data) {
   return request({
@@ -35,10 +27,11 @@ export function advanceRound(data) {
 }
 
 // 重置双选
-export function resetRounds() {
+export function resetRounds(data) {
   return request({
     url: '/selection/round/reset',
-    method: 'post'
+    method: 'post',
+    data: data
   })
 }
 

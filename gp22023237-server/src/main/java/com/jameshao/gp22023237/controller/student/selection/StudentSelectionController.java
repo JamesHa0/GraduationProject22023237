@@ -68,7 +68,8 @@ public class StudentSelectionController {
             System.out.println("查询学生已选志愿:"+studentId);
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(MentorStudent::getStudentId, studentId)
-                    .eq(MentorStudent::getStudentStatus, 1);
+                    .eq(MentorStudent::getStudentStatus, 1)
+                    .orderByAsc(MentorStudent::getStudentChoiceOrder);
 
             List<MentorStudent> mentorStudents = mentorStudentService.list(queryWrapper);
 

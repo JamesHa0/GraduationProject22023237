@@ -32,9 +32,10 @@ public interface SelectionRoundService {
 
     /**
      * 重置双选
+     * @param maxChoices 学生最大志愿数（1-3）
      * @return 是否成功
      */
-    boolean resetRounds();
+    boolean resetRounds(Integer maxChoices);
 
     /**
      * 切换到指定轮次

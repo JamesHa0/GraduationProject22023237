@@ -183,20 +183,6 @@ public class SelectionRoundController {
     }
 
     /**
-     * 获取最大轮次配置
-     */
-    @GetMapping("/maxRound")
-    public String getMaxRound() {
-        try {
-            int maxRound = selectionRoundService.getMaxRound();
-            return jsonReturn.returnSuccess(maxRound);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    /**
      * 推进到下一轮
      */
     @PostMapping("/advance")
@@ -226,14 +212,23 @@ public class SelectionRoundController {
      * 重置双选
      */
     @PostMapping("/reset")
-    public String resetRounds() {
+    public String resetRounds(@RequestBody(required = false) Map<String, Integer> params) {
         try {
             // 校验是否为轮次管理员
             if (!CurrentUserUtil.isRoundAdmin()) {
                 return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
             }
 
-            boolean success = selectionRoundService.resetRounds();
+            Integer maxChoices = null;
+            if (params != null) {
+                maxChoices = params.get("maxChoices");
+                // 校验范围
+                if (maxChoices != null && (maxChoices < 1 || maxChoices > 3)) {
+                    return jsonReturn.returnError("学生最大志愿数范围：1-3");
+                }
+            }
+
+            boolean success = selectionRoundService.resetRounds(maxChoices);
             if (success) {
                 return jsonReturn.returnSuccess("重置成功");
             } else {

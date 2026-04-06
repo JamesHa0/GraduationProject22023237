@@ -1,9 +1,23 @@
 <template>
     <div class="app-container">
-        <el-alert v-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的“提交所有志愿”按钮" type="info" :closable="false" class="alert-info" show-icon />
+        <el-row class="status-bar">
+            <el-col :span="6">
+                <el-tag type="primary" effect="dark" size="large">
+                    当前：{{ roundName }}
+                </el-tag>
+            </el-col>
+            <el-col :span="6">
+                <el-tag type="danger" effect="plain" size="large">
+                    学生选择截止时间：{{ deadlineTime }}
+                </el-tag>
+            </el-col>
+        </el-row>
+
+        <el-alert v-if="!isStudentSelectRound" title="当前不是学生选择轮次，无法进行志愿选择" type="warning" :closable="false" class="alert-warning" show-icon />
+        <el-alert v-else-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的【提交所有志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
         <el-alert v-else title="您已成功提交志愿，志愿选择已锁定，不可修改" type="success" :closable="false" class="alert-success" show-icon />
 
-        <div class="card-container">
+        <div class="card-container" v-if="isStudentSelectRound">
             <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
                 :class="{ 'card-locked': hasSubmitted }"
                 v-if="maxChoiceCount > 0">
@@ -35,7 +49,7 @@
             </el-card>
         </div>
 
-        <div v-if="!hasSubmitted" class="submit-section">
+        <div v-if="isStudentSelectRound && !hasSubmitted" class="submit-section">
             <el-button type="primary" size="large" :disabled="!canSubmitAll" @click="submitAllChoices">
                 提交所有志愿
             </el-button>
@@ -98,6 +112,7 @@
 import { listMentor as initData, submitBatchSelection, studentChoices } from "@/api/student/selection";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
+import { getCurrentRound } from "@/api/selection/round";
 
 const { proxy } = getCurrentInstance();
 
@@ -108,6 +123,43 @@ const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
 const getChoiceName = (index) => {
     return choiceNames[index] || `第${index + 1}`;
 }
+
+const currentRound = ref(0);
+const roundName = ref('未开始');
+const deadlineTime = ref('未设置');
+
+const getRoundName = (round) => {
+    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 4: '补选阶段' };
+    return names[round] || '未开始';
+};
+
+const isStudentSelectRound = computed(() => {
+    return currentRound.value === 9;
+});
+
+const loadCurrentRound = () => {
+    getCurrentRound().then(response => {
+        currentRound.value = response.data;
+        roundName.value = getRoundName(response.data);
+        if (currentRound.value === 9) {
+            loadDeadlineTime();
+            getList();
+        }
+    }).catch(() => {
+        console.error('获取当前轮次失败');
+    });
+};
+
+const loadDeadlineTime = () => {
+    getConfigKey('student_select_end')
+        .then(response => {
+            deadlineTime.value = response?.data || '未设置';
+        })
+        .catch(error => {
+            console.error('获取截止时间失败:', error);
+            deadlineTime.value = '未设置';
+        });
+};
 
 // 当前选择的志愿（临时状态，未提交）
 const currentChoices = ref([]);
@@ -360,10 +412,19 @@ function resetQuery() {
     handleQuery();
 }
 
-getList();
+loadCurrentRound();
+getMaxChoiceCount();
 </script>
 
 <style scoped>
+.status-bar {
+    margin-bottom: 16px;
+}
+
+.alert-warning {
+    margin-bottom: 20px;
+}
+
 .alert-info {
     margin-bottom: 20px;
 }

@@ -2,7 +2,7 @@
     <div class="app-container">
         <el-row>
             <el-col :span="12">
-                <el-form :model="queryParams" ref="queryRef" :inline="true" @submit.native.prevent>
+                <el-form :model="queryParams" ref="queryRef" :inline="true" @submit.native.prevent">
                     <el-form-item label="查询学生" prop="nursingName">
                         <el-input v-model="queryParams.name" placeholder="请输入要查询的学生姓名" clearable style="width: 200px"
                             @keyup.enter="handleQuery" />
@@ -17,14 +17,14 @@
                     </el-form-item>
                 </el-form>
             </el-col>
-            <el-col :span="4">
+            <el-col :span="3">
                 <el-tag type="primary" effect="dark" size="large">
                     当前：{{ roundName }}
                 </el-tag>
             </el-col>
-            <el-col :span="6">
+            <el-col :span="7">
                 <el-tag type="danger" effect="plain" size="large">
-                    第一轮导师确认截止时间：{{ deadlineTime }}
+                    {{ roundName }}导师确认截止时间：{{ deadlineTime }}
                 </el-tag>
             </el-col>
             <el-col :span="2">
@@ -32,16 +32,12 @@
                     剩余名额：{{ quota - confirmedQuota }}/{{ quota }}
                 </el-tag>
             </el-col>
-            <el-col :span="4">
-                <el-form-item>
-                    <el-button type="primary" icon="switch">切换学生卡片模式</el-button>
-                </el-form-item>
-            </el-col>
         </el-row>
 
+        <el-alert v-if="!isTutorRound" title="当前不是导师选择轮次，无法进行学生确认操作" type="warning" :closable="false" class="alert-warning" show-icon />
 
         <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
-            style="width: 100%;">
+            style="width: 100%;" v-if="isTutorRound">
             <el-table-column label="序号" width="50" type="index" align="center">
                 <template #default="scope">
                     <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
@@ -76,7 +72,7 @@
             </el-table-column>
         </el-table>
 
-        <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
+        <pagination v-show="total > 0 && isTutorRound" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
 
 
 
@@ -125,14 +121,40 @@ const allStudents = ref([]); // 所有学生原始数据
 const deadlineTime = ref(''); // 存储截止时间
 const quota = ref(0); // 导师名额
 const confirmedQuota = ref(0); // 已确认名额
-const currentRound = ref(1); // 当前轮次
-const roundName = ref('第一轮'); // 当前轮次名称
+const currentRound = ref(0); // 当前轮次
+const roundName = ref('未开始'); // 当前轮次名称
 
 const loading = ref(true);
 
 const getRoundName = (round) => {
-    const names = ['', '第一轮', '第二轮', '第三轮', '补选阶段'];
-    return names[round] || '第一轮';
+    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 4: '补选阶段' };
+    return names[round] || '未开始';
+};
+
+const isTutorRound = computed(() => {
+    return [1, 2, 3, 4].includes(currentRound.value);
+});
+
+const getDeadlineConfigKey = (round) => {
+    const keys = { 1: 'first_round_end_tutor', 2: 'second_round_end_tutor', 3: 'third_round_end_tutor', 4: 'supplementary_end' };
+    return keys[round] || '';
+};
+
+const loadDeadlineTime = () => {
+    const configKey = getDeadlineConfigKey(currentRound.value);
+    if (!configKey) {
+        deadlineTime.value = '未设置';
+        return;
+    }
+    getConfigKey(configKey)
+        .then(response => {
+            const value = response?.data;
+            deadlineTime.value = value && value.trim() ? value : '未设置';
+        })
+        .catch(error => {
+            console.error('获取截止时间失败:', error);
+            deadlineTime.value = '未设置';
+        });
 };
 
 const detailVisible = ref(false); // 学生详细信息弹窗显示控制
@@ -150,18 +172,6 @@ const getMentorId = () => getUserInfo('id');
 const getQuota = () => getUserInfo('quota');
 // 获取导师已确认名额
 const getConfirmedQuota = () => getUserInfo('confirmedQuota');
-
-
-// 获取截止时间
-getConfigKey('first_round_end_tutor')
-    .then(response => {
-        deadlineTime.value = response?.data || '未设置';
-    })
-    .catch(error => {
-        proxy.$modal.msgError('获取截止时间失败');
-        console.error('获取截止时间失败:', error);
-        deadlineTime.value = '未设置';
-    });
 
 let queryParams = ref({
     name: undefined,
@@ -301,12 +311,18 @@ function loadCurrentRound() {
     getCurrentRound().then(response => {
         currentRound.value = response.data;
         roundName.value = getRoundName(response.data);
+        if (isTutorRound.value) {
+            loadDeadlineTime();
+            getList();
+        } else {
+            loading.value = false;
+        }
     }).catch(() => {
         console.error('获取当前轮次失败');
+        loading.value = false;
     });
 }
 
-getList(); // 获取导师列表
 loadCurrentRound(); // 获取当前轮次
 
 onMounted(() => {
@@ -316,6 +332,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.alert-warning {
+    margin-bottom: 20px;
+}
+
 .footer {
     margin-top: 20px;
     margin-right: 50px;
