@@ -540,7 +540,7 @@ const getTargetRoundFromIntermediate = (round) => {
 
 // 阶段文本
 const phaseText = computed(() => {
-    const texts = ['未开始', '学生选择中', '导师确认中', '等待推进', '已结束'];
+    const texts = ['未开始', '学生选择中', '导师确认中', '请等待推进', '已结束'];
     return texts[currentPhase.value] || '';
 });
 
