@@ -1,22 +1,31 @@
 package com.jameshao.gp22023237.controller.system;
 
+import com.jameshao.gp22023237.DTO.UserAvatarResponseDTO;
+import com.jameshao.gp22023237.DTO.UserPasswordUpdateDTO;
+import com.jameshao.gp22023237.DTO.UserProfileDTO;
+import com.jameshao.gp22023237.DTO.UserProfileUpdateDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.UserService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/system/user")
 public class SystemUserController {
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final Pattern ILLEGAL_PASSWORD_PATTERN = Pattern.compile("[<>\"'|\\\\]");
 
     @Autowired
     private UserService userService;
@@ -118,6 +127,140 @@ public class SystemUserController {
             user.setUpdateTime(new Date());
             userService.updateById(user);
             return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @GetMapping("/profile")
+    public String profile() {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            UserProfileDTO profileDTO = new UserProfileDTO();
+            profileDTO.setUserId(dbUser.getId());
+            profileDTO.setUsername(dbUser.getUsername());
+            profileDTO.setName(dbUser.getName());
+            profileDTO.setPhone(dbUser.getPhone());
+            profileDTO.setEmail(dbUser.getEmail());
+            profileDTO.setGender(dbUser.getGender());
+            profileDTO.setCreateTime(dbUser.getCreateTime());
+            profileDTO.setAvatar("/profile/avatar/placeholder/" + dbUser.getId());
+            return jsonReturn.returnSuccess(profileDTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PutMapping("/profile")
+    public String updateProfile(@RequestBody UserProfileUpdateDTO updateDTO) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+            if (updateDTO == null) {
+                return jsonReturn.returnFailed("请求参数不能为空");
+            }
+            if (ObjectUtils.isEmpty(updateDTO.getName())) {
+                return jsonReturn.returnFailed("姓名不能为空");
+            }
+            if (ObjectUtils.isEmpty(updateDTO.getPhone()) || !PHONE_PATTERN.matcher(updateDTO.getPhone()).matches()) {
+                return jsonReturn.returnFailed("请输入正确的手机号码");
+            }
+            if (ObjectUtils.isEmpty(updateDTO.getEmail()) || !updateDTO.getEmail().contains("@")) {
+                return jsonReturn.returnFailed("请输入正确的邮箱地址");
+            }
+            Integer gender = updateDTO.getGender();
+            if (gender != null && gender != 1 && gender != 2) {
+                return jsonReturn.returnFailed("性别参数非法");
+            }
+
+            Date now = new Date();
+            boolean updated = userService.updateProfileFields(
+                    dbUser.getId(),
+                    updateDTO.getName(),
+                    updateDTO.getPhone(),
+                    updateDTO.getEmail(),
+                    gender,
+                    now
+            );
+            if (!updated) {
+                return jsonReturn.returnFailed("更新个人资料失败");
+            }
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PutMapping("/profile/updatePwd")
+    public String updatePwd(@RequestBody UserPasswordUpdateDTO passwordDTO) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+            if (passwordDTO == null) {
+                return jsonReturn.returnFailed("请求参数不能为空");
+            }
+            if (ObjectUtils.isEmpty(passwordDTO.getOldPassword()) || ObjectUtils.isEmpty(passwordDTO.getNewPassword())) {
+                return jsonReturn.returnFailed("旧密码和新密码不能为空");
+            }
+            if (!passwordDTO.getOldPassword().equals(dbUser.getPassword())) {
+                return jsonReturn.returnFailed("旧密码错误");
+            }
+            String newPassword = passwordDTO.getNewPassword();
+            if (newPassword.length() < 6 || newPassword.length() > 20 || ILLEGAL_PASSWORD_PATTERN.matcher(newPassword).find()) {
+                return jsonReturn.returnFailed("新密码长度需在6到20之间且不能包含非法字符");
+            }
+            if (newPassword.equals(passwordDTO.getOldPassword())) {
+                return jsonReturn.returnFailed("新密码不能与旧密码相同");
+            }
+
+            boolean updated = userService.updatePassword(dbUser.getId(), newPassword, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("密码更新失败");
+            }
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/profile/avatar")
+    public String uploadAvatar(@RequestParam(value = "avatarfile", required = false) MultipartFile avatarFile) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+            if (avatarFile == null || avatarFile.isEmpty()) {
+                return jsonReturn.returnFailed("头像文件不能为空");
+            }
+
+            UserAvatarResponseDTO responseDTO = new UserAvatarResponseDTO();
+            responseDTO.setImgUrl("/profile/avatar/placeholder/" + loginUser.getId() + "?t=" + System.currentTimeMillis());
+            return jsonReturn.returnSuccess(responseDTO);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

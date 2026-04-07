@@ -67,13 +67,11 @@ service.interceptors.request.use(config => {
   }
   return config
 }, error => {
-  console.log(error)
-  Promise.reject(error)
+  return Promise.reject(error)
 })
 
 // 响应拦截器
 service.interceptors.response.use(res => {
-  console.log('Raw response:', res.data);
 
   // 二进制数据则直接返回
   if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
@@ -125,8 +123,6 @@ service.interceptors.response.use(res => {
       responseData = res.data.msg;
     }
 
-    console.log('Processed responseData:', responseData);
-
     // 检查是否是分页对象结构 { current, pages, records, size, total }
     if (responseData && typeof responseData === 'object' &&
         'current' in responseData && 'records' in responseData) {
@@ -142,7 +138,6 @@ service.interceptors.response.use(res => {
           total: responseData.total
         }
       };
-      console.log('Returning pagination result:', result);
       return Promise.resolve(result);
     }
 
@@ -151,12 +146,10 @@ service.interceptors.response.use(res => {
       data: responseData,
       msg: msg
     };
-    console.log('Returning result:', result);
     return Promise.resolve(result);
   }
 },
   error => {
-    console.log('err' + error)
     let { message } = error;
     if (message == "Network Error") {
       message = "后端接口连接异常";

@@ -48,6 +48,27 @@ export function approveProgressDean(id, status, comment) {
   })
 }
 
+// 中期检查兼容导出（复用论文进展接口）
+export const listMidterm = listProgress
+export const getMidtermDetail = getProgressDetail
+export const submitMidterm = submitProgress
+export const approveMidtermMentor = approveProgressMentor
+export const approveMidtermSecretary = approveProgressSecretary
+export const approveMidtermDean = approveProgressDean
+export const listProposal = listProgress
+export const getProposalDetail = getProgressDetail
+export const submitProposal = submitProgress
+export const approveProposalMentor = approveProgressMentor
+export const approveProposalSecretary = approveProgressSecretary
+export const approveProposalDean = approveProgressDean
+export const listPreDefense = listProgress
+export const getPreDefenseDetail = getProgressDetail
+export const submitPreDefense = submitProgress
+export const recordPreDefenseResult = submitProgress
+export const approvePreDefenseMentor = approveProgressMentor
+export const approvePreDefenseSecretary = approveProgressSecretary
+export const approvePreDefenseDean = approveProgressDean
+
 // 论文答辩相关API
 export function listDefense(params) {
   return request({
