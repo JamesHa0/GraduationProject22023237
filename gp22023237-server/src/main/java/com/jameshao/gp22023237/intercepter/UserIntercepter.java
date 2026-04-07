@@ -46,18 +46,24 @@ public class UserIntercepter implements HandlerInterceptor {
             response.getWriter().write(jsonReturn.returnError(e.getMessage()));
             return false;
         }*/
+        // 前端发送的是大写的Token，需要同时检查大小写
         String token = request.getHeader("token");
+        if (token == null || token.isEmpty()) {
+            token = request.getHeader("Token");
+        }
 
         JSONReturn jsonReturn = new JSONReturn();
 
         if(token == null || token.trim().isEmpty()){   // 401
-            response.getWriter().write(jsonReturn.returnFailed(FLAGS.NO_LOGIN));
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write("{\"code\":401,\"msg\":\"未登录或登录超时，请重新登录！\"}");
             return false;
         }
 
         System.out.println(token);
         if (!redisUtils.hasKey(token)){
-            response.getWriter().write(jsonReturn.returnFailed(FLAGS.LOGIN_OUTOFTINE));
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write("{\"code\":401,\"msg\":\"登录已超时，请重新登录！\"}");
             return false;
         }
 
@@ -66,6 +72,8 @@ public class UserIntercepter implements HandlerInterceptor {
             jwtVerifier.verify(token);
         } catch (JWTVerificationException e){
             e.printStackTrace();
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write("{\"code\":401,\"msg\":\"Token验证失败，请重新登录！\"}");
             return false;
         }
         return true;

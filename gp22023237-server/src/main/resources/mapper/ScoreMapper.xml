@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.ScoreMapper">
+
+    <!-- 查询成绩列表，关联课程、学生和教师信息 -->
+    <select id="listScoreWithDetails" resultType="com.jameshao.gp22023237.DTO.ScoreWithDetailsDTO">
+        SELECT
+            s.id,
+            s.student_id AS studentId,
+            st.student_name AS studentName,
+            st.student_no AS studentNo,
+            s.course_id AS courseId,
+            c.course_no AS courseNo,
+            c.name AS courseName,
+            c.credit,
+            c.hours,
+            c.semester,
+            c.study_nature AS studyNature,
+            t.teacher_name AS teacherName,
+            s.score,
+            s.usual_score AS usualScore,
+            s.exam_score AS examScore,
+            s.total_score AS totalScore,
+            s.usual_weight AS usualWeight,
+            s.exam_weight AS examWeight,
+            s.grade,
+            s.comment,
+            DATE_FORMAT(s.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+        FROM score s
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN student st ON s.student_id = st.id
+        LEFT JOIN teacher t ON c.teacher_id = t.id
+        <where>
+            <if test="studentId != null">
+                AND s.student_id = #{studentId}
+            </if>
+            <if test="courseId != null">
+                AND s.course_id = #{courseId}
+            </if>
+            <if test="grade != null and grade != ''">
+                AND s.grade = #{grade}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+        </where>
+        ORDER BY c.semester DESC, s.update_time DESC
+    </select>
+
+</mapper>

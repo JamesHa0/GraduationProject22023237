@@ -21,7 +21,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     @Autowired
     private ConfigUtil configUtil;
     /**
-     * 获取配置值（先查缓存，缓存没有则查数据库并更新缓存）
+     * 获取配置值（先查缓存，缓存没有或为空则查数据库并更新缓存）
      */
     @Override
     public String getConfigValue(String configKey) {
@@ -33,8 +33,8 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     // 1. 先从缓存获取
     String value = configUtil.getConfigValue(configKey);
 
-    // 2. 缓存未命中则查数据库
-    if (value == null) {
+    // 2. 缓存未命中或为空字符串则查数据库
+    if (value == null || value.isEmpty()) {
         try {
             LambdaQueryWrapper<SystemConfig> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(SystemConfig::getConfigKey, configKey);
@@ -56,6 +56,23 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     return value;
 }
 
+
+    /**
+     * 根据配置键获取完整配置对象
+     */
+    @Override
+    public SystemConfig getConfigByKey(String configKey) {
+        if (configKey == null || configKey.isEmpty()) {
+            return null;
+        }
+        try {
+            LambdaQueryWrapper<SystemConfig> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(SystemConfig::getConfigKey, configKey);
+            return this.getOne(queryWrapper);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /**
      * 更新配置

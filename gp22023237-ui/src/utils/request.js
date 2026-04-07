@@ -73,21 +73,31 @@ service.interceptors.request.use(config => {
 
 // 响应拦截器
 service.interceptors.response.use(res => {
-  // 未设置状态码则默认成功状态
-  const code = res.data.code || 200;
-  // 获取错误信息
-  const msg = errorCode[code] || res.data.msg || errorCode['default']
+  console.log('Raw response:', res.data);
+
   // 二进制数据则直接返回
   if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
     return res.data
   }
+
+  // 兼容两种响应格式
+  // 格式1: { "code": 200, "data": {...}, "msg": "..." }
+  // 格式2: { "result": "success", "data": {...}, "error": "..." }
+  const code = res.data.code || (res.data.result === 'success' || res.data.result === 'success' ? 200 : 500);
+  // 获取错误信息
+  const msg = errorCode[code] || res.data.msg || res.data.error || errorCode['default']
+
   if (code === 401) {
     if (!isRelogin.show) {
       isRelogin.show = true;
+      // 先清除状态，再跳转，避免循环
+      useUserStore().token = '';
+      useUserStore().roles = '';
+      useUserStore().permissions = [];
       ElMessageBox.confirm('登录状态已过期，您可以继续留在该页面，或者重新登录', '系统提示', { confirmButtonText: '重新登录', cancelButtonText: '取消', type: 'warning' }).then(() => {
         isRelogin.show = false;
         useUserStore().logOut().then(() => {
-          location.href = '/index';
+          location.href = '/login';
         })
       }).catch(() => {
         isRelogin.show = false;
@@ -104,7 +114,45 @@ service.interceptors.response.use(res => {
     ElNotification.error({ title: msg })
     return Promise.reject('error')
   } else {
-    return Promise.resolve(res.data)
+    // 统一返回格式
+    // 如果后端返回 { "result": "success", "data": {...} }
+    // 转换为 { "code": 200, "data": {...}, "msg": "..." }
+
+    // 获取正确的 data 字段，兼容不同的返回格式
+    let responseData = res.data.data;
+    // 如果 data 字段不存在，尝试使用 msg 字段（某些旧接口用 msg 返回数据）
+    if (responseData === undefined || responseData === null) {
+      responseData = res.data.msg;
+    }
+
+    console.log('Processed responseData:', responseData);
+
+    // 检查是否是分页对象结构 { current, pages, records, size, total }
+    if (responseData && typeof responseData === 'object' &&
+        'current' in responseData && 'records' in responseData) {
+      // 分页对象，将records作为data返回
+      const result = {
+        code: 200,
+        data: responseData.records || [],
+        msg: msg,
+        pagination: {
+          current: responseData.current,
+          pages: responseData.pages,
+          size: responseData.size,
+          total: responseData.total
+        }
+      };
+      console.log('Returning pagination result:', result);
+      return Promise.resolve(result);
+    }
+
+    const result = {
+      code: 200,
+      data: responseData,
+      msg: msg
+    };
+    console.log('Returning result:', result);
+    return Promise.resolve(result);
   }
 },
   error => {

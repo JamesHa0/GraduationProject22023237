@@ -127,6 +127,7 @@ function filterChildren(childrenMap, lastRouter = false) {
       children.push(el)
     }
   })
+
   return children
 }
 

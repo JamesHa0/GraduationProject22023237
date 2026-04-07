@@ -4,6 +4,8 @@
 /.settings/
 /.vscode/
 /bin/
+/.claude/
+*.bak
 
 .classpath
 .project
@@ -46,3 +48,4 @@ Thumbs.db
 /.mvn/
 /mvnw.cmd
 /mvnw
+sql/

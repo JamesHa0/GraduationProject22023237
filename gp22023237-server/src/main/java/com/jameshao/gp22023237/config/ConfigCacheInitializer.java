@@ -32,8 +32,9 @@ public class ConfigCacheInitializer implements CommandLineRunner {
         List<SystemConfig> configList = systemConfigService.list();
 
         if (configList != null && !configList.isEmpty()) {
-            // 2. 转换为Map便于处理
+            // 2. 转换为Map便于处理，过滤掉configKey或configValue为null的项
             Map<String, String> configMap = configList.stream()
+                    .filter(config -> config.getConfigKey() != null && config.getConfigValue() != null)
                     .collect(Collectors.toMap(
                             SystemConfig::getConfigKey,
                             SystemConfig::getConfigValue

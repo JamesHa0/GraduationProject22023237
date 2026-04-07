@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.MentorChangeApplicationMapper">
+
+    <!-- 查询导师更换申请列表，关联学生和导师信息 -->
+    <select id="listWithDetails" resultType="com.jameshao.gp22023237.DTO.MentorChangeApplicationWithDetailsDTO">
+        SELECT
+            mca.id,
+            mca.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            mca.original_mentor_id AS originalMentorId,
+            ot.teacher_no AS originalMentorNo,
+            ot.teacher_name AS originalMentorName,
+            mca.new_mentor_id AS newMentorId,
+            nt.teacher_no AS newMentorNo,
+            nt.teacher_name AS newMentorName,
+            mca.change_reason AS changeReason,
+            mca.original_mentor_status AS originalMentorStatus,
+            mca.original_mentor_comment AS originalMentorComment,
+            mca.original_mentor_time AS originalMentorTime,
+            mca.new_mentor_status AS newMentorStatus,
+            mca.new_mentor_comment AS newMentorComment,
+            mca.new_mentor_time AS newMentorTime,
+            mca.overall_status AS overallStatus,
+            mca.apply_time AS applyTime,
+            mca.create_time AS createTime,
+            mca.update_time AS updateTime
+        FROM mentor_change_application mca
+        LEFT JOIN student st ON mca.student_id = st.id
+        LEFT JOIN teacher ot ON mca.original_mentor_id = ot.id
+        LEFT JOIN teacher nt ON mca.new_mentor_id = nt.id
+        <where>
+            <if test="studentId != null">
+                AND mca.student_id = #{studentId}
+            </if>
+            <if test="overallStatus != null">
+                AND mca.overall_status = #{overallStatus}
+            </if>
+            <if test="studentNo != null and studentNo != ''">
+                AND st.student_no LIKE CONCAT('%', #{studentNo}, '%')
+            </if>
+            <if test="studentName != null and studentName != ''">
+                AND st.student_name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+        </where>
+        ORDER BY mca.create_time DESC
+    </select>
+
+    <!-- 查询导师更换申请详情，关联学生和导师信息 -->
+    <select id="getDetailWithDetails" resultType="com.jameshao.gp22023237.DTO.MentorChangeApplicationWithDetailsDTO">
+        SELECT
+            mca.id,
+            mca.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            mca.original_mentor_id AS originalMentorId,
+            ot.teacher_no AS originalMentorNo,
+            ot.teacher_name AS originalMentorName,
+            mca.new_mentor_id AS newMentorId,
+            nt.teacher_no AS newMentorNo,
+            nt.teacher_name AS newMentorName,
+            mca.change_reason AS changeReason,
+            mca.original_mentor_status AS originalMentorStatus,
+            mca.original_mentor_comment AS originalMentorComment,
+            mca.original_mentor_time AS originalMentorTime,
+            mca.new_mentor_status AS newMentorStatus,
+            mca.new_mentor_comment AS newMentorComment,
+            mca.new_mentor_time AS newMentorTime,
+            mca.overall_status AS overallStatus,
+            mca.apply_time AS applyTime,
+            mca.create_time AS createTime,
+            mca.update_time AS updateTime
+        FROM mentor_change_application mca
+        LEFT JOIN student st ON mca.student_id = st.id
+        LEFT JOIN teacher ot ON mca.original_mentor_id = ot.id
+        LEFT JOIN teacher nt ON mca.new_mentor_id = nt.id
+        WHERE mca.id = #{id}
+    </select>
+
+</mapper>

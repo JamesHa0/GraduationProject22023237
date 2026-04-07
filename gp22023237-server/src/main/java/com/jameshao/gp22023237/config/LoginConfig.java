@@ -22,6 +22,25 @@ public class LoginConfig extends WebMvcConfigurationSupport {
         // 原因：Redis功能
         InterceptorRegistration interceptorRegistration = registry.addInterceptor(userIntercepter());
         interceptorRegistration.addPathPatterns("/**")
-                .excludePathPatterns("/login", "login");
+                .excludePathPatterns(
+                        "/login",
+                        "/register",
+                        "/captchaImage",
+                        "/webjars/**",
+                        "/favicon.ico",
+                        "/*.html",
+                        "/**/*.html",
+                        "/**/*.css",
+                        "/**/*.js",
+                        "/**/*.png",
+                        "/**/*.jpg",
+                        "/**/*.jpeg",
+                        "/**/*.svg",
+                        "/**/*.ico",
+                        "/",
+                        "/index",
+                        "/401",
+                        "/404"
+                );
     }
 }

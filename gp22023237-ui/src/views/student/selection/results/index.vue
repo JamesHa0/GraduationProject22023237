@@ -1,5 +1,6 @@
 <template>
     <div class="app-container">
+<<<<<<< HEAD
         <div class="card-container">
             <el-card v-for="index in maxChoiceCount" :key="index" class="card-item" shadow="hover"
                 v-if="maxChoiceCount > 0">
@@ -24,36 +25,112 @@
                 </template>
             </el-card>
         </div>
+=======
+        <el-card shadow="never">
+            <template #header>
+                <div class="card-header">
+                    <span class="card-title">双选结果</span>
+                </div>
+            </template>
 
+            <el-table v-loading="loading" :data="resultList" border>
+                <el-table-column label="志愿序号" prop="studentChoiceOrder" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag type="primary">{{ getChoiceName(scope.row.studentChoiceOrder) }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="导师姓名" prop="mentorName" align="center" />
+                <el-table-column label="职称" prop="mentorTitle" align="center" />
+                <el-table-column label="院系" prop="mentorDepartment" align="center" />
+                <el-table-column label="研究领域" prop="mentorResearchField" align="center" show-overflow-tooltip />
+                <el-table-column label="学生状态" prop="studentStatus" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag :type="getStudentStatusType(scope.row.studentStatus)">
+                            {{ getStudentStatusText(scope.row.studentStatus) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="导师状态" prop="teacherStatus" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag :type="getTeacherStatusType(scope.row.teacherStatus)">
+                            {{ getTeacherStatusText(scope.row.teacherStatus) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="最终状态" width="100" align="center">
+                    <template #default="scope">
+                        <el-tag v-if="scope.row.studentStatus === 1 && scope.row.teacherStatus === 1" type="success">
+                            已确认
+                        </el-tag>
+                        <el-tag v-else type="info">待确认</el-tag>
+                    </template>
+                </el-table-column>
+            </el-table>
+
+            <el-empty v-if="!loading && resultList.length === 0" description="暂无双选记录" />
+        </el-card>
+>>>>>>> origin/trae
+
+        <!-- 最终结果展示 -->
+        <el-card class="mt20" shadow="never" v-if="finalResult">
+            <template #header>
+                <div class="card-header">
+                    <span class="card-title">最终确认导师</span>
+                </div>
+            </template>
+            <el-result icon="success" title="双选成功">
+                <template #sub-title>
+                    您已成功选择导师：{{ finalResult.mentorName }}
+                </template>
+                <template #extra>
+                    <el-descriptions :column="2" border style="width: 600px; margin: 0 auto;">
+                        <el-descriptions-item label="导师姓名">{{ finalResult.mentorName }}</el-descriptions-item>
+                        <el-descriptions-item label="职称">{{ finalResult.mentorTitle || '-' }}</el-descriptions-item>
+                        <el-descriptions-item label="院系">{{ finalResult.mentorDepartment || '-' }}</el-descriptions-item>
+                        <el-descriptions-item label="研究领域">{{ finalResult.mentorResearchField || '-' }}</el-descriptions-item>
+                    </el-descriptions>
+                </template>
+            </el-result>
+        </el-card>
     </div>
 </template>
 
 <script setup>
-import { listMentor as initData, submitSelection, studentChoices } from "@/api/student/selection";
+import { studentChoices } from "@/api/student/selection";
 import useUserStore from '@/store/modules/user';
-import { getConfigKey } from '@/api/system/config';
 
 const { proxy } = getCurrentInstance();
 
-const mentorList = ref([]);
-
-const maxChoiceCount = ref(0); // 最大志愿数
-const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
-// 获取第几志愿名称
-const getChoiceName = (index) => {
-    return choiceNames[index] || `第${index + 1}`;
-}
-
-const selectedMentor = ref(null); // 选中的导师
-
 const loading = ref(true);
+const resultList = ref([]);
+const finalResult = ref(null);
 
-const total = ref(0);
-const pageNum = ref(1);
-const pageSize = ref(10);
+const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
 
-// 访问学生信息中的ID
-const studentId = ref(null);
+const getChoiceName = (order) => {
+    return choiceNames[order - 1] || `第${order}`;
+};
+
+const getStudentStatusText = (status) => {
+    const map = { 0: '已放弃', 1: '已提交' };
+    return map[status] || '-';
+};
+
+const getStudentStatusType = (status) => {
+    const map = { 0: 'info', 1: 'success' };
+    return map[status] || 'info';
+};
+
+const getTeacherStatusText = (status) => {
+    const map = { 0: '待处理', 1: '已同意', 2: '已拒绝' };
+    return map[status] || '待处理';
+};
+
+const getTeacherStatusType = (status) => {
+    const map = { 0: 'warning', 1: 'success', 2: 'danger' };
+    return map[status] || 'warning';
+};
+
 const getStudentId = () => {
     const userStore = useUserStore();
     if (userStore.roleInfo && userStore.roleInfo[0]) {
@@ -64,251 +141,42 @@ const getStudentId = () => {
     }
 };
 
-const studentChoicesData = ref([]); // 学生志愿情况
-// 获取第几志愿的导师名称
-const getChoiceMentor = (choiceOrder) => {
-    const choice = studentChoicesData.value.find(item => item.studentChoiceOrder === choiceOrder);
-    return choice ? choice.mentorName : null;
-}
-// 判断第几志愿是否已选择
-const isChoiceSelected = (choiceOrder) => {
-    return studentChoicesData.value.some(item => item.studentChoiceOrder === choiceOrder);
-}
-
-let queryParams = ref({
-    name: undefined
-});
-
-// 判断导师是否已被选择的函数
-const isMentorSelected = (mentorId) => {
-    return studentChoicesData.value.some(choice => choice.mentorId === mentorId);
-};
-// 检查已选择的志愿数量是否达到上限
-const isMaxChoicesReached = () => {
-    return studentChoicesData.value.length >= maxChoiceCount.value;
-};
-// 选中导师函数
-const selectMentor = (row) => {
-    // 检查是否已达到最大选择数
-    if (isMaxChoicesReached()) {
-        proxy.$modal.msgWarning(`已达到最大志愿数 (${maxChoiceCount.value})，无法继续选择`);
-        return;
-    }
-    row.isLoading = true;
-    // 如果已有选中的导师，先取消之前的选择
-    if (selectedMentor.value) {
-        const prevRow = mentorList.value.find(item => item.id === selectedMentor.value);
-        if (prevRow) {
-            prevRow.status = prevRow.remainingQuota > 0 ? 1 : 2;
-        }
-    }
-
-    // 选中新的导师
-    selectedMentor.value = row.id;
-    row.isLoading = false;
-    row.status = 3; // 已选中状态
-    proxy.$modal.msgSuccess("已选中该导师");
-};
-
-// 取消选中函数
-const cancelSelection = () => {
-    if (selectedMentor.value) {
-        const row = mentorList.value.find(item => item.id === selectedMentor.value);
-        if (row) {
-            row.status = row.remainingQuota > 0 ? 1 : 2;
-        }
-        selectedMentor.value = null;
-        proxy.$modal.msgSuccess("已取消选中");
-    }
-};
-
-
-// 查询志愿轮数
-function getMaxChoiceCount() {
-    getConfigKey("student_max_choices").then(response => {
-        // 确保获取到有效值，至少为1
-        maxChoiceCount.value = Math.max(1, parseInt(response.data) || 1);
-        console.log(`获取最大志愿数:`, maxChoiceCount.value);
-    }).catch(() => {
-        // 出错时设置默认值
-        proxy.$modal.msgError('获取最大志愿数失败');
-        maxChoiceCount.value = 0;
-    });
-
-}
-
-/** 查询学生志愿情况 */
-function getStudentChoices() {
-
-    let param = ref({
-        studentId: studentId.value
-    });
-
-    // 返回 Promise 以支持链式调用
-    return studentChoices(param.value).then(response => {
-        console.log(`学生志愿情况：`, response);
-        studentChoicesData.value = response.data || [];
-    }).catch(error => {
-        proxy.$modal.msgError("获取学生志愿情况失败");
-        console.error("获取志愿情况错误:", error);
-        // 即使出错也要返回一个 resolved promise 以保证链式调用继续
-        return Promise.resolve();
-    });
-}
-
-
-/** 查询可选导师列表 */
 function getList() {
     loading.value = true;
-
     const id = getStudentId();
     if (!id) {
-        proxy.$modal.msgError('学生信息尚未加载');
         loading.value = false;
         return;
     }
-    studentId.value = id;
 
-    // 确保先获取学生志愿情况，再获取导师列表
-    getStudentChoices().then(() => {
-        return initData(queryParams.value);
-    }).then(response => {
-        mentorList.value = response.data.map(mentor => {
-            // 检查该导师是否已被选为任何志愿
-            const isAlreadySelected = studentChoicesData.value.some(choice =>
-                choice.mentorId === mentor.id
-            );
-            if (isAlreadySelected) {
-                mentor.status = 3; // 已选择
-            } else if (mentor.remainingQuota > 0) {
-                mentor.status = 1; // 可选
-            } else {
-                mentor.status = 2; // 无剩余名额
-            }
-            return mentor;
-        });
-        console.log(response);
-
-        total.value = response.data.length;
+    studentChoices({ studentId: id }).then(response => {
+        resultList.value = response.data || [];
+        // 查找最终确认的导师
+        finalResult.value = resultList.value.find(
+            item => item.studentStatus === 1 && item.teacherStatus === 1
+        );
         loading.value = false;
-    }).catch(error => {
-        console.error("获取数据失败:", error);
-        proxy.$modal.msgError("获取数据失败");
+    }).catch(() => {
         loading.value = false;
     });
-
-    getMaxChoiceCount(); // 获取最大志愿数
 }
 
-/** 搜索按钮操作 */
-function handleQuery() {
-    pageNum.value = 1;
-    getList();
-}
-
-/** 重置按钮操作 */
-function resetQuery() {
-    proxy.resetForm("queryRef");
-    handleQuery();
-}
-
-
-
-/** 提交按钮操作 */
-function submit(choiceIndex, studentStatus) {
-
-    if (!studentId.value) {
-        proxy.$modal.msgError('学生信息尚未加载')
-        return;
-    }
-
-    if (studentStatus == 1) {
-        if (!selectedMentor.value) {
-            proxy.$modal.msgWarning(`请为第${choiceIndex + 1}志愿选择一位导师`);
-            return;
-        }
-
-        const data = {
-            round: 1,  // 暂定1轮
-            studentChoiceOrder: choiceIndex + 1,
-            studentId: studentId.value,
-            mentorId: selectedMentor.value,
-            studentStatus: studentStatus
-        }
-
-        console.log(`提交的信息:`, data);
-
-        proxy.$modal.confirm(`提交第${choiceIndex + 1}志愿选择`).then(() => {
-            // 提交选中导师 ID
-            submitSelection(data).then(response => {
-                proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿提交成功`);
-
-                selectedMentor.value = null; // 清除选中状态
-
-                getList();
-            }).catch(error => {
-                proxy.$modal.msgError("提交失败");
-                console.error("提交错误:", error);
-            });
-        }).catch(() => { });
-    }
-    else if (studentStatus == 0) {
-        // 获取该志愿对应的已选导师信息
-        const selectedChoice = studentChoicesData.value.find(
-            choice => choice.studentChoiceOrder === choiceIndex + 1
-        );
-
-        proxy.$modal.confirm(`是否放弃已提交的第${choiceIndex + 1}志愿？`).then(() => {
-
-            const data = {
-                round: 1,  // 暂定1轮
-                studentChoiceOrder: choiceIndex + 1,
-                studentId: studentId.value,
-                mentorId: selectedChoice.mentorId,
-                studentStatus: studentStatus
-            }
-            console.log(`放弃信息:`, data);
-
-
-            submitSelection(data).then(response => {
-                proxy.$modal.msgSuccess(`第${choiceIndex + 1}志愿放弃成功`);
-                selectedMentor.value = null; // 清除选中状态
-                getList();
-            }).catch(error => {
-                proxy.$modal.msgError("放弃失败");
-                console.error("放弃错误:", error);
-            });
-        }).catch(() => { });
-    }
-
-}
-
-getList(); // 获取导师列表
+getList();
 </script>
 
 <style scoped>
-.card-container {
+.mt20 {
+    margin-top: 20px;
+}
+
+.card-header {
     display: flex;
     justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+    align-items: center;
 }
 
-.card-item {
-    flex: 1;
-    min-width: 200px;
-}
-
-.card-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.footer {
-    margin-top: 20px;
-    margin-right: 50px;
-    text-align: right
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
 }
 </style>

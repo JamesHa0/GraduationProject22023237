@@ -91,10 +91,17 @@ const useUserStore = defineStore(
             this.token = ''
             this.roles = ''
             this.permissions = []
+            this.roleInfo = null
             removeToken()
             resolve()
           }).catch(error => {
-            reject(error)
+            // 即使退出接口失败，也要清除本地状态
+            this.token = ''
+            this.roles = ''
+            this.permissions = []
+            this.roleInfo = null
+            removeToken()
+            resolve()
           })
         })
       }

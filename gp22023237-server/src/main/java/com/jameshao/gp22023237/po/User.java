@@ -57,7 +57,7 @@ public class User {
     private String phone;
 
     /**
-     * 角色：1-学生，2-教学老师，3-指导教师，4-辅导员，5-管理员
+     * 角色：1-超级管理员，2-分管院长，3-学院学位分委员会主席，4-综合管理员，5-教学秘书，6-学生，7-导师，8-授课教师
      */
     @TableField(value = "role_id")
     private Integer roleId;

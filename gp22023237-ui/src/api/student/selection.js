@@ -27,6 +27,15 @@ export function submitSelection(data) {
     })
 }
 
+// 学生批量提交志愿
+export function submitBatchSelection(data) {
+    return request({
+        url: '/student/selection/batchSubmit',
+        method: 'post',
+        data: data
+    })
+}
+
 // 学生放弃志愿
 export function deselectSelection(data) {
     return request({

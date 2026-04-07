@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.InnovationProjectMapper">
+
+    <resultMap id="InnovationProjectWithDetailsDTOMap" type="com.jameshao.gp22023237.DTO.InnovationProjectWithDetailsDTO">
+        <id property="id" column="id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="studentName" column="student_name"/>
+        <result property="projectType" column="project_type"/>
+        <result property="projectName" column="project_name"/>
+        <result property="projectLevel" column="project_level"/>
+        <result property="projectNo" column="project_no"/>
+        <result property="leader" column="leader"/>
+        <result property="members" column="members"/>
+        <result property="advisor" column="advisor"/>
+        <result property="startDate" column="start_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="description" column="description"/>
+        <result property="achievements" column="achievements"/>
+        <result property="awardLevel" column="award_level"/>
+        <result property="fundingAmount" column="funding_amount"/>
+        <result property="mentorStatus" column="mentor_status"/>
+        <result property="mentorComment" column="mentor_comment"/>
+        <result property="secretaryStatus" column="secretary_status"/>
+        <result property="secretaryComment" column="secretary_comment"/>
+        <result property="deanStatus" column="dean_status"/>
+        <result property="deanComment" column="dean_comment"/>
+        <result property="attachmentPath" column="attachment_path"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="listWithDetails" resultMap="InnovationProjectWithDetailsDTOMap">
+        SELECT
+            ip.*,
+            s.student_no,
+            s.student_name
+        FROM innovation_project ip
+        LEFT JOIN student s ON ip.student_id = s.id
+        <where>
+            <if test="studentId != null">
+                AND ip.student_id = #{studentId}
+            </if>
+            <if test="studentIds != null and studentIds.size() > 0">
+                AND ip.student_id IN
+                <foreach collection="studentIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="projectType != null">
+                AND ip.project_type = #{projectType}
+            </if>
+            <if test="status != null">
+                <choose>
+                    <when test="status == 1">
+                        AND ip.mentor_status = 0
+                    </when>
+                    <when test="status == 2">
+                        AND ip.secretary_status = 0
+                    </when>
+                    <when test="status == 3">
+                        AND ip.dean_status = 0
+                    </when>
+                </choose>
+            </if>
+        </where>
+        ORDER BY ip.submit_time DESC
+    </select>
+
+    <select id="getDetailWithDetails" resultMap="InnovationProjectWithDetailsDTOMap">
+        SELECT
+            ip.*,
+            s.student_no,
+            s.student_name
+        FROM innovation_project ip
+        LEFT JOIN student s ON ip.student_id = s.id
+        WHERE ip.id = #{id}
+    </select>
+
+</mapper>

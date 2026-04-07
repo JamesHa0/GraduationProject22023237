@@ -1,0 +1,15 @@
+package com.jameshao.gp22023237.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.jameshao.gp22023237.po.AcademicActivity;
+
+public interface AcademicActivityService extends IService<AcademicActivity> {
+
+    boolean submitActivity(AcademicActivity activity);
+
+    boolean mentorApprove(Long id, Integer status, String comment);
+
+    boolean secretaryApprove(Long id, Integer status, String comment);
+
+    boolean deanApprove(Long id, Integer status, String comment);
+}

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.StudentStatusChangeMapper">
+
+    <!-- 查询学籍异动列表，关联学生信息 -->
+    <select id="listWithDetails" resultType="com.jameshao.gp22023237.DTO.StudentStatusChangeWithDetailsDTO">
+        SELECT
+            ssc.id,
+            ssc.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            ssc.type AS changeType,
+            ssc.reason,
+            ssc.start_date AS startDate,
+            ssc.end_date AS endDate,
+            ssc.tutor_approval AS mentorStatus,
+            ssc.tutor_id AS mentorId,
+            ssc.tutor_approval_time AS mentorApprovalTime,
+            ssc.counselor_approval AS secretaryStatus,
+            ssc.counselor_id AS secretaryId,
+            ssc.counselor_approval_time AS secretaryApprovalTime,
+            ssc.status,
+            ssc.create_time AS createTime,
+            ssc.update_time AS updateTime
+        FROM student_status_change ssc
+        LEFT JOIN student st ON ssc.student_id = st.id
+        <where>
+            <if test="studentId != null">
+                AND ssc.student_id = #{studentId}
+            </if>
+            <if test="changeType != null">
+                AND ssc.type = #{changeType}
+            </if>
+            <if test="studentNo != null and studentNo != ''">
+                AND st.student_no LIKE CONCAT('%', #{studentNo}, '%')
+            </if>
+            <if test="studentName != null and studentName != ''">
+                AND st.student_name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+        </where>
+        ORDER BY ssc.create_time DESC
+    </select>
+
+    <!-- 查询学籍异动详情，关联学生信息 -->
+    <select id="getDetailWithDetails" resultType="com.jameshao.gp22023237.DTO.StudentStatusChangeWithDetailsDTO">
+        SELECT
+            ssc.id,
+            ssc.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            ssc.type AS changeType,
+            ssc.reason,
+            ssc.start_date AS startDate,
+            ssc.end_date AS endDate,
+            ssc.tutor_approval AS mentorStatus,
+            ssc.tutor_id AS mentorId,
+            ssc.tutor_approval_time AS mentorApprovalTime,
+            ssc.counselor_approval AS secretaryStatus,
+            ssc.counselor_id AS secretaryId,
+            ssc.counselor_approval_time AS secretaryApprovalTime,
+            ssc.status,
+            ssc.create_time AS createTime,
+            ssc.update_time AS updateTime
+        FROM student_status_change ssc
+        LEFT JOIN student st ON ssc.student_id = st.id
+        WHERE ssc.id = #{id}
+    </select>
+
+</mapper>

@@ -32,14 +32,14 @@ public class AuthController {
             //查询信息
             LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(User::getUsername, user.getUsername())
-                    .eq(User::getPassword, user.getPassword()).select(User::getId, User::getName, User::getUsername, User::getRoleId);
+                    .eq(User::getPassword, user.getPassword());
             List<User> users = userService.list(queryWrapper);
 
             if (users != null && !users.isEmpty()){//登录成功
                 //生成Token
                 String token = TokenUtil.createToken();
-                redisUtils.set(token, "token token", 60*60*3);
                 User loginUser = users.get(0);
+                redisUtils.set(token, loginUser, 60*60*3);
                 redisUtils.set(loginUser.getUsername(), loginUser, 60*60*3);
 
                 loginUser.setToken(token);
