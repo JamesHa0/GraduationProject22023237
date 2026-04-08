@@ -14,6 +14,7 @@
         </el-row>
 
         <el-alert v-if="!isStudentSelectRound" title="当前不是学生选择轮次，无法进行志愿选择" type="warning" :closable="false" class="alert-warning" show-icon />
+        <el-alert v-else-if="!canSubmit" title="当前轮次学生选择已截止，无法提交志愿" type="warning" :closable="false" class="alert-warning" show-icon />
         <el-alert v-else-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的【提交所有志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
         <el-alert v-else title="您已成功提交志愿，志愿选择已锁定，不可修改" type="success" :closable="false" class="alert-success" show-icon />
 
@@ -37,10 +38,10 @@
                             已锁定
                         </el-button>
                         <template v-else>
-                            <el-button v-if="currentChoices[index - 1]" text type="danger" icon="Delete" @click="removeChoice(index - 1)">
+                            <el-button v-if="currentChoices[index - 1]" text type="danger" icon="Delete" @click="removeChoice(index - 1)" :disabled="!canSubmit">
                                 移除
                             </el-button>
-                            <el-button v-else type="primary" @click="openMentorSelector(index - 1)">
+                            <el-button v-else type="primary" @click="openMentorSelector(index - 1)" :disabled="!canSubmit">
                                 选择导师
                             </el-button>
                         </template>
@@ -50,10 +51,10 @@
         </div>
 
         <div v-if="isStudentSelectRound && !hasSubmitted" class="submit-section">
-            <el-button type="primary" size="large" :disabled="!canSubmitAll" @click="submitAllChoices">
+            <el-button type="primary" size="large" :disabled="!canSubmit || !canSubmitAll" @click="submitAllChoices">
                 提交所有志愿
             </el-button>
-            <el-button size="large" @click="resetAllChoices">
+            <el-button size="large" @click="resetAllChoices" :disabled="!canSubmit">
                 重置
             </el-button>
         </div>
@@ -96,7 +97,7 @@
                             已选择
                         </el-button>
                         <el-button v-else text type="primary" icon="Plus"
-                            @click="confirmSelectMentor(scope.row)" :disabled="scope.row.status === 2">
+                            @click="confirmSelectMentor(scope.row)" :disabled="scope.row.status === 2 || !canSubmit">
                             选择
                         </el-button>
                     </template>
@@ -112,7 +113,7 @@
 import { listMentor as initData, submitBatchSelection, studentChoices } from "@/api/student/selection";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
-import { getCurrentRound } from "@/api/selection/round";
+import { getCurrentRound, canStudentSelect } from "@/api/selection/round";
 
 const { proxy } = getCurrentInstance();
 
@@ -127,6 +128,7 @@ const getChoiceName = (index) => {
 const currentRound = ref(0);
 const roundName = ref('未开始');
 const deadlineTime = ref('未设置');
+const canSubmit = ref(false);
 
 const getRoundName = (round) => {
     const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 4: '补选阶段' };
@@ -143,7 +145,10 @@ const loadCurrentRound = () => {
         roundName.value = getRoundName(response.data);
         if (currentRound.value === 9) {
             loadDeadlineTime();
+            checkCanSubmit();
             getList();
+        } else {
+            canSubmit.value = false;
         }
     }).catch(() => {
         console.error('获取当前轮次失败');
@@ -216,6 +221,10 @@ let queryParams = ref({
 
 // 打开导师选择对话框
 const openMentorSelector = (choiceIndex) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次学生选择已截止');
+        return;
+    }
     // 如果已提交，不允许选择
     if (hasSubmitted.value) {
         proxy.$modal.msgWarning('已提交志愿，不可修改');
@@ -228,6 +237,10 @@ const openMentorSelector = (choiceIndex) => {
 
 // 确认选择导师
 const confirmSelectMentor = (row) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次学生选择已截止');
+        return;
+    }
     if (hasSubmitted.value) {
         proxy.$modal.msgWarning('已提交志愿，不可修改');
         return;
@@ -239,6 +252,10 @@ const confirmSelectMentor = (row) => {
 
 // 移除某个志愿的选择
 const removeChoice = (choiceIndex) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次学生选择已截止');
+        return;
+    }
     if (hasSubmitted.value) {
         proxy.$modal.msgWarning('已提交志愿，不可修改');
         return;
@@ -248,6 +265,10 @@ const removeChoice = (choiceIndex) => {
 
 // 重置所有选择
 const resetAllChoices = () => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次学生选择已截止');
+        return;
+    }
     if (hasSubmitted.value) {
         proxy.$modal.msgWarning('已提交志愿，不可修改');
         return;
@@ -260,6 +281,10 @@ const resetAllChoices = () => {
 
 // 提交所有志愿
 const submitAllChoices = () => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次学生选择已截止');
+        return;
+    }
     if (hasSubmitted.value) {
         proxy.$modal.msgWarning('您已提交过志愿');
         return;
@@ -313,6 +338,14 @@ function getMaxChoiceCount() {
     }).catch(() => {
         proxy.$modal.msgError('获取最大志愿数失败');
         maxChoiceCount.value = 0;
+    });
+}
+
+function checkCanSubmit() {
+    canStudentSelect().then(response => {
+        canSubmit.value = response.data === true;
+    }).catch(() => {
+        canSubmit.value = false;
     });
 }
 

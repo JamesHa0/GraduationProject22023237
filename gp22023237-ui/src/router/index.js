@@ -85,46 +85,6 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/student/selection',
-    component: Layout,
-    hidden: true,
-    redirect: 'noredirect',
-    children: [
-      {
-        path: 'choices',
-        component: () => import('@/views/student/selection/choices/index'),
-        name: 'selection',
-        meta: { title: '选择导师', icon: 'online' }
-      },
-      {
-        path: 'results',
-        component: () => import('@/views/student/selection/results/index'),
-        name: 'results',
-        meta: { title: '双选结果', icon: 'list' }
-      }
-    ]
-  },
-  {
-    path: '/mentor/selection',
-    component: Layout,
-    hidden: true,
-    redirect: 'noredirect',
-    children: [
-      {
-        path: 'applicants',
-        component: () => import('@/views/mentor/selection/applicants/index'),
-        name: 'applicants',
-        meta: { title: '选择学生', icon: 'online' }
-      },
-      {
-        path: 'confirmed',
-        component: () => import('@/views/mentor/selection/confirmed/index'),
-        name: 'confirmed',
-        meta: { title: '已确认学生', icon: 'list' }
-      }
-    ]
-  },
-  {
     path: '/course',
     component: Layout,
     hidden: true,
