@@ -109,8 +109,8 @@ public class StudentSelectionController {
             System.out.println("学生提交选择:"+mentorStudent);
 
             // 检查是否在学生选择时间内
-            if (!selectionRoundService.canStudentSelect()) {
-                return jsonReturn.returnError("当前不在学生选择时间内，无法提交志愿");
+            if (!selectionRoundService.canSubmitByRole("student")) {
+                return jsonReturn.returnError("当前轮次学生选择已截止或未开始，无法提交志愿");
             }
 
             // 获取用于查询的实际轮次
@@ -207,8 +207,8 @@ public class StudentSelectionController {
             System.out.println("学生批量提交志愿:" + batchDTO);
 
             // 检查是否在学生选择时间内
-            if (!selectionRoundService.canStudentSelect()) {
-                return jsonReturn.returnError("当前不在学生选择时间内，无法提交志愿");
+            if (!selectionRoundService.canSubmitByRole("student")) {
+                return jsonReturn.returnError("当前轮次学生选择已截止或未开始，无法提交志愿");
             }
 
             // 验证参数

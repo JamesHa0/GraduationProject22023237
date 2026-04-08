@@ -562,31 +562,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             if (round != 9) {
                 return false;
             }
-
-            LocalDateTime now = LocalDateTime.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String[] configKeys = ROUND_CONFIG_KEYS.get(9);
-            if (configKeys == null || configKeys.length < 2) {
-                return false;
-            }
-
-            // 检查开始时间
-            String startTimeStr = getConfigValue(configKeys[0]);
-            if (startTimeStr == null || startTimeStr.isEmpty()) {
-                return false;
-            }
-            LocalDateTime startTime = LocalDateTime.parse(startTimeStr, formatter);
-            if (now.isBefore(startTime)) {
-                return false;
-            }
-
-            // 检查学生截止时间
-            String endTimeStr = getConfigValue(configKeys[1]);
-            if (endTimeStr == null || endTimeStr.isEmpty()) {
-                return false;
-            }
-            LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
-            return !now.isAfter(endTime);
+            return isWithinRoundWindow(round);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -610,35 +586,22 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             if (round != 1 && round != 2 && round != 3 && round != 4) {
                 return false;
             }
-
-            LocalDateTime now = LocalDateTime.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String[] configKeys = ROUND_CONFIG_KEYS.get(round);
-            if (configKeys == null || configKeys.length < 2) {
-                return false;
-            }
-
-            // 检查开始时间
-            String startTimeStr = getConfigValue(configKeys[0]);
-            if (startTimeStr == null || startTimeStr.isEmpty()) {
-                return false;
-            }
-            LocalDateTime startTime = LocalDateTime.parse(startTimeStr, formatter);
-            if (now.isBefore(startTime)) {
-                return false;
-            }
-
-            // 检查截止时间
-            String endTimeStr = getConfigValue(configKeys[1]);
-            if (endTimeStr == null || endTimeStr.isEmpty()) {
-                return false;
-            }
-            LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
-            return !now.isAfter(endTime);
+            return isWithinRoundWindow(round);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
+    }
+
+    @Override
+    public boolean canSubmitByRole(String roleType) {
+        if ("student".equalsIgnoreCase(roleType)) {
+            return canStudentSelect();
+        }
+        if ("mentor".equalsIgnoreCase(roleType)) {
+            return canMentorSelect();
+        }
+        return false;
     }
 
     /**
@@ -770,5 +733,33 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     private String getConfigValue(String configKey) {
         SystemConfig config = systemConfigService.getConfigByKey(configKey);
         return config != null ? config.getConfigValue() : null;
+    }
+
+    /**
+     * 校验指定轮次是否在提交时间窗口内（含开始与截止）
+     */
+    private boolean isWithinRoundWindow(int round) {
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String[] configKeys = ROUND_CONFIG_KEYS.get(round);
+        if (configKeys == null || configKeys.length < 2) {
+            return false;
+        }
+
+        String startTimeStr = getConfigValue(configKeys[0]);
+        if (startTimeStr == null || startTimeStr.isEmpty()) {
+            return false;
+        }
+        LocalDateTime startTime = LocalDateTime.parse(startTimeStr, formatter);
+        if (now.isBefore(startTime)) {
+            return false;
+        }
+
+        String endTimeStr = getConfigValue(configKeys[1]);
+        if (endTimeStr == null || endTimeStr.isEmpty()) {
+            return false;
+        }
+        LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
+        return !now.isAfter(endTime);
     }
 }

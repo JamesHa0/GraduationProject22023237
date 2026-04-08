@@ -5,6 +5,7 @@
 /.vscode/
 /bin/
 /.claude/
+/.trae/
 *.bak
 
 .classpath

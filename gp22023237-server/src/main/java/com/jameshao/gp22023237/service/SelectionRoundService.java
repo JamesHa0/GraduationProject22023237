@@ -104,6 +104,13 @@ public interface SelectionRoundService {
     boolean canMentorSelect();
 
     /**
+     * 按角色统一判断是否允许提交双选操作
+     * @param roleType student|mentor
+     * @return true-允许提交，false-不允许提交
+     */
+    boolean canSubmitByRole(String roleType);
+
+    /**
      * 获取当前阶段状态
      * @return 0-未开始，1-学生选择中，2-导师确认中，3-中间状态（等待推进），4-已结束
      */

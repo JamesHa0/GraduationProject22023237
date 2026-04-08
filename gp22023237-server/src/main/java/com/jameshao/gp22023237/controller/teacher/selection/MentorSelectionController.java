@@ -109,8 +109,8 @@ public class MentorSelectionController {
             System.out.println("导师提交选中，接收到的参数: " + mentorStudent);
 
             // 检查是否在导师确认时间内
-            if (!selectionRoundService.canMentorSelect()) {
-                return jsonReturn.returnError("当前不在导师确认时间内，无法操作");
+            if (!selectionRoundService.canSubmitByRole("mentor")) {
+                return jsonReturn.returnError("当前轮次导师确认已截止或未开始，无法操作");
             }
 
             // 获取原始记录以确定是否为确认状态变化

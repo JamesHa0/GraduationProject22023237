@@ -35,6 +35,7 @@
         </el-row>
 
         <el-alert v-if="!isTutorRound" title="当前不是导师选择轮次，无法进行学生确认操作" type="warning" :closable="false" class="alert-warning" show-icon />
+        <el-alert v-else-if="!canSubmit" title="当前轮次导师确认已截止，无法提交操作" type="warning" :closable="false" class="alert-warning" show-icon />
 
         <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
             style="width: 100%;" v-if="isTutorRound">
@@ -54,10 +55,10 @@
                         详细信息
                     </el-button>
                     <template v-if="scope.row.teacherStatus === 0">
-                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)">
+                        <el-button text bg type="primary" icon="Plus" @click="selectStudent(scope.row, 1)" :disabled="!canSubmit">
                             同意
                         </el-button>
-                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)">
+                        <el-button text bg type="danger" icon="Close" @click="selectStudent(scope.row, 2)" :disabled="!canSubmit">
                             拒绝
                         </el-button>
                     </template>
@@ -109,7 +110,7 @@
 import { listStudents as initData, submitSelection } from "@/api/mentor/selection";
 import { listById as getUserById } from '@/api/user/user';
 import { getConfigKey } from "@/api/system/config";
-import { getCurrentRound } from "@/api/selection/round";
+import { getCurrentRound, canMentorSelect } from "@/api/selection/round";
 import { getUserInfo, updateUserData } from '@/utils/userInfo';
 import { onMounted } from "vue";
 
@@ -123,6 +124,7 @@ const quota = ref(0); // 导师名额
 const confirmedQuota = ref(0); // 已确认名额
 const currentRound = ref(0); // 当前轮次
 const roundName = ref('未开始'); // 当前轮次名称
+const canSubmit = ref(false);
 
 const loading = ref(true);
 
@@ -203,6 +205,10 @@ const showDetail = (row) => {
 
 /** 选择学生 */
 const selectStudent = (row, status) => {
+    if (!canSubmit.value) {
+        proxy.$modal.msgWarning('当前轮次导师确认已截止');
+        return;
+    }
     console.log('选择学生，row数据:', row);
     const data = {
         id: row.id,
@@ -313,13 +319,23 @@ function loadCurrentRound() {
         roundName.value = getRoundName(response.data);
         if (isTutorRound.value) {
             loadDeadlineTime();
+            checkCanSubmit();
             getList();
         } else {
+            canSubmit.value = false;
             loading.value = false;
         }
     }).catch(() => {
         console.error('获取当前轮次失败');
         loading.value = false;
+    });
+}
+
+function checkCanSubmit() {
+    canMentorSelect().then(response => {
+        canSubmit.value = response.data === true;
+    }).catch(() => {
+        canSubmit.value = false;
     });
 }
 
