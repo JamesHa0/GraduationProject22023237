@@ -196,6 +196,16 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPause /></el-icon> 截止时间</div>
+                                        <el-button 
+                                            v-if="getActualRound(currentRound) === 9"
+                                            type="primary" 
+                                            link 
+                                            @click="showEditDeadlineDialog(9)" 
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
                                         <div class="time-value" :class="{ empty: !roundConfig.student_select_end }">
                                             {{ roundConfig.student_select_end || '未设置' }}
                                         </div>
@@ -221,6 +231,16 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPause /></el-icon> 导师截止时间</div>
+                                        <el-button 
+                                            v-if="getActualRound(currentRound) === 1"
+                                            type="primary" 
+                                            link 
+                                            @click="showEditDeadlineDialog(1)" 
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
                                         <div class="time-value" :class="{ empty: !roundConfig.first_round_end_tutor }">
                                             {{ roundConfig.first_round_end_tutor || '未设置' }}
                                         </div>
@@ -246,6 +266,16 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPause /></el-icon> 导师截止时间</div>
+                                        <el-button 
+                                            v-if="getActualRound(currentRound) === 2"
+                                            type="primary" 
+                                            link 
+                                            @click="showEditDeadlineDialog(2)" 
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
                                         <div class="time-value" :class="{ empty: !roundConfig.second_round_end_tutor }">
                                             {{ roundConfig.second_round_end_tutor || '未设置' }}
                                         </div>
@@ -271,6 +301,16 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPause /></el-icon> 导师截止时间</div>
+                                        <el-button 
+                                            v-if="getActualRound(currentRound) === 3"
+                                            type="primary" 
+                                            link 
+                                            @click="showEditDeadlineDialog(3)" 
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
                                         <div class="time-value" :class="{ empty: !roundConfig.third_round_end_tutor }">
                                             {{ roundConfig.third_round_end_tutor || '未设置' }}
                                         </div>
@@ -296,6 +336,16 @@
                                     </div>
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPause /></el-icon> 结束时间</div>
+                                        <el-button 
+                                            v-if="getActualRound(currentRound) === 4"
+                                            type="primary" 
+                                            link 
+                                            @click="showEditDeadlineDialog(4)" 
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
                                         <div class="time-value" :class="{ empty: !roundConfig.supplementary_end }">
                                             {{ roundConfig.supplementary_end || '未设置' }}
                                         </div>
@@ -470,13 +520,46 @@
                 </el-button>
             </template>
         </el-dialog>
+
+        <!-- 重设截止时间对话框 -->
+        <el-dialog
+            v-model="editDeadlineDialogVisible"
+            title="重设截止时间"
+            width="450px"
+            :close-on-click-modal="false"
+            destroy-on-close
+        >
+            <el-form :model="editDeadlineForm" :rules="editDeadlineRules" ref="editDeadlineFormRef" label-width="100px">
+                <el-form-item label="当前轮次">
+                    <el-tag :type="getRoundType(editDeadlineForm.round)" size="large">
+                        {{ getRoundName(editDeadlineForm.round) }}
+                    </el-tag>
+                </el-form-item>
+                <el-form-item label="截止时间" prop="deadline">
+                    <el-date-picker
+                        v-model="editDeadlineForm.deadline"
+                        type="datetime"
+                        placeholder="请选择截止时间"
+                        format="YYYY-MM-DD HH:mm:ss"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        style="width: 100%;"
+                    />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="editDeadlineDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="handleEditDeadlineConfirm" :loading="editDeadlineLoading" round>
+                    确认修改
+                </el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
 import { getCurrentRound, getRoundConfig, updateRoundConfig, advanceRejected, getRoundStatistics, advanceRound, resetRounds, getCurrentPhase } from "@/api/selection/round";
 import { useRouter } from 'vue-router';
-import { Timer, Setting, Promotion, Tools, Operation, WarningFilled, RefreshLeft, Right, UserFilled, DocumentChecked, Finished, Clock, VideoPlay, VideoPause, Warning, DataAnalysis, Check, Sort } from '@element-plus/icons-vue';
+import { Timer, Setting, Promotion, Tools, Operation, WarningFilled, RefreshLeft, Right, UserFilled, DocumentChecked, Finished, Clock, VideoPlay, VideoPause, Warning, DataAnalysis, Check, Sort, Edit } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 const router = useRouter();
@@ -491,6 +574,18 @@ const advanceFormRef = ref(null);
 const resetDialogVisible = ref(false);
 const resetFormRef = ref(null);
 const resetLoading = ref(false);
+
+const editDeadlineDialogVisible = ref(false);
+const editDeadlineFormRef = ref(null);
+const editDeadlineLoading = ref(false);
+const editDeadlineForm = ref({
+    round: 0,
+    deadline: ''
+});
+
+const editDeadlineRules = {
+    deadline: [{ required: true, message: '请选择截止时间', trigger: 'change' }]
+};
 
 const resetForm = ref({
     maxChoices: 3
@@ -707,6 +802,19 @@ const showAdvanceDialog = () => {
 const handleAdvanceConfirm = () => {
     advanceFormRef.value.validate(valid => {
         if (valid) {
+            const startTime = advanceForm.value.startTime;
+            const endTime = advanceForm.value.endTimeStudent || advanceForm.value.endTimeTutor;
+            
+            if (endTime && startTime) {
+                const start = new Date(startTime.replace(/-/g, '/'));
+                const end = new Date(endTime.replace(/-/g, '/'));
+                
+                if (end <= start) {
+                    proxy.$modal.msgError('截止时间必须晚于开始时间');
+                    return;
+                }
+            }
+            
             advanceLoading.value = true;
             advanceRound({
                 endTimeStudent: advanceForm.value.endTimeStudent,
@@ -773,6 +881,45 @@ const updateExtraRoundSwitch = () => {
 
 const goToRelationship = () => {
     router.push('/selection/relationship');
+};
+
+const getDeadlineConfigKey = (round) => {
+    const keyMap = {
+        9: 'student_select_end',
+        1: 'first_round_end_tutor',
+        2: 'second_round_end_tutor',
+        3: 'third_round_end_tutor',
+        4: 'supplementary_end'
+    };
+    return keyMap[round] || '';
+};
+
+const showEditDeadlineDialog = (round) => {
+    editDeadlineForm.value.round = round;
+    const configKey = getDeadlineConfigKey(round);
+    editDeadlineForm.value.deadline = roundConfig.value[configKey] || '';
+    editDeadlineDialogVisible.value = true;
+};
+
+const handleEditDeadlineConfirm = () => {
+    editDeadlineFormRef.value.validate(valid => {
+        if (valid) {
+            editDeadlineLoading.value = true;
+            const configKey = getDeadlineConfigKey(editDeadlineForm.value.round);
+            updateRoundConfig({
+                configKey: configKey,
+                configValue: editDeadlineForm.value.deadline
+            }).then(() => {
+                proxy.$modal.msgSuccess('截止时间修改成功');
+                editDeadlineDialogVisible.value = false;
+                loadAllData();
+            }).catch(() => {
+                proxy.$modal.msgError('修改失败');
+            }).finally(() => {
+                editDeadlineLoading.value = false;
+            });
+        }
+    });
 };
 
 onMounted(() => {
@@ -1010,6 +1157,11 @@ onMounted(() => {
 
 .time-item:hover {
     background: #f0f2f5;
+}
+
+.time-item .el-button {
+    flex-shrink: 0;
+    margin-left: 4px;
 }
 
 .time-label {

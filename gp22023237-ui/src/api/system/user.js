@@ -133,3 +133,29 @@ export function deptTreeSelect() {
     method: 'get'
   })
 }
+
+// 上传电子签名（Base64格式）
+export function uploadSignatureBase64(data) {
+  return request({
+    url: '/system/user/profile/signature/base64',
+    method: 'post',
+    data: data
+  })
+}
+
+// 上传电子签名（文件格式）
+export function uploadSignatureFile(data) {
+  return request({
+    url: '/system/user/profile/signature/file',
+    method: 'post',
+    data: data
+  })
+}
+
+// 删除电子签名
+export function deleteSignature() {
+  return request({
+    url: '/system/user/profile/signature',
+    method: 'delete'
+  })
+}

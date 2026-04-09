@@ -11,6 +11,7 @@ import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.UserService;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
+import com.jameshao.gp22023237.utils.QiniuUploadUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,8 @@ public class SystemUserController {
     private UserService userService;
     @Autowired
     private JSONReturn jsonReturn;
+    @Autowired
+    private QiniuUploadUtil qiniuUploadUtil;
 
     @RequestMapping("/list")
     public String list(Integer pageNum, Integer pageSize, String userName, String phonenumber, String status) {
@@ -154,6 +157,7 @@ public class SystemUserController {
             profileDTO.setGender(dbUser.getGender());
             profileDTO.setCreateTime(dbUser.getCreateTime());
             profileDTO.setAvatar("/profile/avatar/placeholder/" + dbUser.getId());
+            profileDTO.setSignature(dbUser.getSignature());
             return jsonReturn.returnSuccess(profileDTO);
         } catch (Exception e) {
             e.printStackTrace();
@@ -261,6 +265,136 @@ public class SystemUserController {
             UserAvatarResponseDTO responseDTO = new UserAvatarResponseDTO();
             responseDTO.setImgUrl("/profile/avatar/placeholder/" + loginUser.getId() + "?t=" + System.currentTimeMillis());
             return jsonReturn.returnSuccess(responseDTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/profile/signature/base64")
+    public String uploadSignatureBase64(@RequestBody Map<String, String> params) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+
+            String base64Data = params.get("signature");
+            if (ObjectUtils.isEmpty(base64Data)) {
+                return jsonReturn.returnFailed("签名数据不能为空");
+            }
+
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
+                try {
+                    qiniuUploadUtil.deleteFile(dbUser.getSignature());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            String signatureUrl = qiniuUploadUtil.uploadBase64Image(base64Data, loginUser.getId());
+
+            boolean updated = userService.updateSignature(loginUser.getId(), signatureUrl, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("签名保存失败");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("signatureUrl", signatureUrl);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/profile/signature/file")
+    public String uploadSignatureFile(@RequestParam("file") MultipartFile file) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+
+            if (file == null || file.isEmpty()) {
+                return jsonReturn.returnFailed("签名文件不能为空");
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return jsonReturn.returnFailed("只能上传图片文件");
+            }
+
+            long maxSize = 2 * 1024 * 1024;
+            if (file.getSize() > maxSize) {
+                return jsonReturn.returnFailed("文件大小不能超过2MB");
+            }
+
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
+                try {
+                    qiniuUploadUtil.deleteFile(dbUser.getSignature());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            String signatureUrl = qiniuUploadUtil.uploadSignatureFile(
+                    file.getBytes(),
+                    file.getOriginalFilename(),
+                    loginUser.getId()
+            );
+
+            boolean updated = userService.updateSignature(loginUser.getId(), signatureUrl, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("签名保存失败");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("signatureUrl", signatureUrl);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/profile/signature")
+    public String deleteSignature() {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
+                try {
+                    qiniuUploadUtil.deleteFile(dbUser.getSignature());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            boolean updated = userService.updateSignature(loginUser.getId(), null, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("签名删除失败");
+            }
+
+            return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

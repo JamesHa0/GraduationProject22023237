@@ -38,6 +38,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 .set(User::getUpdateTime, updateTime);
         return this.update(updateWrapper);
     }
+
+    @Override
+    public boolean updateSignature(Long userId, String signature, Date updateTime) {
+        LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(User::getId, userId)
+                .set(User::getSignature, signature)
+                .set(User::getUpdateTime, updateTime);
+        return this.update(updateWrapper);
+    }
 }
 
 

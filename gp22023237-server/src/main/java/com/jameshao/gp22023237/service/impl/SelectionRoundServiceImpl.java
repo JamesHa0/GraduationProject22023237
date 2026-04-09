@@ -157,6 +157,10 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 return false;
             }
 
+            if (currentRound != 0 && !isIntermediatePhase(currentRound)) {
+                updateCurrentRoundEndTimeIfNeeded(currentRound);
+            }
+
             // 获取目标轮次的配置key
             String[] configKeys = ROUND_CONFIG_KEYS.get(targetRound);
             if (configKeys == null) {
@@ -268,6 +272,27 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             config.setConfigValue(configValue);
             config.setUpdateTime(java.util.Calendar.getInstance().getTime());
             systemConfigService.saveOrUpdate(config);
+        }
+    }
+
+    private void updateCurrentRoundEndTimeIfNeeded(int currentRound) {
+        String[] configKeys = ROUND_CONFIG_KEYS.get(currentRound);
+        if (configKeys == null || configKeys.length < 2) {
+            return;
+        }
+        
+        String endTimeStr = getConfigValue(configKeys[1]);
+        if (endTimeStr == null || endTimeStr.isEmpty()) {
+            return;
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
+        LocalDateTime now = LocalDateTime.now();
+        
+        if (endTime.isAfter(now)) {
+            String nowTime = now.format(formatter);
+            updateConfigValue(configKeys[1], nowTime);
         }
     }
 

@@ -14,4 +14,6 @@ public interface UserService extends IService<User> {
     boolean updateProfileFields(Long userId, String name, String phone, String email, Integer gender, Date updateTime);
 
     boolean updatePassword(Long userId, String newPassword, Date updateTime);
+
+    boolean updateSignature(Long userId, String signature, Date updateTime);
 }
