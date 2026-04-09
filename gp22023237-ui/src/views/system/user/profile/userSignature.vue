@@ -14,15 +14,19 @@
               <p>加载中...</p>
             </div>
             <img 
-              v-else-if="currentSignature" 
+              v-if="currentSignature"
+              v-show="!imageLoading"
               :src="currentSignature" 
               class="signature-image"
               @load="handleImageLoad"
               @error="handleImageError"
             />
-            <div v-else class="no-signature">
+            <div v-if="!imageLoading && !currentSignature" class="no-signature">
               <el-icon :size="60"><Picture /></el-icon>
-              <p>暂无签名</p>
+              <p>{{ imageLoadFailed ? '签名加载失败' : '暂无签名' }}</p>
+              <el-button v-if="imageLoadFailed" type="primary" link @click="retryLoadSignature">
+                刷新页面
+              </el-button>
             </div>
           </div>
         </el-card>
@@ -140,6 +144,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['update-signature'])
+
 const { proxy } = getCurrentInstance()
 
 const currentSignature = ref('')
@@ -151,31 +157,52 @@ const hasDrawn = ref(false)
 const uploadPreview = ref('')
 const uploadFile = ref(null)
 const uploadAction = ref('')
-const imageLoading = ref(false)
+const imageLoading = ref(true)
+const imageLoadFailed = ref(false)
 
 let ctx = null
+let imageLoadTimer = null
+let currentLoadingUrl = ''
 
 onMounted(() => {
   if (props.user && props.user.signature) {
-    imageLoading.value = true
-    const signatureUrl = props.user.signature
-    const timestamp = Date.now()
-    currentSignature.value = signatureUrl.includes('?') 
-      ? `${signatureUrl}&t=${timestamp}` 
-      : `${signatureUrl}?t=${timestamp}`
+    loadSignatureImage(props.user.signature)
   }
 })
 
 watch(() => props.user, (newUser) => {
-  if (newUser && newUser.signature) {
-    imageLoading.value = true
-    const signatureUrl = newUser.signature
-    const timestamp = Date.now()
-    currentSignature.value = signatureUrl.includes('?') 
-      ? `${signatureUrl}&t=${timestamp}` 
-      : `${signatureUrl}?t=${timestamp}`
+  if (newUser && newUser.userId && newUser.signature) {
+    loadSignatureImage(newUser.signature)
+  } else if (newUser && newUser.userId) {
+    imageLoading.value = false
+    currentSignature.value = ''
   }
 }, { immediate: true })
+
+function loadSignatureImage(signatureUrl) {
+  if (!signatureUrl) {
+    currentSignature.value = ''
+    imageLoading.value = false
+    currentLoadingUrl = ''
+    return
+  }
+
+  imageLoading.value = true
+
+  if (imageLoadTimer) {
+    clearTimeout(imageLoadTimer)
+  }
+
+  imageLoadTimer = setTimeout(() => {
+    if (imageLoading.value) {
+      imageLoading.value = false
+    }
+  }, 30000)
+
+  // 七牛云签名URL包含 token，不能添加额外参数，否则签名会失效
+  currentLoadingUrl = signatureUrl
+  currentSignature.value = signatureUrl
+}
 
 function openHandwriteDialog() {
   handwriteDialogVisible.value = true
@@ -282,12 +309,8 @@ async function saveHandwrite() {
     const response = await uploadSignatureBase64({ signature: base64Data })
     
     if (response.code === 200) {
-      imageLoading.value = true
-      const signatureUrl = response.data.signatureUrl
-      const timestamp = Date.now()
-      currentSignature.value = signatureUrl.includes('?') 
-        ? `${signatureUrl}&t=${timestamp}` 
-        : `${signatureUrl}?t=${timestamp}`
+      loadSignatureImage(response.data.signatureUrl)
+      emit('update-signature', response.data.signatureUrl)
       ElMessage.success('手写签名保存成功')
       handwriteDialogVisible.value = false
       clearCanvas()
@@ -340,12 +363,8 @@ async function saveUpload() {
     const response = await uploadSignatureFile(formData)
     
     if (response.code === 200) {
-      imageLoading.value = true
-      const signatureUrl = response.data.signatureUrl
-      const timestamp = Date.now()
-      currentSignature.value = signatureUrl.includes('?') 
-        ? `${signatureUrl}&t=${timestamp}` 
-        : `${signatureUrl}?t=${timestamp}`
+      loadSignatureImage(response.data.signatureUrl)
+      emit('update-signature', response.data.signatureUrl)
       ElMessage.success('签名上传成功')
       uploadDialogVisible.value = false
       clearUpload()
@@ -372,13 +391,43 @@ function handleUploadDialogClosed() {
   clearUpload()
 }
 
-function handleImageLoad() {
+function handleImageLoad(event) {
+  const imgElement = event.target
+  const loadedUrl = imgElement?.src || ''
+  
+  if (loadedUrl !== currentLoadingUrl) {
+    return
+  }
+  
+  if (imageLoadTimer) {
+    clearTimeout(imageLoadTimer)
+    imageLoadTimer = null
+  }
   imageLoading.value = false
+  currentLoadingUrl = ''
 }
 
-function handleImageError() {
+function handleImageError(event) {
+  const imgElement = event.target
+  const failedUrl = imgElement?.src || ''
+
+  if (failedUrl !== currentLoadingUrl) {
+    return
+  }
+
+  if (imageLoadTimer) {
+    clearTimeout(imageLoadTimer)
+    imageLoadTimer = null
+  }
   imageLoading.value = false
-  ElMessage.error('签名图片加载失败')
+  imageLoadFailed.value = true
+  currentSignature.value = ''
+  currentLoadingUrl = ''
+}
+
+function retryLoadSignature() {
+  // 刷新页面重新加载
+  window.location.reload()
 }
 </script>
 

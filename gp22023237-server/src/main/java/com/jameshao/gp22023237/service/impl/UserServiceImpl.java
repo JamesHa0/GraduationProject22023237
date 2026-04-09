@@ -47,6 +47,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 .set(User::getUpdateTime, updateTime);
         return this.update(updateWrapper);
     }
+
+    @Override
+    public boolean updateAvatar(Long userId, String avatar, Date updateTime) {
+        LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(User::getId, userId)
+                .set(User::getAvatar, avatar)
+                .set(User::getUpdateTime, updateTime);
+        return this.update(updateWrapper);
+    }
 }
 
 

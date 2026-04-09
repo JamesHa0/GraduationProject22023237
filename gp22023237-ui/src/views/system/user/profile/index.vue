@@ -31,7 +31,7 @@
                      </li>
                      <li class="list-group-item">
                         <svg-icon icon-class="date" />创建日期
-                        <div class="pull-right">{{ state.user.createTime }}</div>
+                        <div class="pull-right">{{ parseTime(state.user.createTime) }}</div>
                      </li>
                   </ul>
                </div>
@@ -52,7 +52,7 @@
                      <resetPwd />
                   </el-tab-pane>
                   <el-tab-pane label="电子签名" name="signature">
-                     <userSignature :user="state.user" />
+                     <userSignature :user="state.user" @update-signature="handleUpdateSignature" />
                   </el-tab-pane>
                </el-tabs>
             </el-card>
@@ -67,6 +67,7 @@ import userInfo from "./userInfo";
 import resetPwd from "./resetPwd";
 import userSignature from "./userSignature";
 import { getUserProfile } from "@/api/system/user";
+import { parseTime } from "@/utils/ruoyi";
 
 const activeTab = ref("userinfo");
 const state = reactive({
@@ -77,6 +78,10 @@ function getUser() {
   getUserProfile().then(response => {
     state.user = response.data;
   });
+};
+
+function handleUpdateSignature(newSignatureUrl) {
+  state.user.signature = newSignatureUrl;
 };
 
 getUser();

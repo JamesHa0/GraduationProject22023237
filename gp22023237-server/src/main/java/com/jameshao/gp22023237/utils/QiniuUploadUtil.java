@@ -31,6 +31,9 @@ public class QiniuUploadUtil {
     @Value("${qiniu.signature-prefix}")
     private String signaturePrefix;
 
+    @Value("${qiniu.avatar-prefix:asset/avatar/}")
+    private String avatarPrefix;
+
     private Auth auth;
     private UploadManager uploadManager;
     private BucketManager bucketManager;
@@ -76,6 +79,29 @@ public class QiniuUploadUtil {
         return uploadFile(fileData, fileName);
     }
 
+    public String uploadAvatarBase64(String base64Data, Long userId) throws Exception {
+        String base64Image = base64Data;
+        if (base64Data.contains(",")) {
+            base64Image = base64Data.split(",")[1];
+        }
+
+        byte[] data = Base64.getDecoder().decode(base64Image);
+        String fileName = avatarPrefix + "avatar_" + userId + "_" + System.currentTimeMillis() + ".png";
+
+        return uploadFile(data, fileName);
+    }
+
+    public String uploadAvatarFile(byte[] fileData, String originalFilename, Long userId) throws Exception {
+        String extension = ".png";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+
+        String fileName = avatarPrefix + "avatar_" + userId + "_" + System.currentTimeMillis() + extension;
+
+        return uploadFile(fileData, fileName);
+    }
+
     public void deleteFile(String fileUrl) throws Exception {
         if (fileUrl == null || fileUrl.isEmpty()) {
             return;
@@ -91,5 +117,25 @@ public class QiniuUploadUtil {
 
     public String getDomain() {
         return domain;
+    }
+
+    /**
+     * 生成私有签名URL，用于访问私有空间的文件
+     * @param publicUrl 公开访问URL
+     * @param expires 过期时间（秒），默认3600秒
+     * @return 带签名的私有URL
+     */
+    public String getPrivateUrl(String publicUrl, long expires) {
+        if (publicUrl == null || publicUrl.isEmpty()) {
+            return null;
+        }
+        return auth.privateDownloadUrl(publicUrl, expires);
+    }
+
+    /**
+     * 生成私有签名URL，默认1小时过期
+     */
+    public String getPrivateUrl(String publicUrl) {
+        return getPrivateUrl(publicUrl, 3600);
     }
 }

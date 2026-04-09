@@ -156,8 +156,15 @@ public class SystemUserController {
             profileDTO.setEmail(dbUser.getEmail());
             profileDTO.setGender(dbUser.getGender());
             profileDTO.setCreateTime(dbUser.getCreateTime());
-            profileDTO.setAvatar("/profile/avatar/placeholder/" + dbUser.getId());
-            profileDTO.setSignature(dbUser.getSignature());
+            if (!ObjectUtils.isEmpty(dbUser.getAvatar())) {
+                profileDTO.setAvatar(dbUser.getAvatar());
+            } else {
+                profileDTO.setAvatar("/profile/avatar/placeholder/" + dbUser.getId());
+            }
+            // 签名URL需要生成私有签名，否则无法访问
+            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
+                profileDTO.setSignature(qiniuUploadUtil.getPrivateUrl(dbUser.getSignature()));
+            }
             return jsonReturn.returnSuccess(profileDTO);
         } catch (Exception e) {
             e.printStackTrace();
@@ -262,9 +269,85 @@ public class SystemUserController {
                 return jsonReturn.returnFailed("头像文件不能为空");
             }
 
+            String contentType = avatarFile.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return jsonReturn.returnFailed("只能上传图片文件");
+            }
+
+            long maxSize = 2 * 1024 * 1024;
+            if (avatarFile.getSize() > maxSize) {
+                return jsonReturn.returnFailed("文件大小不能超过2MB");
+            }
+
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            if (!ObjectUtils.isEmpty(dbUser.getAvatar())) {
+                try {
+                    qiniuUploadUtil.deleteFile(dbUser.getAvatar());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            String avatarUrl = qiniuUploadUtil.uploadAvatarFile(
+                    avatarFile.getBytes(),
+                    avatarFile.getOriginalFilename(),
+                    loginUser.getId()
+            );
+
+            boolean updated = userService.updateAvatar(loginUser.getId(), avatarUrl, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("头像保存失败");
+            }
+
             UserAvatarResponseDTO responseDTO = new UserAvatarResponseDTO();
-            responseDTO.setImgUrl("/profile/avatar/placeholder/" + loginUser.getId() + "?t=" + System.currentTimeMillis());
+            responseDTO.setImgUrl(avatarUrl);
             return jsonReturn.returnSuccess(responseDTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    @PostMapping("/profile/avatar/base64")
+    public String uploadAvatarBase64(@RequestBody Map<String, String> params) {
+        try {
+            User loginUser = CurrentUserUtil.getCurrentUser();
+            if (loginUser == null || loginUser.getId() == null) {
+                return jsonReturn.returnFailed("未登录或登录状态已失效");
+            }
+
+            String base64Data = params.get("avatar");
+            if (ObjectUtils.isEmpty(base64Data)) {
+                return jsonReturn.returnFailed("头像数据不能为空");
+            }
+
+            User dbUser = userService.getById(loginUser.getId());
+            if (dbUser == null) {
+                return jsonReturn.returnFailed("用户不存在");
+            }
+
+            if (!ObjectUtils.isEmpty(dbUser.getAvatar())) {
+                try {
+                    qiniuUploadUtil.deleteFile(dbUser.getAvatar());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            String avatarUrl = qiniuUploadUtil.uploadAvatarBase64(base64Data, loginUser.getId());
+
+            boolean updated = userService.updateAvatar(loginUser.getId(), avatarUrl, new Date());
+            if (!updated) {
+                return jsonReturn.returnFailed("头像保存失败");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("avatarUrl", avatarUrl);
+            return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
