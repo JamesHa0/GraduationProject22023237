@@ -110,6 +110,13 @@
             <artifactId>jedis</artifactId>
         </dependency>
 
+        <!--七牛云SDK-->
+        <dependency>
+            <groupId>com.qiniu</groupId>
+            <artifactId>qiniu-java-sdk</artifactId>
+            <version>7.15.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -80,6 +80,18 @@ public class User {
     @TableField(value = "update_time")
     private Date updateTime;
 
+    /**
+     * 电子签名图片路径
+     */
+    @TableField(value = "signature")
+    private String signature;
+
+    /**
+     * 用户头像图片路径
+     */
+    @TableField(value = "avatar")
+    private String avatar;
+
     @TableField(exist = false)
     private String token;
 

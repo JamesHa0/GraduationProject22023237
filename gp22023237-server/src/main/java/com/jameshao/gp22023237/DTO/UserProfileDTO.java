@@ -14,4 +14,5 @@ public class UserProfileDTO {
     private Integer gender;
     private Date createTime;
     private String avatar;
+    private String signature;
 }
