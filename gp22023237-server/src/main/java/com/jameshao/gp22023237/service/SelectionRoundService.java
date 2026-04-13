@@ -12,7 +12,7 @@ public interface SelectionRoundService {
      * 获取当前轮次
      * @return 当前轮次（0=未开始, 9=学生预选, 91=学生预选结束,
      *                  1=第一轮, 12=第一轮结束, 2=第二轮, 23=第二轮结束,
-     *                  3=第三轮, 34=第三轮结束, 4=补选）
+     *                  3=第三轮, 34=第三轮结束, 7=补选学生选择, 78=补选学生选择结束, 8=补选导师选择）
      */
     int getCurrentRound();
 
@@ -118,7 +118,21 @@ public interface SelectionRoundService {
 
     /**
      * 获取用于数据库查询的实际轮次（处理中间阶段值）
-     * @return 实际轮次（0,1,2,3,4）
+     * @return 实际轮次（0,9,1,2,3,7,8）
      */
     int getQueryRound();
+
+    /**
+     * 开启补选轮次
+     * @param endTimeStudent 补选学生选择截止时间
+     * @param endTimeTutor 补选导师选择截止时间
+     * @return 是否成功
+     */
+    boolean startSupplementaryRound(String endTimeStudent, String endTimeTutor);
+
+    /**
+     * 标记未确认导师关系的学生为需要补选
+     * @return 标记的学生数量
+     */
+    int markUnmatchedStudentsForSupplementary();
 }

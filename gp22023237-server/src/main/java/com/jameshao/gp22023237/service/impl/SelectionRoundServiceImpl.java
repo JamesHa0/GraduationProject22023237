@@ -54,14 +54,19 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     // 第三轮配置（导师选择）
     private static final String CONFIG_THIRD_ROUND_START = "third_round_start";
     private static final String CONFIG_THIRD_ROUND_END_TUTOR = "third_round_end_tutor";
-    // 补选配置
-    private static final String CONFIG_SUPPLEMENTARY_START = "supplementary_start";
-    private static final String CONFIG_SUPPLEMENTARY_END = "supplementary_end";
+
+    // 补选学生选择轮配置（轮次7）
+    private static final String CONFIG_SUPPLEMENTARY_STUDENT_START = "supplementary_student_start";
+    private static final String CONFIG_SUPPLEMENTARY_STUDENT_END = "supplementary_student_end";
+    // 补选导师选择轮配置（轮次8）
+    private static final String CONFIG_SUPPLEMENTARY_TUTOR_START = "supplementary_tutor_start";
+    private static final String CONFIG_SUPPLEMENTARY_TUTOR_END = "supplementary_tutor_end";
 
     // 轮次配置key映射：轮次号 -> (开始时间key, 截止时间key, 无)
     // 9: 学生选择轮 -> (开始时间, 学生截止时间, null)
     // 1/2/3: 导师轮 -> (开始时间, 导师截止时间, null)
-    // 4: 补选 -> (开始时间, 结束时间, null)
+    // 7: 补选学生选择轮 -> (开始时间, 学生截止时间, null)
+    // 8: 补选导师选择轮 -> (开始时间, 导师截止时间, null)
     private static final java.util.Map<Integer, String[]> ROUND_CONFIG_KEYS = new java.util.HashMap<>();
     static {
         // 学生选择轮：只有学生截止时间
@@ -88,10 +93,16 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             CONFIG_THIRD_ROUND_END_TUTOR,
             null
         });
-        // 补选：只有结束时间
-        ROUND_CONFIG_KEYS.put(4, new String[]{
-            CONFIG_SUPPLEMENTARY_START,
-            CONFIG_SUPPLEMENTARY_END,
+        // 补选学生选择轮：只有学生截止时间
+        ROUND_CONFIG_KEYS.put(7, new String[]{
+            CONFIG_SUPPLEMENTARY_STUDENT_START,
+            CONFIG_SUPPLEMENTARY_STUDENT_END,
+            null
+        });
+        // 补选导师选择轮：只有导师截止时间
+        ROUND_CONFIG_KEYS.put(8, new String[]{
+            CONFIG_SUPPLEMENTARY_TUTOR_START,
+            CONFIG_SUPPLEMENTARY_TUTOR_END,
             null
         });
     }
@@ -152,8 +163,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 targetRound = currentRound + 1;
             }
 
-            // 校验：不能超过最大轮次，且不能超过4轮（只有4轮配置）
-            if (targetRound != 9 && (targetRound > maxRound || targetRound > 4)) {
+            // 校验：不能超过最大轮次，且不能超过8轮（支持到补选导师选择轮）
+            if (targetRound != 9 && targetRound != 7 && targetRound != 8 && (targetRound > maxRound || targetRound > 8)) {
                 return false;
             }
 
@@ -173,14 +184,11 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             updateConfigValue(configKeys[0], nowTime);
 
             // 设置截止时间
-            if (targetRound == 9) {
-                // 学生预选轮：只有学生截止时间
-                updateConfigValue(configKeys[1], endTimeStudent);
-            } else if (targetRound == 4) {
-                // 补选：只有一个结束时间
+            if (targetRound == 9 || targetRound == 7) {
+                // 学生预选轮或补选学生选择轮：只有学生截止时间
                 updateConfigValue(configKeys[1], endTimeStudent);
             } else {
-                // 导师轮(1/2/3)：只有导师截止时间
+                // 导师轮(1/2/3)或补选导师选择轮(8)：只有导师截止时间
                 updateConfigValue(configKeys[1], endTimeTutor);
             }
 
@@ -336,9 +344,12 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 // 第三轮（导师选择）
                 CONFIG_THIRD_ROUND_START,
                 CONFIG_THIRD_ROUND_END_TUTOR,
-                // 补选
-                CONFIG_SUPPLEMENTARY_START,
-                CONFIG_SUPPLEMENTARY_END
+                // 补选学生选择轮
+                CONFIG_SUPPLEMENTARY_STUDENT_START,
+                CONFIG_SUPPLEMENTARY_STUDENT_END,
+                // 补选导师选择轮
+                CONFIG_SUPPLEMENTARY_TUTOR_START,
+                CONFIG_SUPPLEMENTARY_TUTOR_END
         };
         for (String key : keys) {
             SystemConfig c = systemConfigService.getConfigByKey(key);
@@ -495,7 +506,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             MentorStudent ms = new MentorStudent();
             ms.setStudentId(studentId);
             ms.setMentorId(mentorId);
-            ms.setRound(4); // 补选/手动分配轮次
+            ms.setRound(8); // 补选导师选择轮/手动分配轮次
             ms.setStudentChoiceOrder(1);
             ms.setStudentStatus(1);
             ms.setTeacherStatus(1); // 直接设为已同意
@@ -530,8 +541,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         int currentRoundVal = getCurrentRound();
         stats.put("currentRound", currentRoundVal);
 
-        // 统计各轮次的记录数
-        for (int round = 1; round <= 4; round++) {
+        // 统计各轮次的记录数（1-3轮常规，8轮补选导师选择）
+        for (int round : new int[]{1, 2, 3, 8}) {
             LambdaQueryWrapper<MentorStudent> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(MentorStudent::getRound, round)
                     .eq(MentorStudent::getStudentStatus, 1);
@@ -583,8 +594,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 return false;
             }
 
-            // 学生只能在学生预选轮(9)选择导师
-            if (round != 9) {
+            // 学生可以在学生预选轮(9)或补选学生选择轮(7)选择导师
+            if (round != 9 && round != 7) {
                 return false;
             }
             return isWithinRoundWindow(round);
@@ -607,8 +618,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 return false;
             }
 
-            // 导师只能在导师轮(1/2/3)选择学生
-            if (round != 1 && round != 2 && round != 3 && round != 4) {
+            // 导师可以在导师轮(1/2/3)或补选导师选择轮(8)选择学生
+            if (round != 1 && round != 2 && round != 3 && round != 8) {
                 return false;
             }
             return isWithinRoundWindow(round);
@@ -648,8 +659,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 return 0; // 未开始
             }
 
-            // 有效轮次：9(学生预选), 1/2/3(导师轮), 4(补选)
-            if (round != 9 && round != 1 && round != 2 && round != 3 && round != 4) {
+            // 有效轮次：9(学生预选), 1/2/3(导师轮), 7(补选学生选择), 8(补选导师选择)
+            if (round != 9 && round != 1 && round != 2 && round != 3 && round != 7 && round != 8) {
                 return 4; // 已结束或无效值
             }
 
@@ -703,7 +714,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
      * 判断是否为中间阶段值
      */
     private boolean isIntermediatePhase(int round) {
-        return round == 91 || round == 12 || round == 23 || round == 34;
+        return round == 91 || round == 12 || round == 23 || round == 34 || round == 78;
     }
 
     /**
@@ -714,6 +725,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         if (intermediateRound == 12) return 1;
         if (intermediateRound == 23) return 2;
         if (intermediateRound == 34) return 3;
+        if (intermediateRound == 78) return 7;
         return intermediateRound;
     }
 
@@ -725,6 +737,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         if (round == 1) return 12;
         if (round == 2) return 23;
         if (round == 3) return 34;
+        if (round == 7) return 78;
         return round;
     }
 
@@ -735,7 +748,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         if (intermediateRound == 91) return 1;
         if (intermediateRound == 12) return 2;
         if (intermediateRound == 23) return 3;
-        if (intermediateRound == 34) return 4;
+        if (intermediateRound == 34) return 7; // 第三轮结束后进入补选学生选择轮
+        if (intermediateRound == 78) return 8;
         return intermediateRound + 1;
     }
 
@@ -786,5 +800,82 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         }
         LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
         return !now.isAfter(endTime);
+    }
+
+    @Override
+    @Transactional
+    public int markUnmatchedStudentsForSupplementary() {
+        int count = 0;
+        try {
+            // 查询所有提交过志愿的学生
+            LambdaQueryWrapper<MentorStudent> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(MentorStudent::getStudentStatus, 1);
+            wrapper.select(MentorStudent::getStudentId);
+            wrapper.groupBy(MentorStudent::getStudentId);
+            List<MentorStudent> studentChoices = mentorStudentService.list(wrapper);
+
+            // 对每个学生检查是否所有志愿都未被同意
+            for (MentorStudent ms : studentChoices) {
+                Long studentId = ms.getStudentId();
+
+                // 查询该学生的所有志愿
+                LambdaQueryWrapper<MentorStudent> studentWrapper = new LambdaQueryWrapper<>();
+                studentWrapper.eq(MentorStudent::getStudentId, studentId)
+                        .eq(MentorStudent::getStudentStatus, 1);
+                List<MentorStudent> allChoices = mentorStudentService.list(studentWrapper);
+
+                // 检查是否有任何一个志愿被导师同意
+                boolean hasAccepted = false;
+                for (MentorStudent choice : allChoices) {
+                    if (choice.getTeacherStatus() != null && choice.getTeacherStatus() == 1) {
+                        hasAccepted = true;
+                        break;
+                    }
+                }
+
+                // 如果没有任何志愿被同意，则标记为需要补选
+                if (!hasAccepted) {
+                    Student student = studentService.getById(studentId);
+                    if (student != null) {
+                        student.setNeedSupplementary(1);
+                        studentService.updateById(student);
+                        count++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return count;
+    }
+
+    @Override
+    @Transactional
+    public boolean startSupplementaryRound(String endTimeStudent, String endTimeTutor) {
+        try {
+            // 1. 标记需要补选的学生
+            markUnmatchedStudentsForSupplementary();
+
+            // 2. 设置补选学生选择轮（7）的开始时间和结束时间
+            int targetRound = 7;
+            String[] configKeys = ROUND_CONFIG_KEYS.get(targetRound);
+            if (configKeys == null) {
+                return false;
+            }
+
+            // 设置开始时间为当前时间
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String nowTime = LocalDateTime.now().format(formatter);
+            updateConfigValue(configKeys[0], nowTime);
+
+            // 设置学生选择截止时间
+            updateConfigValue(configKeys[1], endTimeStudent);
+
+            // 3. 更新当前轮次为补选学生选择轮（7）
+            return switchRound(targetRound);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

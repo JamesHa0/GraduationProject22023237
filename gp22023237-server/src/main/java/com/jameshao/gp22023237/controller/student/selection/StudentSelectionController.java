@@ -46,8 +46,8 @@ public class StudentSelectionController {
             queryWrapper.like(!ObjectUtils.isEmpty(name),Teacher::getTeacherName, name)
                     .eq(Teacher::getIsMentor, 1);
 
-            // 补选阶段（round=4）时，只显示还有剩余名额的导师
-            if (currentRound == 4) {
+            // 补选阶段（round=7 或 round=8）时，只显示还有剩余名额的导师
+            if (currentRound == 7 || currentRound == 8) {
                 queryWrapper.gt(Teacher::getRemainingQuota, 0);
             } else {
                 queryWrapper.gt(Teacher::getQuota, 0);
@@ -117,8 +117,12 @@ public class StudentSelectionController {
             int currentRound = selectionRoundService.getQueryRound();
             System.out.println("当前轮次: " + currentRound);
 
+            // 补选学生选择轮（7）时，志愿 round 设为 8（补选导师选择轮）
+            if (currentRound == 7) {
+                mentorStudent.setRound(8);
+            }
             // 如果前端没有设置round，使用当前轮次
-            if (mentorStudent.getRound() == null) {
+            else if (mentorStudent.getRound() == null) {
                 mentorStudent.setRound(currentRound);
             }
 
@@ -221,7 +225,13 @@ public class StudentSelectionController {
 
             // 获取当前轮次（这里只是打印，不用于设置round字段）
             int currentRound = selectionRoundService.getCurrentRound();
-            System.out.println("当前轮次: " + currentRound);
+            int queryRound = selectionRoundService.getQueryRound();
+            System.out.println("当前轮次: " + currentRound + ", 查询轮次: " + queryRound);
+
+            // 补选阶段（queryRound == 7）只能提交1个志愿
+            if (queryRound == 7 && batchDTO.getChoices().size() > 1) {
+                return jsonReturn.returnError("补选阶段只能选择1名导师");
+            }
 
             // 检查该学生是否已经提交过志愿
             LambdaQueryWrapper<MentorStudent> checkWrapper = new LambdaQueryWrapper<>();
@@ -259,13 +269,18 @@ public class StudentSelectionController {
                 }
             }
 
-            // 保存所有志愿记录 - 每个志愿的round等于志愿顺序
+            // 保存所有志愿记录 - 每个志愿的round等于志愿顺序，补选阶段设为8
             for (BatchSelectionDTO.ChoiceItem choice : batchDTO.getChoices()) {
                 MentorStudent mentorStudent = new MentorStudent();
                 mentorStudent.setStudentId(batchDTO.getStudentId());
                 mentorStudent.setMentorId(choice.getMentorId());
                 mentorStudent.setStudentChoiceOrder(choice.getStudentChoiceOrder());
-                mentorStudent.setRound(choice.getStudentChoiceOrder()); // 第一志愿round=1，第二round=2...
+                // 补选学生选择轮（7）时，志愿 round 设为 8（补选导师选择轮）
+                if (queryRound == 7) {
+                    mentorStudent.setRound(8);
+                } else {
+                    mentorStudent.setRound(choice.getStudentChoiceOrder()); // 第一志愿round=1，第二round=2...
+                }
                 mentorStudent.setStudentStatus(1);
                 mentorStudent.setTeacherStatus(0);
                 mentorStudent.setSelectionTime(now);

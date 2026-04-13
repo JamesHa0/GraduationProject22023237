@@ -146,7 +146,11 @@ const { proxy } = getCurrentInstance()
 // 硬编码选项
 const configTypeOptions = [
   { label: '系统', value: 'system' },
-  { label: '业务', value: 'business' }
+  { label: '双选', value: 'selection' },
+  { label: '课程', value: 'course' },
+  { label: '学籍', value: 'student' },
+  { label: '学术', value: 'academic' },
+  { label: '学位', value: 'degree' }
 ]
 
 const configList = ref([])
@@ -243,6 +247,7 @@ function handleDelete(row) {
 function handleRefreshCache() {
   refreshCache().then(() => {
     proxy.$modal.msgSuccess('刷新缓存成功')
+    getList()
   })
 }
 

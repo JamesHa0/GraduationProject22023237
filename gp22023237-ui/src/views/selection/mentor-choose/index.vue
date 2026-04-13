@@ -129,16 +129,16 @@ const canSubmit = ref(false);
 const loading = ref(true);
 
 const getRoundName = (round) => {
-    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 4: '补选阶段' };
+    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 8: '补选导师选择' };
     return names[round] || '未开始';
 };
 
 const isTutorRound = computed(() => {
-    return [1, 2, 3, 4].includes(currentRound.value);
+    return [1, 2, 3, 8].includes(currentRound.value);
 });
 
 const getDeadlineConfigKey = (round) => {
-    const keys = { 1: 'first_round_end_tutor', 2: 'second_round_end_tutor', 3: 'third_round_end_tutor', 4: 'supplementary_end' };
+    const keys = { 1: 'first_round_end_tutor', 2: 'second_round_end_tutor', 3: 'third_round_end_tutor', 8: 'supplementary_tutor_end' };
     return keys[round] || '';
 };
 

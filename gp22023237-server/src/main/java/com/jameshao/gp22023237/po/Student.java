@@ -73,6 +73,11 @@ public class Student {
     private Integer status;
 
     /**
+     * 是否需要补选 - 1:是, 0:否
+     */
+    private Integer needSupplementary;
+
+    /**
      * 创建时间 - 记录学生信息创建的时间
      */
     private Date createTime;
