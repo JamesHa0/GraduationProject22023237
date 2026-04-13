@@ -58,6 +58,12 @@
             <if test="mentorId != null">
                 AND ms.mentor_id = #{mentorId}
             </if>
+            <if test="onlyUndetermined != null and onlyUndetermined == true">
+                AND ms.student_id NOT IN (
+                    SELECT DISTINCT student_id FROM mentor_student
+                    WHERE teacher_status = 1 AND student_status = 1
+                )
+            </if>
         </where>
         ORDER BY ms.create_time DESC
     </select>

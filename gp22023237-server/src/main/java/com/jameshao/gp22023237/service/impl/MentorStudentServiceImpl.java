@@ -62,11 +62,11 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
     }
 
     @Override
-    public IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId) {
+    public IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId, Boolean onlyUndetermined) {
         if (!hasViewPermission()) {
             throw new IllegalStateException("您没有查看权限");
         }
-        return baseMapper.pageRelationship(page, studentId, mentorId);
+        return baseMapper.pageRelationship(page, studentId, mentorId, onlyUndetermined);
     }
 
     @Override

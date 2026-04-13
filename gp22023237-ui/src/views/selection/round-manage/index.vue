@@ -36,10 +36,11 @@
                     <div class="progress-wrapper">
                         <el-steps :active="displayStep" finish-status="success" simple align-center>
                             <el-step title="学生选择" icon="UserFilled" />
-                            <el-step title="第一轮" icon="DocumentChecked" />
-                            <el-step title="第二轮" icon="DocumentChecked" />
-                            <el-step title="第三轮" icon="DocumentChecked" />
-                            <el-step title="补选" icon="Finished" />
+                            <el-step :title="getStepLabel(1)" icon="DocumentChecked" />
+                            <el-step :title="getStepLabel(2)" icon="DocumentChecked" />
+                            <el-step :title="getStepLabel(3)" icon="DocumentChecked" />
+                            <el-step title="补选学生选择" icon="UserFilled" />
+                            <el-step title="补选导师选择" icon="DocumentChecked" />
                         </el-steps>
                     </div>
                 </el-col>
@@ -78,28 +79,6 @@
                             {{ advanceButtonText }}
                         </el-button>
                         <div class="action-desc">{{ advanceButtonDesc }}</div>
-                    </div>
-
-                    <el-divider />
-
-                    <!-- 全局开关 -->
-                    <div class="section">
-                        <div class="section-title">
-                            <el-icon><Tools /></el-icon>
-                            全局设置
-                        </div>
-                        <div class="switch-item">
-                            <div class="switch-info">
-                                <span class="switch-label">开启额外轮次</span>
-                                <span class="switch-desc">开启后，落选学生可参与额外轮次</span>
-                            </div>
-                            <el-switch
-                                v-model="extraRoundEnabled"
-                                active-text=""
-                                inactive-text=""
-                                @change="updateExtraRoundSwitch"
-                            />
-                        </div>
                     </div>
 
                     <el-divider />
@@ -218,7 +197,7 @@
                             <template #label>
                                 <span class="tab-label" :class="{ 'is-active': activeTab === '1' }">
                                     <el-icon><DocumentChecked /></el-icon>
-                                    第一轮
+                                    {{ getTabLabel(1) }}
                                 </span>
                             </template>
                             <div class="tab-content">
@@ -253,7 +232,7 @@
                             <template #label>
                                 <span class="tab-label" :class="{ 'is-active': activeTab === '2' }">
                                     <el-icon><DocumentChecked /></el-icon>
-                                    第二轮
+                                    {{ getTabLabel(2) }}
                                 </span>
                             </template>
                             <div class="tab-content">
@@ -288,7 +267,7 @@
                             <template #label>
                                 <span class="tab-label" :class="{ 'is-active': activeTab === '3' }">
                                     <el-icon><DocumentChecked /></el-icon>
-                                    第三轮
+                                    {{ getTabLabel(3) }}
                                 </span>
                             </template>
                             <div class="tab-content">
@@ -319,35 +298,71 @@
                             </div>
                         </el-tab-pane>
 
-                        <el-tab-pane name="4">
+
+                        <el-tab-pane name="7">
                             <template #label>
-                                <span class="tab-label" :class="{ 'is-active': activeTab === '4' }">
-                                    <el-icon><Finished /></el-icon>
-                                    补选阶段
+                                <span class="tab-label" :class="{ 'is-active': activeTab === '7' }">
+                                    <el-icon><UserFilled /></el-icon>
+                                    补选学生选择
                                 </span>
                             </template>
                             <div class="tab-content">
                                 <div class="time-list">
                                     <div class="time-item">
                                         <div class="time-label"><el-icon><VideoPlay /></el-icon> 开始时间</div>
-                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_start }">
-                                            {{ roundConfig.supplementary_start || '未设置' }}
+                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_student_start }">
+                                            {{ roundConfig.supplementary_student_start || '未设置' }}
                                         </div>
                                     </div>
                                     <div class="time-item">
-                                        <div class="time-label"><el-icon><VideoPause /></el-icon> 结束时间</div>
-                                        <el-button 
-                                            v-if="getActualRound(currentRound) === 4"
-                                            type="primary" 
-                                            link 
-                                            @click="showEditDeadlineDialog(4)" 
+                                        <div class="time-label"><el-icon><VideoPause /></el-icon> 学生截止时间</div>
+                                        <el-button
+                                            v-if="getActualRound(currentRound) === 7"
+                                            type="primary"
+                                            link
+                                            @click="showEditDeadlineDialog(7)"
                                             size="small"
                                         >
                                             <el-icon><Edit /></el-icon>
                                             重设
                                         </el-button>
-                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_end }">
-                                            {{ roundConfig.supplementary_end || '未设置' }}
+                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_student_end }">
+                                            {{ roundConfig.supplementary_student_end || '未设置' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </el-tab-pane>
+
+                        <el-tab-pane name="8">
+                            <template #label>
+                                <span class="tab-label" :class="{ 'is-active': activeTab === '8' }">
+                                    <el-icon><DocumentChecked /></el-icon>
+                                    补选导师选择
+                                </span>
+                            </template>
+                            <div class="tab-content">
+                                <div class="time-list">
+                                    <div class="time-item">
+                                        <div class="time-label"><el-icon><VideoPlay /></el-icon> 开始时间</div>
+                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_tutor_start }">
+                                            {{ roundConfig.supplementary_tutor_start || '未设置' }}
+                                        </div>
+                                    </div>
+                                    <div class="time-item">
+                                        <div class="time-label"><el-icon><VideoPause /></el-icon> 导师截止时间</div>
+                                        <el-button
+                                            v-if="getActualRound(currentRound) === 8"
+                                            type="primary"
+                                            link
+                                            @click="showEditDeadlineDialog(8)"
+                                            size="small"
+                                        >
+                                            <el-icon><Edit /></el-icon>
+                                            重设
+                                        </el-button>
+                                        <div class="time-value" :class="{ empty: !roundConfig.supplementary_tutor_end }">
+                                            {{ roundConfig.supplementary_tutor_end || '未设置' }}
                                         </div>
                                     </div>
                                 </div>
@@ -375,7 +390,7 @@
                 </div>
             </template>
             <el-row :gutter="16">
-                <el-col :span="6" v-for="round in 4" :key="round">
+                <el-col :span="6" v-for="round in [1, 2, 3, 8]" :key="round">
                     <div class="round-stats-card" :class="{ 'current-round': getActualRound(currentRound) === round }">
                         <div class="round-stats-header">
                             <span class="round-name">{{ getRoundName(round) }}</span>
@@ -419,7 +434,7 @@
                     <span class="info-label">当前轮次</span>
                     <el-tag :type="getRoundType(currentRound)" size="large">{{ getRoundName(currentRound) }}</el-tag>
                     <el-icon class="arrow"><Right /></el-icon>
-                    <el-tag :type="getRoundType(targetRoundForAdvance === 91 ? 1 : targetRoundForAdvance)" size="large">{{ targetRoundForAdvance === 91 ? '第一轮' : getRoundName(targetRoundForAdvance) }}</el-tag>
+                    <el-tag :type="getRoundType(targetRoundForAdvance)" size="large">{{ getRoundName(targetRoundForAdvance) }}</el-tag>
                 </div>
             </div>
             <el-form :model="advanceForm" :rules="advanceRules" ref="advanceFormRef" label-width="120px">
@@ -445,7 +460,7 @@
                     />
                 </el-form-item>
                 <!-- 从学生选择推进到第一轮：需要设置第一轮的导师截止时间 -->
-                <el-form-item v-if="targetRoundForAdvance === 91" label="导师截止时间" prop="endTimeTutor">
+                <el-form-item v-if="currentRound === 9 && targetRoundForAdvance === 1" label="导师截止时间" prop="endTimeTutor">
                     <el-date-picker
                         v-model="advanceForm.endTimeTutor"
                         type="datetime"
@@ -455,8 +470,8 @@
                         style="width: 100%;"
                     />
                 </el-form-item>
-                <!-- 导师轮(1/2/3)：只有导师截止时间 -->
-                <el-form-item v-if="targetRoundForAdvance >= 1 && targetRoundForAdvance <= 3" label="导师截止时间" prop="endTimeTutor">
+                <!-- 导师轮(1/2/3)：只有导师截止时间（排除从学生选择轮推进到第一轮的情况，因为上面已经有了） -->
+                <el-form-item v-if="targetRoundForAdvance >= 1 && targetRoundForAdvance <= 3 && !(currentRound === 9 && targetRoundForAdvance === 1)" label="导师截止时间" prop="endTimeTutor">
                     <el-date-picker
                         v-model="advanceForm.endTimeTutor"
                         type="datetime"
@@ -466,12 +481,23 @@
                         style="width: 100%;"
                     />
                 </el-form-item>
-                <!-- 补选：只有结束时间 -->
-                <el-form-item v-if="targetRoundForAdvance === 4" label="结束时间" prop="endTimeStudent">
+                <!-- 补选学生选择轮：只有学生截止时间 -->
+                <el-form-item v-if="isLastRegularRound" label="补选学生截止时间" prop="endTimeStudent">
                     <el-date-picker
                         v-model="advanceForm.endTimeStudent"
                         type="datetime"
-                        placeholder="请选择结束时间"
+                        placeholder="请选择补选学生截止时间"
+                        format="YYYY-MM-DD HH:mm:ss"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        style="width: 100%;"
+                    />
+                </el-form-item>
+                <!-- 补选学生选择轮（7）推进到补选导师选择轮（8）：只有导师截止时间 -->
+                <el-form-item v-if="targetRoundForAdvance === 78 || targetRoundForAdvance === 8" label="导师截止时间" prop="endTimeTutor">
+                    <el-date-picker
+                        v-model="advanceForm.endTimeTutor"
+                        type="datetime"
+                        placeholder="请选择补选导师截止时间"
                         format="YYYY-MM-DD HH:mm:ss"
                         value-format="YYYY-MM-DD HH:mm:ss"
                         style="width: 100%;"
@@ -482,7 +508,7 @@
                 <el-button @click="advanceDialogVisible = false">取消</el-button>
                 <el-button type="primary" @click="handleAdvanceConfirm" :loading="advanceLoading" round>
                     <el-icon><Check /></el-icon>
-                    确认推进
+                    {{ isLastRegularRound ? '确认开启补选' : '确认推进' }}
                 </el-button>
             </template>
         </el-dialog>
@@ -557,9 +583,9 @@
 </template>
 
 <script setup>
-import { getCurrentRound, getRoundConfig, updateRoundConfig, advanceRejected, getRoundStatistics, advanceRound, resetRounds, getCurrentPhase } from "@/api/selection/round";
+import { getCurrentRound, getRoundConfig, updateRoundConfig, advanceRejected, getRoundStatistics, advanceRound, resetRounds, getCurrentPhase, startSupplementaryRound } from "@/api/selection/round";
 import { useRouter } from 'vue-router';
-import { Timer, Setting, Promotion, Tools, Operation, WarningFilled, RefreshLeft, Right, UserFilled, DocumentChecked, Finished, Clock, VideoPlay, VideoPause, Warning, DataAnalysis, Check, Sort, Edit } from '@element-plus/icons-vue';
+import { Timer, Setting, Promotion, Operation, WarningFilled, RefreshLeft, Right, UserFilled, DocumentChecked, Clock, VideoPlay, VideoPause, Warning, DataAnalysis, Check, Sort, Edit } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 const router = useRouter();
@@ -609,9 +635,7 @@ const roundConfig = ref({
     second_round_start: '',
     second_round_end_tutor: '',
     third_round_start: '',
-    third_round_end_tutor: '',
-    supplementary_start: '',
-    supplementary_end: ''
+    third_round_end_tutor: ''
 });
 
 const statistics = ref({});
@@ -632,17 +656,37 @@ const targetRoundForAdvance = computed(() => {
     if (isIntermediatePhase(currentRound.value)) {
         return getTargetRoundFromIntermediate(currentRound.value);
     }
-    if (currentRound.value === 9) return 91;
+    if (currentRound.value === 9) return 1;
+    // 如果是最大常规轮次，返回7（补选学生选择轮）
+    if (isLastRegularRound.value) {
+        return 7;
+    }
+    // 如果是补选学生选择轮（7），直接推进到补选导师选择轮（8）
+    if (currentRound.value === 7) return 8;
     return currentRound.value + 1;
 });
 
 const canAdvance = computed(() => {
-    const target = targetRoundForAdvance.value;
-    if (target === 9 || target === 91 || target === 12 || target === 23 || target === 34) {
+    // 如果已经是补选导师选择轮（8），不能再推进
+    if (currentRound.value === 8) {
+        return false;
+    }
+    // 如果是最后一轮常规轮次，允许开启补选
+    if (isLastRegularRound.value) {
         return true;
     }
+    // 如果当前已经是中间阶段，允许推进
+    if (isIntermediatePhase(currentRound.value)) {
+        return true;
+    }
+    const target = targetRoundForAdvance.value;
     const maxRound = parseInt(roundConfig.value.student_max_choices) || 3;
-    return target <= maxRound && target <= 4;
+    return target === 9 || target === 1 || (target >= 1 && target <= maxRound) || target === 7 || target === 8;
+});
+
+const isLastRegularRound = computed(() => {
+    const maxRound = parseInt(roundConfig.value.student_max_choices) || 3;
+    return currentRound.value === maxRound;
 });
 
 const advanceButtonText = computed(() => {
@@ -650,6 +694,8 @@ const advanceButtonText = computed(() => {
         return '开始学生选择';
     } else if (currentRound.value === 9) {
         return '开始第一轮';
+    } else if (isLastRegularRound.value) {
+        return '开启补选';
     } else if (canAdvance.value) {
         return '推进到下一轮';
     } else {
@@ -662,6 +708,8 @@ const advanceButtonDesc = computed(() => {
         return '开始学生选择阶段，设置学生截止时间';
     } else if (currentRound.value === 9) {
         return '结束学生选择，开始第一轮导师选择';
+    } else if (isLastRegularRound.value) {
+        return '开启补选阶段，将标记未匹配学生进入补选';
     } else if (canAdvance.value) {
         return `从${getRoundName(currentRound.value)}推进到${getRoundName(targetRoundForAdvance.value)}`;
     } else {
@@ -673,7 +721,7 @@ const advanceDialogTitle = computed(() => {
     if (currentRound.value === 0) {
         return '开始学生选择';
     }
-    if (currentRound.value === 9 && targetRoundForAdvance.value === 91) {
+    if (currentRound.value === 9 && targetRoundForAdvance.value === 1) {
         return '从学生选择轮推进到第一轮';
     }
     return `推进到${getRoundName(targetRoundForAdvance.value)}`;
@@ -684,31 +732,53 @@ const displayStep = computed(() => {
     if (round === 0) return -1;
     if (round === 9) return 0;
     if (round === 91) return 0;
-    if (round >= 1 && round <= 4) return round;
+    if (round >= 1 && round <= 3) return round;
+    if (round === 7 || round === 78) return 4;
+    if (round === 8) return 5;
     return -1;
 });
 
-const extraRoundEnabled = computed({
-    get: () => roundConfig.value.enable_extra_round === 'true',
-    set: (val) => {
-        roundConfig.value.enable_extra_round = val ? 'true' : 'false';
-    }
-});
-
 const getRoundName = (round) => {
+    const maxRound = parseInt(roundConfig.value.student_max_choices) || 3;
     if (round === 91) return '学生选择结束';
     if (round === 12) return '第一轮结束';
-    if (round === 23) return '第二轮结束';
-    if (round === 34) return '第三轮结束';
-    const names = ['双选未开始', '第一轮', '第二轮', '第三轮', '补选阶段'];
+    if (round === 23) return maxRound < 2 ? '第二轮结束(未启用)' : '第二轮结束';
+    if (round === 34) return maxRound < 3 ? '第三轮结束(未启用)' : '第三轮结束';
+    if (round === 78) return '补选学生选择结束';
+    if (round === 7) return '补选学生选择轮';
+    if (round === 8) return '补选导师选择轮';
+    const names = [
+        '双选未开始',
+        '第一轮',
+        maxRound < 2 ? '第二轮(未启用)' : '第二轮',
+        maxRound < 3 ? '第三轮(未启用)' : '第三轮'
+    ];
     if (round === 9) return '学生选择轮';
     return names[round] || '';
 };
 
+const getTabLabel = (round) => {
+    const maxRound = parseInt(roundConfig.value.student_max_choices) || 3;
+    if (round === 1) return '第一轮';
+    if (round === 2) return maxRound < 2 ? '第二轮(未启用)' : '第二轮';
+    if (round === 3) return maxRound < 3 ? '第三轮(未启用)' : '第三轮';
+    if (round === 7) return '补选学生选择';
+    if (round === 8) return '补选导师选择';
+    return '';
+};
+
+const getStepLabel = (round) => {
+    const maxRound = parseInt(roundConfig.value.student_max_choices) || 3;
+    if (round === 1) return '第一轮';
+    if (round === 2) return maxRound < 2 ? '第二轮(未启用)' : '第二轮';
+    if (round === 3) return maxRound < 3 ? '第三轮(未启用)' : '第三轮';
+    return '';
+};
+
 const getRoundType = (round) => {
-    if (round === 91 || round === 12 || round === 23 || round === 34) return 'warning';
-    if (round === 9) return 'primary';
-    const types = ['info', 'primary', 'success', 'warning', 'danger'];
+    if (round === 91 || round === 12 || round === 23 || round === 34 || round === 78) return 'warning';
+    if (round === 9 || round === 7) return 'primary';
+    const types = ['info', 'primary', 'success', 'warning', 'danger', 'danger', 'danger', 'primary', 'success'];
     return types[round] || 'info';
 };
 
@@ -717,18 +787,20 @@ const getActualRound = (round) => {
     if (round === 12) return 1;
     if (round === 23) return 2;
     if (round === 34) return 3;
+    if (round === 78) return 7;
     return round;
 };
 
 const isIntermediatePhase = (round) => {
-    return round === 91 || round === 12 || round === 23 || round === 34;
+    return round === 91 || round === 12 || round === 23 || round === 34 || round === 78;
 };
 
 const getTargetRoundFromIntermediate = (round) => {
     if (round === 91) return 1;
     if (round === 12) return 2;
     if (round === 23) return 3;
-    if (round === 34) return 4;
+    if (round === 34) return 7;
+    if (round === 78) return 8;
     return round + 1;
 };
 
@@ -751,8 +823,12 @@ const loadCurrentRound = () => {
         currentRound.value = round;
         if (round === 9 || round === 91) {
             activeTab.value = '9';
-        } else if (round >= 1 && round <= 4) {
+        } else if (round >= 1 && round <= 3) {
             activeTab.value = String(round);
+        } else if (round === 7 || round === 78) {
+            activeTab.value = '7';
+        } else if (round === 8) {
+            activeTab.value = '8';
         }
     }).catch(() => {
         proxy.$modal.msgError('获取当前轮次失败');
@@ -804,32 +880,60 @@ const handleAdvanceConfirm = () => {
         if (valid) {
             const startTime = advanceForm.value.startTime;
             const endTime = advanceForm.value.endTimeStudent || advanceForm.value.endTimeTutor;
-            
+
             if (endTime && startTime) {
                 const start = new Date(startTime.replace(/-/g, '/'));
                 const end = new Date(endTime.replace(/-/g, '/'));
-                
+
                 if (end <= start) {
                     proxy.$modal.msgError('截止时间必须晚于开始时间');
                     return;
                 }
             }
-            
-            advanceLoading.value = true;
-            advanceRound({
-                endTimeStudent: advanceForm.value.endTimeStudent,
-                endTimeTutor: advanceForm.value.endTimeTutor
-            }).then(() => {
-                proxy.$modal.msgSuccess('推进成功');
-                advanceDialogVisible.value = false;
-                loadAllData();
-            }).catch(() => {
-                proxy.$modal.msgError('推进失败');
-            }).finally(() => {
-                advanceLoading.value = false;
-            });
+
+            // 如果是最后一轮常规轮次，调用开启补选接口
+            if (isLastRegularRound.value) {
+                handleStartSupplementary();
+            } else {
+                // 否则调用普通推进接口
+                handleNormalAdvance();
+            }
         }
     });
+};
+
+const handleNormalAdvance = () => {
+    advanceLoading.value = true;
+    advanceRound({
+        endTimeStudent: advanceForm.value.endTimeStudent,
+        endTimeTutor: advanceForm.value.endTimeTutor
+    }).then(() => {
+        proxy.$modal.msgSuccess('推进成功');
+        advanceDialogVisible.value = false;
+        loadAllData();
+    }).catch(() => {
+        proxy.$modal.msgError('推进失败');
+    }).finally(() => {
+        advanceLoading.value = false;
+    });
+};
+
+const handleStartSupplementary = () => {
+    proxy.$modal.confirm('确定要开启补选吗？开启后，所有未确认导师关系的学生将被标记为需要补选，进入补选阶段。').then(() => {
+        advanceLoading.value = true;
+        startSupplementaryRound({
+            endTimeStudent: advanceForm.value.endTimeStudent,
+            endTimeTutor: advanceForm.value.endTimeTutor
+        }).then(() => {
+            proxy.$modal.msgSuccess('开启补选成功');
+            advanceDialogVisible.value = false;
+            loadAllData();
+        }).catch(() => {
+            proxy.$modal.msgError('开启补选失败');
+        }).finally(() => {
+            advanceLoading.value = false;
+        });
+    }).catch(() => {});
 };
 
 const showResetConfirm = () => {
@@ -868,19 +972,8 @@ const handleAdvanceRejected = () => {
     }).catch(() => {});
 };
 
-const updateExtraRoundSwitch = () => {
-    updateRoundConfig({
-        configKey: 'enable_extra_round',
-        configValue: roundConfig.value.enable_extra_round
-    }).then(() => {
-        proxy.$modal.msgSuccess('配置更新成功');
-    }).catch(() => {
-        proxy.$modal.msgError('配置更新失败');
-    });
-};
-
 const goToRelationship = () => {
-    router.push('/selection/relationship');
+    router.push({ path: '/selection/relationship', query: { onlyUndetermined: 'true' } });
 };
 
 const getDeadlineConfigKey = (round) => {
@@ -889,7 +982,8 @@ const getDeadlineConfigKey = (round) => {
         1: 'first_round_end_tutor',
         2: 'second_round_end_tutor',
         3: 'third_round_end_tutor',
-        4: 'supplementary_end'
+        7: 'supplementary_student_end',
+        8: 'supplementary_tutor_end'
     };
     return keyMap[round] || '';
 };

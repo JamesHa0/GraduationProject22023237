@@ -36,10 +36,11 @@ public class MentorStudentRelationshipController {
     public String list(@RequestParam(defaultValue = "1") Integer pageNum,
                        @RequestParam(defaultValue = "10") Integer pageSize,
                        @RequestParam(required = false) Long studentId,
-                       @RequestParam(required = false) Long mentorId) {
+                       @RequestParam(required = false) Long mentorId,
+                       @RequestParam(required = false) Boolean onlyUndetermined) {
         try {
             Page<Map<String, Object>> page = new Page<>(pageNum, pageSize);
-            IPage<Map<String, Object>> result = mentorStudentService.pageRelationship(page, studentId, mentorId);
+            IPage<Map<String, Object>> result = mentorStudentService.pageRelationship(page, studentId, mentorId, onlyUndetermined);
             return jsonReturn.returnSuccess(result);
         } catch (IllegalStateException e) {
             return jsonReturn.returnError(e.getMessage());

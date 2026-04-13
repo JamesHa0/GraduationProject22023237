@@ -20,6 +20,9 @@
                     <el-input v-model="queryForm.teacherName" placeholder="请输入导师姓名" clearable style="width: 200px" />
                 </el-form-item>
                 <el-form-item>
+                    <el-checkbox v-model="queryForm.onlyUndetermined" @change="handleSearch">只查看未确定的学生</el-checkbox>
+                </el-form-item>
+                <el-form-item>
                     <el-button type="primary" @click="handleSearch" icon="Search">搜索</el-button>
                     <el-button @click="handleReset" icon="RefreshRight">重置</el-button>
                 </el-form-item>
@@ -136,9 +139,11 @@
 <script setup>
 import { listRelationship, createRelationship, updateRelationship, deleteRelationship, listStudents, listMentors } from "@/api/selection/relationship";
 import useUserStore from '@/store/modules/user';
+import { useRoute } from 'vue-router';
 
 const { proxy } = getCurrentInstance();
 const userStore = useUserStore();
+const route = useRoute();
 
 const loading = ref(false);
 const submitLoading = ref(false);
@@ -155,7 +160,8 @@ const queryForm = ref({
     pageNum: 1,
     pageSize: 10,
     studentName: '',
-    teacherName: ''
+    teacherName: '',
+    onlyUndetermined: false
 });
 
 const form = ref({
@@ -164,7 +170,7 @@ const form = ref({
     mentorId: null,
     mentorType: 1,
     teacherStatus: 1,
-    round: 4,
+    round: 8,
     studentChoiceOrder: 1,
     studentStatus: 1
 });
@@ -246,7 +252,8 @@ const handleReset = () => {
         pageNum: 1,
         pageSize: 10,
         studentName: '',
-        teacherName: ''
+        teacherName: '',
+        onlyUndetermined: false
     };
     loadData();
 };
@@ -275,7 +282,7 @@ const showAddDialog = () => {
         mentorId: null,
         mentorType: 1,
         teacherStatus: 1,
-        round: 4,
+        round: 8,
         studentChoiceOrder: 1,
         studentStatus: 1
     };
@@ -292,7 +299,7 @@ const showEditDialog = (row) => {
         mentorId: row.mentorId,
         mentorType: row.mentorType || 1,
         teacherStatus: row.teacherStatus || 1,
-        round: row.round || 4,
+        round: row.round || 8,
         studentChoiceOrder: row.studentChoiceOrder || 1,
         studentStatus: row.studentStatus || 1
     };
@@ -357,6 +364,10 @@ const handleDelete = (row) => {
 };
 
 onMounted(() => {
+    // 检查是否从轮次管理页面跳转过来，如果是则默认勾选"只查看未确定的学生"
+    if (route.query.onlyUndetermined === 'true') {
+        queryForm.value.onlyUndetermined = true;
+    }
     loadData();
 });
 </script>
