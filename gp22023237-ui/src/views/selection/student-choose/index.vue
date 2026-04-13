@@ -15,6 +15,7 @@
 
         <el-alert v-if="!isStudentSelectRound" title="当前不是学生选择轮次，无法进行志愿选择" type="warning" :closable="false" class="alert-warning" show-icon />
         <el-alert v-else-if="!canSubmit" title="当前轮次学生选择已截止，无法提交志愿" type="warning" :closable="false" class="alert-warning" show-icon />
+        <el-alert v-else-if="!hasSubmitted && isSupplementaryRound" title="补选阶段：请选择一名导师，确认无误后点击下方的【提交志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
         <el-alert v-else-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的【提交所有志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
         <el-alert v-else title="您已成功提交志愿，志愿选择已锁定，不可修改" type="success" :closable="false" class="alert-success" show-icon />
 
@@ -24,7 +25,7 @@
                 v-if="maxChoiceCount > 0">
                 <template #header>
                     <div class="card-header">
-                        <span>{{ getChoiceName(index - 1) }}志愿</span>
+                        <span>{{ isSupplementaryRound ? '选择导师' : getChoiceName(index - 1) + '志愿' }}</span>
                         <el-tag v-if="hasSubmitted" type="success">已锁定</el-tag>
                     </div>
                 </template>
@@ -52,7 +53,7 @@
 
         <div v-if="isStudentSelectRound && !hasSubmitted" class="submit-section">
             <el-button type="primary" size="large" :disabled="!canSubmit || !canSubmitAll" @click="submitAllChoices">
-                提交所有志愿
+                {{ isSupplementaryRound ? '提交志愿' : '提交所有志愿' }}
             </el-button>
             <el-button size="large" @click="resetAllChoices" :disabled="!canSubmit">
                 重置
@@ -131,19 +132,23 @@ const deadlineTime = ref('未设置');
 const canSubmit = ref(false);
 
 const getRoundName = (round) => {
-    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 4: '补选阶段' };
+    const names = { 0: '未开始', 9: '学生选择', 1: '第一轮', 2: '第二轮', 3: '第三轮', 7: '补选学生选择', 8: '补选导师选择' };
     return names[round] || '未开始';
 };
 
 const isStudentSelectRound = computed(() => {
-    return currentRound.value === 9;
+    return currentRound.value === 9 || currentRound.value === 7;
+});
+
+const isSupplementaryRound = computed(() => {
+    return currentRound.value === 7;
 });
 
 const loadCurrentRound = () => {
     getCurrentRound().then(response => {
         currentRound.value = response.data;
         roundName.value = getRoundName(response.data);
-        if (currentRound.value === 9) {
+        if (currentRound.value === 9 || currentRound.value === 7) {
             loadDeadlineTime();
             checkCanSubmit();
             getList();
@@ -156,7 +161,8 @@ const loadCurrentRound = () => {
 };
 
 const loadDeadlineTime = () => {
-    getConfigKey('student_select_end')
+    const configKey = currentRound.value === 7 ? 'supplementary_student_end' : 'student_select_end';
+    getConfigKey(configKey)
         .then(response => {
             deadlineTime.value = response?.data || '未设置';
         })
@@ -330,6 +336,14 @@ const submitAllChoices = () => {
 
 // 查询志愿轮数
 function getMaxChoiceCount() {
+    // 补选阶段只允许选择1名导师
+    if (isSupplementaryRound.value) {
+        maxChoiceCount.value = 1;
+        currentChoices.value = new Array(maxChoiceCount.value).fill(null);
+        console.log(`补选阶段最大志愿数:`, maxChoiceCount.value);
+        return Promise.resolve();
+    }
+    // 正常阶段从配置获取
     getConfigKey("student_max_choices").then(response => {
         maxChoiceCount.value = Math.max(1, parseInt(response.data) || 1);
         // 初始化choices数组

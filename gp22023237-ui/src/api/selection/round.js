@@ -108,3 +108,12 @@ export function getCurrentPhase() {
     method: 'get'
   })
 }
+
+// 开启补选轮次
+export function startSupplementaryRound(data) {
+  return request({
+    url: '/selection/round/startSupplementary',
+    method: 'post',
+    data: data
+  })
+}

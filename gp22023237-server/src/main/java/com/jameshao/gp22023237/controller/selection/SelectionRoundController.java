@@ -45,7 +45,7 @@ public class SelectionRoundController {
             }
 
             Integer targetRound = params.get("targetRound");
-            if (targetRound == null || targetRound < 1 || targetRound > 4) {
+            if (targetRound == null || targetRound < 1 || targetRound > 8) {
                 return jsonReturn.returnError("无效的轮次值");
             }
 
@@ -276,6 +276,32 @@ public class SelectionRoundController {
         try {
             int phase = selectionRoundService.getCurrentPhase();
             return jsonReturn.returnSuccess(phase);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 开启补选轮次
+     */
+    @PostMapping("/startSupplementary")
+    public String startSupplementaryRound(@RequestBody Map<String, String> params) {
+        try {
+            // 校验是否为轮次管理员
+            if (!CurrentUserUtil.isRoundAdmin()) {
+                return jsonReturn.returnError("只有超级管理员、综合管理员或教学秘书可以执行此操作");
+            }
+
+            String endTimeStudent = params.get("endTimeStudent");
+            String endTimeTutor = params.get("endTimeTutor");
+
+            boolean success = selectionRoundService.startSupplementaryRound(endTimeStudent, endTimeTutor);
+            if (success) {
+                return jsonReturn.returnSuccess("开启补选成功");
+            } else {
+                return jsonReturn.returnFailed("开启补选失败");
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
