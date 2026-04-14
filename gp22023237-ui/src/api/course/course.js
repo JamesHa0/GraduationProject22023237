@@ -44,3 +44,22 @@ export function delCourse(id) {
     method: 'delete'
   })
 }
+
+export function importCourse(data) {
+  return request({
+    url: '/course/import',
+    method: 'post',
+    data: data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+export function downloadImportTemplate() {
+  return request({
+    url: '/course/importTemplate',
+    method: 'get',
+    responseType: 'blob'
+  })
+}

@@ -1,6 +1,9 @@
 package com.jameshao.gp22023237.controller.course;
 
+import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.jameshao.gp22023237.DTO.CourseImportDTO;
+import com.jameshao.gp22023237.DTO.CourseImportResultDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
 import com.jameshao.gp22023237.mapper.CourseMapper;
@@ -10,10 +13,16 @@ import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.CourseService;
 import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -188,6 +197,71 @@ public class CourseController {
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 批量导入课程
+     */
+    @PostMapping("/import")
+    public String importCourses(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return jsonReturn.returnFailed("请选择要上传的文件");
+            }
+
+            String filename = file.getOriginalFilename();
+            if (filename == null || (!filename.endsWith(".xls") && !filename.endsWith(".xlsx"))) {
+                return jsonReturn.returnFailed("请上传Excel文件(.xls或.xlsx)");
+            }
+
+            CourseImportResultDTO result = courseService.importCourses(file);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError("导入失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 下载导入模板
+     */
+    @GetMapping("/importTemplate")
+    public void downloadTemplate(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("utf-8");
+            String fileName = URLEncoder.encode("课程导入模板", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+
+            List<CourseImportDTO> dataList = new ArrayList<>();
+            CourseImportDTO example = new CourseImportDTO();
+            example.setCourseNo("CS101");
+            example.setName("数据结构");
+            example.setCredit(3.0);
+            example.setHours(48);
+            example.setTeacherNo("T001");
+            example.setSemester("2024-2025-2");
+            example.setYear(2024);
+            example.setMaxStudents(50);
+            example.setDayOfWeek(1);
+            example.setStartTime("08:00:00");
+            example.setEndTime("09:40:00");
+            example.setClassroom("A201");
+            example.setMaxCredits(6.0);
+            example.setStatus(0);
+            example.setStudyNature("必修");
+            example.setTextbook(0);
+            example.setExternalSelection(0);
+            example.setDescription("计算机专业核心课程");
+            example.setRemark("");
+            dataList.add(example);
+
+            EasyExcel.write(response.getOutputStream(), CourseImportDTO.class)
+                    .sheet("课程模板")
+                    .doWrite(dataList);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

@@ -32,6 +32,9 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Upload" @click="handleImport">批量导入</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
@@ -146,11 +149,77 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog title="批量导入课程" v-model="importOpen" width="600px" append-to-body>
+      <el-alert
+        title="提示"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 20px;">
+        <template #default>
+          <div>请先下载模板，按照模板格式填写课程信息后上传</div>
+          <el-button link type="primary" @click="downloadTemplate">点击下载导入模板</el-button>
+        </template>
+      </el-alert>
+
+      <el-upload
+        ref="uploadRef"
+        :auto-upload="false"
+        :limit="1"
+        :on-change="handleFileChange"
+        :on-exceed="handleExceed"
+        accept=".xlsx,.xls"
+        drag>
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          拖拽文件到此处或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            只能上传 .xls 或 .xlsx 格式的Excel文件
+          </div>
+        </template>
+      </el-upload>
+
+      <!-- 导入结果展示 -->
+      <div v-if="importResult" style="margin-top: 20px;">
+        <el-divider content-position="left">导入结果</el-divider>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="总记录数">{{ importResult.total }}</el-descriptions-item>
+          <el-descriptions-item label="成功数量">
+            <span style="color: #67C23A;">{{ importResult.successCount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="失败数量">
+            <span style="color: #F56C6C;">{{ importResult.failCount }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div v-if="importResult.failDetails && importResult.failDetails.length > 0" style="margin-top: 15px;">
+          <el-alert title="失败详情" type="warning" :closable="false">
+            <ul style="margin: 0; padding-left: 20px;">
+              <li v-for="(item, index) in importResult.failDetails" :key="index" style="margin-bottom: 5px;">
+                第{{ item.row }}行（课程编号：{{ item.courseNo }}）- {{ item.reason }}
+              </li>
+            </ul>
+          </el-alert>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitImport" :loading="importLoading" :disabled="!uploadFile">确 定</el-button>
+          <el-button @click="cancelImport">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Course">
-import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse } from "@/api/course/course";
+import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse, importCourse, downloadImportTemplate } from "@/api/course/course";
+import { UploadFilled } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 
@@ -164,6 +233,13 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+
+// 导入相关
+const importOpen = ref(false);
+const importLoading = ref(false);
+const uploadFile = ref(null);
+const uploadRef = ref();
+const importResult = ref(null);
 
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
@@ -317,6 +393,75 @@ function handleDelete(row) {
     getList();
     proxy.$modal.msgSuccess("删除成功");
   }).catch(() => { });
+}
+
+// 批量导入相关
+function handleImport() {
+  resetImport();
+  importOpen.value = true;
+}
+
+function resetImport() {
+  uploadFile.value = null;
+  importResult.value = null;
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+  }
+}
+
+function cancelImport() {
+  importOpen.value = false;
+  resetImport();
+}
+
+function handleFileChange(file) {
+  uploadFile.value = file.raw;
+}
+
+function handleExceed() {
+  proxy.$modal.msgWarning("只能上传一个文件");
+}
+
+function downloadTemplate() {
+  downloadImportTemplate().then(res => {
+    const blob = new Blob([res], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '课程导入模板.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    proxy.$modal.msgSuccess("模板下载成功");
+  }).catch(() => {
+    proxy.$modal.msgError("模板下载失败");
+  });
+}
+
+function submitImport() {
+  if (!uploadFile.value) {
+    proxy.$modal.msgWarning("请选择要上传的文件");
+    return;
+  }
+
+  importLoading.value = true;
+  const formData = new FormData();
+  formData.append('file', uploadFile.value);
+
+  importCourse(formData).then(res => {
+    importResult.value = res.data;
+    proxy.$modal.msgSuccess("导入完成");
+    if (importResult.value.successCount > 0) {
+      getList();
+    }
+  }).catch(() => {
+    proxy.$modal.msgError("导入失败");
+  }).finally(() => {
+    importLoading.value = false;
+  });
 }
 
 getList();
