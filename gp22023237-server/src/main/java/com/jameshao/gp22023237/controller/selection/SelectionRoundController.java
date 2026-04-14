@@ -212,7 +212,7 @@ public class SelectionRoundController {
      * 重置双选
      */
     @PostMapping("/reset")
-    public String resetRounds(@RequestBody(required = false) Map<String, Integer> params) {
+    public String resetRounds(@RequestBody(required = false) Map<String, Object> params) {
         try {
             // 校验是否为轮次管理员
             if (!CurrentUserUtil.isRoundAdmin()) {
@@ -220,15 +220,23 @@ public class SelectionRoundController {
             }
 
             Integer maxChoices = null;
+            String cohortYear = "";
             if (params != null) {
-                maxChoices = params.get("maxChoices");
-                // 校验范围
-                if (maxChoices != null && (maxChoices < 1 || maxChoices > 3)) {
-                    return jsonReturn.returnError("学生最大志愿数范围：1-3");
+                Object maxChoicesObj = params.get("maxChoices");
+                if (maxChoicesObj != null) {
+                    maxChoices = Integer.parseInt(maxChoicesObj.toString());
+                    // 校验范围
+                    if (maxChoices < 1 || maxChoices > 3) {
+                        return jsonReturn.returnError("学生最大志愿数范围：1-3");
+                    }
+                }
+                Object cohortYearObj = params.get("cohortYear");
+                if (cohortYearObj != null) {
+                    cohortYear = cohortYearObj.toString();
                 }
             }
 
-            boolean success = selectionRoundService.resetRounds(maxChoices);
+            boolean success = selectionRoundService.resetRounds(maxChoices, cohortYear);
             if (success) {
                 return jsonReturn.returnSuccess("重置成功");
             } else {

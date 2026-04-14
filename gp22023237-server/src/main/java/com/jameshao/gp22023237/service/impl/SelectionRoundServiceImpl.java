@@ -40,6 +40,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     private static final String CONFIG_CURRENT_ROUND = "current_round";
     private static final String CONFIG_ENABLE_EXTRA_ROUND = "enable_extra_round";
     private static final String CONFIG_STUDENT_MAX_CHOICES = "student_max_choices";
+    private static final String CONFIG_SELECTION_COHORT_YEAR = "selection_cohort_year";
 
     // 学生选择轮配置（轮次值=9）
     private static final String CONFIG_STUDENT_SELECT_START = "student_select_start";
@@ -220,7 +221,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
      */
     @Override
     @Transactional
-    public boolean resetRounds(Integer maxChoices) {
+    public boolean resetRounds(Integer maxChoices, String cohortYear) {
         try {
             // 清空所有轮次的时间配置
             for (String[] configKeys : ROUND_CONFIG_KEYS.values()) {
@@ -248,11 +249,32 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 updateConfigValue(CONFIG_STUDENT_MAX_CHOICES, String.valueOf(maxChoices));
             }
 
+            // 更新双选归属年级配置
+            if (cohortYear != null) {
+                updateConfigValue(CONFIG_SELECTION_COHORT_YEAR, cohortYear);
+            }
+
             return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * 获取当前双选归属年级配置
+     */
+    @Override
+    public String getSelectionCohortYear() {
+        try {
+            SystemConfig config = systemConfigService.getConfigByKey(CONFIG_SELECTION_COHORT_YEAR);
+            if (config != null && config.getConfigValue() != null) {
+                return config.getConfigValue();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
     }
 
     /**
@@ -332,6 +354,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 CONFIG_CURRENT_ROUND,
                 CONFIG_ENABLE_EXTRA_ROUND,
                 CONFIG_STUDENT_MAX_CHOICES,
+                CONFIG_SELECTION_COHORT_YEAR,
                 // 学生选择
                 CONFIG_STUDENT_SELECT_START,
                 CONFIG_STUDENT_SELECT_END,
@@ -687,8 +710,8 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 LocalDateTime endTime = LocalDateTime.parse(endTimeStr, formatter);
                 if (!now.isAfter(endTime)) {
                     // 根据轮次判断阶段
-                    if (round == 9) {
-                        return 1; // 学生选择中
+                    if (round == 9 || round == 7) {
+                        return 1; // 学生选择中（学生预选轮 或 补选学生选择轮）
                     } else {
                         return 2; // 导师确认中
                     }
@@ -835,12 +858,23 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
 
                 // 如果没有任何志愿被同意，则标记为需要补选
                 if (!hasAccepted) {
+                    // 1. 标记学生需要补选
                     Student student = studentService.getById(studentId);
                     if (student != null) {
                         student.setNeedSupplementary(1);
                         studentService.updateById(student);
-                        count++;
                     }
+
+                    // 2. 清空该学生之前的志愿记录（设置 studentStatus = 0）
+                    LambdaQueryWrapper<MentorStudent> updateWrapper = new LambdaQueryWrapper<>();
+                    updateWrapper.eq(MentorStudent::getStudentId, studentId);
+                    List<MentorStudent> choicesToUpdate = mentorStudentService.list(updateWrapper);
+                    for (MentorStudent choice : choicesToUpdate) {
+                        choice.setStudentStatus(0);
+                        mentorStudentService.updateById(choice);
+                    }
+
+                    count++;
                 }
             }
         } catch (Exception e) {

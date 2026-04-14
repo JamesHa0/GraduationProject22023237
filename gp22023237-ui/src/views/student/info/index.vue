@@ -39,6 +39,7 @@
       <el-table-column label="学院" align="center" prop="department" width="120" />
       <el-table-column label="专业" align="center" prop="major" width="120" />
       <el-table-column label="入学年份" align="center" prop="admissionYear" width="100" />
+      <el-table-column label="归属年级" align="center" prop="cohortYear" width="100" />
       <el-table-column label="毕业年份" align="center" prop="graduationYear" width="100" />
       <el-table-column label="研究方向" align="center" prop="researchDirection" :show-overflow-tooltip="true" />
       <el-table-column label="状态" align="center" prop="status" width="80">
@@ -93,6 +94,11 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="归属年级" prop="cohortYear">
+              <el-input-number v-model="form.cohortYear" :min="2000" :max="2100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="毕业年份" prop="graduationYear">
               <el-input-number v-model="form.graduationYear" :min="2000" :max="2100" style="width: 100%" />
             </el-form-item>
@@ -134,6 +140,7 @@
         <el-descriptions-item label="学院">{{ currentRow.department || '-' }}</el-descriptions-item>
         <el-descriptions-item label="专业">{{ currentRow.major || '-' }}</el-descriptions-item>
         <el-descriptions-item label="入学年份">{{ currentRow.admissionYear || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="归属年级">{{ currentRow.cohortYear || '-' }}</el-descriptions-item>
         <el-descriptions-item label="毕业年份">{{ currentRow.graduationYear || '-' }}</el-descriptions-item>
         <el-descriptions-item label="研究方向">{{ currentRow.researchDirection || '-' }}</el-descriptions-item>
         <el-descriptions-item label="状态">
@@ -176,9 +183,10 @@ const columns = ref([
   { key: 2, label: `学院`, visible: true },
   { key: 3, label: `专业`, visible: true },
   { key: 4, label: `入学年份`, visible: true },
-  { key: 5, label: `毕业年份`, visible: true },
-  { key: 6, label: `研究方向`, visible: true },
-  { key: 7, label: `状态`, visible: true }
+  { key: 5, label: `归属年级`, visible: true },
+  { key: 6, label: `毕业年份`, visible: true },
+  { key: 7, label: `研究方向`, visible: true },
+  { key: 8, label: `状态`, visible: true }
 ]);
 
 const data = reactive({
@@ -251,6 +259,7 @@ function reset() {
     department: undefined,
     major: undefined,
     admissionYear: new Date().getFullYear(),
+    cohortYear: new Date().getFullYear(),
     graduationYear: new Date().getFullYear() + 4,
     researchDirection: undefined,
     status: 1,

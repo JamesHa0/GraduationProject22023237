@@ -76,3 +76,11 @@ export function updateSelectionStatus(id, selectionStatus) {
     params: { id, selectionStatus }
   })
 }
+
+// 获取归属年级列表
+export function listCohortYears() {
+  return request({
+    url: '/student/cohortYears',
+    method: 'get'
+  })
+}

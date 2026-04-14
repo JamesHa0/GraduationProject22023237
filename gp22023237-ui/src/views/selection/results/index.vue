@@ -7,7 +7,7 @@
                 </div>
             </template>
 
-            <el-table v-loading="loading" :data="resultList" border>
+            <el-table v-loading="loading" :data="regularResults" border>
                 <el-table-column label="志愿序号" prop="studentChoiceOrder" width="100" align="center">
                     <template #default="scope">
                         <el-tag type="primary">{{ getChoiceName(scope.row.studentChoiceOrder) }}</el-tag>
@@ -33,15 +33,14 @@
                 </el-table-column>
                 <el-table-column label="最终状态" width="100" align="center">
                     <template #default="scope">
-                        <el-tag v-if="scope.row.studentStatus === 1 && scope.row.teacherStatus === 1" type="success">
-                            已确认
+                        <el-tag :type="getFinalStatusType(scope.row)">
+                            {{ getFinalStatusText(scope.row) }}
                         </el-tag>
-                        <el-tag v-else type="info">待确认</el-tag>
                     </template>
                 </el-table-column>
             </el-table>
 
-            <el-empty v-if="!loading && resultList.length === 0" description="暂无双选记录" />
+            <el-empty v-if="!loading && regularResults.length === 0" description="暂无常规双选记录" />
         </el-card>
 
         <!-- 最终结果展示 -->
@@ -65,6 +64,36 @@
                 </template>
             </el-result>
         </el-card>
+
+        <!-- 补选结果展示 -->
+        <el-card class="mt20" shadow="never" v-if="supplementaryResult">
+            <template #header>
+                <div class="card-header">
+                    <span class="card-title">补选结果</span>
+                </div>
+            </template>
+            <el-descriptions :column="1" border>
+                <el-descriptions-item label="导师姓名">{{ supplementaryResult.mentorName }}</el-descriptions-item>
+                <el-descriptions-item label="职称">{{ supplementaryResult.mentorTitle || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="院系">{{ supplementaryResult.mentorDepartment || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="研究领域">{{ supplementaryResult.mentorResearchField || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="学生状态">
+                    <el-tag :type="getStudentStatusType(supplementaryResult.studentStatus)">
+                        {{ getStudentStatusText(supplementaryResult.studentStatus) }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="导师状态">
+                    <el-tag :type="getTeacherStatusType(supplementaryResult.teacherStatus)">
+                        {{ getTeacherStatusText(supplementaryResult.teacherStatus) }}
+                    </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="最终状态">
+                    <el-tag :type="getFinalStatusType(supplementaryResult)">
+                        {{ getFinalStatusText(supplementaryResult) }}
+                    </el-tag>
+                </el-descriptions-item>
+            </el-descriptions>
+        </el-card>
     </div>
 </template>
 
@@ -78,6 +107,16 @@ const loading = ref(true);
 const resultList = ref([]);
 const finalResult = ref(null);
 
+// 常规志愿（排除补选志愿）
+const regularResults = computed(() => {
+    return resultList.value.filter(item => item.round !== 8);
+});
+
+// 补选志愿
+const supplementaryResult = computed(() => {
+    return resultList.value.find(item => item.round === 8);
+});
+
 const choiceNames = ['第一', '第二', '第三', '第四', '第五'];
 
 const getChoiceName = (order) => {
@@ -85,12 +124,12 @@ const getChoiceName = (order) => {
 };
 
 const getStudentStatusText = (status) => {
-    const map = { 0: '已放弃', 1: '已提交' };
+    const map = { 0: '已提交', 1: '已提交' };
     return map[status] || '-';
 };
 
 const getStudentStatusType = (status) => {
-    const map = { 0: 'info', 1: 'success' };
+    const map = { 0: 'success', 1: 'success' };
     return map[status] || 'info';
 };
 
@@ -102,6 +141,26 @@ const getTeacherStatusText = (status) => {
 const getTeacherStatusType = (status) => {
     const map = { 0: 'warning', 1: 'success', 2: 'danger' };
     return map[status] || 'warning';
+};
+
+const getFinalStatusText = (row) => {
+    if (row.studentStatus === 0) {
+        return '已失效';
+    }
+    if (row.studentStatus === 1 && row.teacherStatus === 1) {
+        return '已确认';
+    }
+    return '待确认';
+};
+
+const getFinalStatusType = (row) => {
+    if (row.studentStatus === 0) {
+        return 'info';
+    }
+    if (row.studentStatus === 1 && row.teacherStatus === 1) {
+        return 'success';
+    }
+    return 'info';
 };
 
 const getStudentId = () => {

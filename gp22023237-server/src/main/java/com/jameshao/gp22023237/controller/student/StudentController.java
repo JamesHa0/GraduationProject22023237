@@ -11,8 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/student")
@@ -383,6 +385,31 @@ public class StudentController {
             } else {
                 return jsonReturn.returnFailed("更新双选状态失败");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取所有学生的归属年级列表（去重）
+     * @return 归属年级列表
+     */
+    @GetMapping("/cohortYears")
+    public String getCohortYears() {
+        try {
+            QueryWrapper<Student> wrapper = new QueryWrapper<>();
+            wrapper.select("DISTINCT cohort_year");
+            wrapper.isNotNull("cohort_year");
+            wrapper.orderByDesc("cohort_year");
+            List<Student> students = studentService.list(wrapper);
+
+            List<Integer> cohortYears = students.stream()
+                    .map(Student::getCohortYear)
+                    .filter(year -> year != null)
+                    .collect(Collectors.toList());
+
+            return jsonReturn.returnSuccess(cohortYears);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

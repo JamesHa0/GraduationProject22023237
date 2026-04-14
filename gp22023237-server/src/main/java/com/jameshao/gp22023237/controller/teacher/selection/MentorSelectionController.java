@@ -37,7 +37,7 @@ public class MentorSelectionController {
     @Autowired
     private JSONReturn jsonReturn;
 
-    // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生
+    // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生，增加归属年级过滤
     @RequestMapping("/listStudents")
     public String listStudents(@RequestBody MentorStudent mentorStudent){
         try{
@@ -46,6 +46,10 @@ public class MentorSelectionController {
             // 获取用于查询的实际轮次
             int currentRound = selectionRoundService.getQueryRound();
             System.out.println("当前轮次: " + currentRound);
+
+            // 获取归属年级配置
+            String cohortYearConfig = selectionRoundService.getSelectionCohortYear();
+            System.out.println("归属年级配置: " + cohortYearConfig);
 
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(!ObjectUtils.isEmpty(mentorStudent.getTeacherStatus()), MentorStudent::getTeacherStatus, mentorStudent.getTeacherStatus())
@@ -73,6 +77,18 @@ public class MentorSelectionController {
                 if (acceptedStudentIds.contains(ms.getStudentId())) {
                     System.out.println("学生 " + ms.getStudentId() + " 已被接受，跳过");
                     continue;
+                }
+
+                // 归属年级过滤：如果配置了归属年级，则只显示该年级的学生
+                if (cohortYearConfig != null && !cohortYearConfig.isEmpty()) {
+                    Student student = studentService.getById(ms.getStudentId());
+                    if (student != null && student.getCohortYear() != null) {
+                        String studentCohortYear = String.valueOf(student.getCohortYear());
+                        if (!cohortYearConfig.equals(studentCohortYear)) {
+                            System.out.println("学生 " + ms.getStudentId() + " 归属年级 " + studentCohortYear + " 不匹配配置 " + cohortYearConfig + "，跳过");
+                            continue;
+                        }
+                    }
                 }
 
                 SelectionDTO dto = new SelectionDTO();

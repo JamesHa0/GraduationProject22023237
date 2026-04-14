@@ -1,17 +1,22 @@
 package com.jameshao.gp22023237.controller.student.selection;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
 import com.jameshao.gp22023237.DTO.BatchSelectionDTO;
 import org.springframework.transaction.annotation.Transactional;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
+import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.service.MentorStudentService;
 import com.jameshao.gp22023237.service.SelectionRoundService;
+import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +37,8 @@ public class StudentSelectionController {
     private MentorStudentService mentorStudentService;
     @Autowired
     private SelectionRoundService selectionRoundService;
+    @Autowired
+    private StudentService studentService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -68,7 +75,6 @@ public class StudentSelectionController {
             System.out.println("查询学生已选志愿:"+studentId);
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(MentorStudent::getStudentId, studentId)
-                    .eq(MentorStudent::getStudentStatus, 1)
                     .orderByAsc(MentorStudent::getStudentChoiceOrder);
 
             List<MentorStudent> mentorStudents = mentorStudentService.list(queryWrapper);
@@ -111,6 +117,23 @@ public class StudentSelectionController {
             // 检查是否在学生选择时间内
             if (!selectionRoundService.canSubmitByRole("student")) {
                 return jsonReturn.returnError("当前轮次学生选择已截止或未开始，无法提交志愿");
+            }
+
+            // 检查学生归属年级是否匹配配置
+            String cohortYearConfig = selectionRoundService.getSelectionCohortYear();
+            if (cohortYearConfig != null && !cohortYearConfig.isEmpty()) {
+                Long userId = CurrentUserUtil.getCurrentUserId();
+                if (userId != null) {
+                    QueryWrapper<Student> wrapper = new QueryWrapper<>();
+                    wrapper.eq("user_id", userId);
+                    Student student = studentService.getOne(wrapper);
+                    if (student != null && student.getCohortYear() != null) {
+                        String studentCohortYear = String.valueOf(student.getCohortYear());
+                        if (!cohortYearConfig.equals(studentCohortYear)) {
+                            return jsonReturn.returnError("当前双选仅允许" + cohortYearConfig + "级学生参与，您的归属年级为" + studentCohortYear + "级，无法提交志愿");
+                    }
+                    }
+                }
             }
 
             // 获取用于查询的实际轮次
@@ -213,6 +236,23 @@ public class StudentSelectionController {
             // 检查是否在学生选择时间内
             if (!selectionRoundService.canSubmitByRole("student")) {
                 return jsonReturn.returnError("当前轮次学生选择已截止或未开始，无法提交志愿");
+            }
+
+            // 检查学生归属年级是否匹配配置
+            String cohortYearConfig = selectionRoundService.getSelectionCohortYear();
+            if (cohortYearConfig != null && !cohortYearConfig.isEmpty()) {
+                Long userId = CurrentUserUtil.getCurrentUserId();
+                if (userId != null) {
+                    QueryWrapper<Student> wrapper = new QueryWrapper<>();
+                    wrapper.eq("user_id", userId);
+                    Student student = studentService.getOne(wrapper);
+                    if (student != null && student.getCohortYear() != null) {
+                        String studentCohortYear = String.valueOf(student.getCohortYear());
+                        if (!cohortYearConfig.equals(studentCohortYear)) {
+                            return jsonReturn.returnError("当前双选仅允许" + cohortYearConfig + "级学生参与，您的归属年级为" + studentCohortYear + "级，无法提交志愿");
+                    }
+                    }
+                }
             }
 
             // 验证参数
