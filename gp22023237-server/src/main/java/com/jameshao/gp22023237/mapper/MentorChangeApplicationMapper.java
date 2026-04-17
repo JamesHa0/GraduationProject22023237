@@ -24,4 +24,9 @@ public interface MentorChangeApplicationMapper extends BaseMapper<MentorChangeAp
      */
     MentorChangeApplicationWithDetailsDTO getDetailWithDetails(@Param("id") Long id);
 
+    /**
+     * 获取导师更换申请导出详情
+     */
+    MentorChangeApplicationWithDetailsDTO getExportDetail(@Param("id") Long id);
+
 }

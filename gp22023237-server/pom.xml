@@ -117,11 +117,18 @@
             <version>7.15.1</version>
         </dependency>
 
-        <!--EasyExcel-->
+        <!--EasyExcel (uses its own POI)-->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
             <version>3.3.2</version>
+        </dependency>
+
+        <!--Add full OOXML schemas for Word document processing (complementary to EasyExcel's POI)-->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml-full</artifactId>
+            <version>5.2.5</version>
         </dependency>
 
     </dependencies>
@@ -131,14 +138,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
+
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

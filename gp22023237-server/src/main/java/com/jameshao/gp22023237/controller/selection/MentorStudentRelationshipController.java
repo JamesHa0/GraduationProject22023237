@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -155,6 +156,30 @@ public class MentorStudentRelationshipController {
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 导出单个学生志愿表
+     */
+    @GetMapping("/export/student-volunteer/{studentId}")
+    public void exportStudentVolunteer(@PathVariable Long studentId, HttpServletResponse response) {
+        try {
+            mentorStudentService.exportStudentVolunteer(studentId, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 导出导师学生关系汇总表
+     */
+    @GetMapping("/export/summary")
+    public void exportMentorStudentSummary(HttpServletResponse response) {
+        try {
+            mentorStudentService.exportMentorStudentSummary(response);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

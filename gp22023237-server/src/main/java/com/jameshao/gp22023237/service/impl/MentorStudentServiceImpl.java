@@ -16,9 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import com.jameshao.gp22023237.utils.MutualSelectionExportUtil;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.*;
 
 /**
 * @author test
@@ -176,7 +178,125 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
     public Map<String, Object> getStudentCurrentMentor(Long studentId) {
         return baseMapper.getStudentCurrentMentor(studentId);
     }
+
+    @Override
+    public void exportStudentVolunteer(Long studentId, jakarta.servlet.http.HttpServletResponse response) {
+        if (!hasViewPermission()) {
+            throw new IllegalStateException("您没有查看权限");
+        }
+
+        try {
+            // 获取学生基本信息
+            Map<String, Object> studentInfoMap = baseMapper.getStudentInfo(studentId);
+            if (studentInfoMap == null) {
+                throw new IllegalArgumentException("学生不存在");
+            }
+
+            // 获取学生志愿列表
+            List<Map<String, Object>> volunteers = baseMapper.getStudentVolunteers(studentId);
+
+            // 设置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            response.setCharacterEncoding("utf-8");
+            String studentName = studentInfoMap.get("studentName") != null ? studentInfoMap.get("studentName").toString() : "学生";
+            String fileName = java.net.URLEncoder.encode("学生志愿表_" + studentName, java.nio.charset.StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".docx");
+
+            // 准备文本占位符数据
+            java.util.Map<String, String> dataMap = new java.util.HashMap<>();
+            dataMap.put("studentNo", studentInfoMap.get("studentNo") != null ? studentInfoMap.get("studentNo").toString() : "");
+            dataMap.put("studentName", studentName);
+            dataMap.put("department", studentInfoMap.get("department") != null ? studentInfoMap.get("department").toString() : "");
+            dataMap.put("major", studentInfoMap.get("major") != null ? studentInfoMap.get("major").toString() : "");
+
+            // 填充志愿导师信息
+            String firstChoiceTeacher = "";
+            String secondChoiceTeacher = "";
+            if (volunteers != null) {
+                if (volunteers.size() > 0) {
+                    Map<String, Object> first = volunteers.get(0);
+                    firstChoiceTeacher = first.get("teacherName") != null ? first.get("teacherName").toString() : "";
+                }
+                if (volunteers.size() > 1) {
+                    Map<String, Object> second = volunteers.get(1);
+                    secondChoiceTeacher = second.get("teacherName") != null ? second.get("teacherName").toString() : "";
+                }
+            }
+            dataMap.put("firstChoiceTeacher", firstChoiceTeacher);
+            dataMap.put("secondChoiceTeacher", secondChoiceTeacher);
+
+            // 加载模板并填充（不使用表格数据）
+            try (InputStream templateInputStream = getClass().getClassLoader().getResourceAsStream("templates/word/学生志愿表.docx");
+                 OutputStream outputStream = response.getOutputStream()) {
+
+                if (templateInputStream == null) {
+                    throw new RuntimeException("模板文件未找到: templates/word/学生志愿表.docx");
+                }
+
+                System.out.println("=== 学生志愿表 dataMap ===");
+                System.out.println(dataMap.toString());
+
+                com.jameshao.gp22023237.utils.WordExportUtil.fillTemplateAndExport(
+                    templateInputStream, outputStream, dataMap, null);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("导出失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public void exportMentorStudentSummary(jakarta.servlet.http.HttpServletResponse response) {
+        if (!hasViewPermission()) {
+            throw new IllegalStateException("您没有查看权限");
+        }
+
+        try {
+            // 1. 获取已确认的关系列表（已按 major, teacherName, studentNo 排序）
+            List<Map<String, Object>> relationships = baseMapper.listConfirmedRelationships();
+
+            // 2. 设置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            response.setCharacterEncoding("utf-8");
+            String fileName = java.net.URLEncoder.encode("互选汇总表", java.nio.charset.StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".docx");
+
+            // 3. 准备信息行占位符数据
+            Map<String, String> headerInfo = new HashMap<>();
+            headerInfo.put("department", "计算机学院");
+            headerInfo.put("studentCount", relationships != null ? String.valueOf(relationships.size()) : "0");
+            headerInfo.put("admissionYear", "2024");
+
+            // 4. 将平铺数据按 (专业, 导师) 分组聚合
+            List<MutualSelectionExportUtil.MentorGroup> groupData =
+                    MutualSelectionExportUtil.groupByMentor(relationships);
+
+            // 5. 加载模板并导出
+            try (InputStream templateInputStream = getClass().getClassLoader()
+                    .getResourceAsStream("templates/word/互选汇总表.docx");
+                 OutputStream outputStream = response.getOutputStream()) {
+
+                if (templateInputStream == null) {
+                    throw new RuntimeException("模板文件未找到: templates/word/互选汇总表.docx");
+                }
+
+                System.out.println("=== 互选汇总表导出 ===");
+                System.out.println("headerInfo: " + headerInfo);
+                System.out.println("分组数: " + groupData.size());
+                System.out.println("总记录数: " + (relationships != null ? relationships.size() : 0));
+
+                MutualSelectionExportUtil.exportSummary(
+                        templateInputStream, outputStream, headerInfo, groupData);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("导出失败：" + e.getMessage());
+        }
+    }
 }
+
 
 
 

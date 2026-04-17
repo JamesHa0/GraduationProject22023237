@@ -7,6 +7,7 @@ import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.mapper.MentorChangeApplicationMapper;
 import com.jameshao.gp22023237.po.MentorChangeApplication;
 import com.jameshao.gp22023237.service.MentorChangeApplicationService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -133,6 +134,18 @@ public class MentorChangeController {
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 导出导师更换申请表
+     */
+    @GetMapping("/export/{id}")
+    public void exportMentorChangeApplication(@PathVariable Long id, HttpServletResponse response) {
+        try {
+            mentorChangeApplicationService.exportMentorChangeApplication(id, response);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

@@ -78,4 +78,31 @@
         WHERE mca.id = #{id}
     </select>
 
+    <!-- 获取导师更换申请导出详情 -->
+    <select id="getExportDetail" resultType="com.jameshao.gp22023237.DTO.MentorChangeApplicationWithDetailsDTO">
+        SELECT
+            mca.id,
+            mca.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            st.department AS studentDepartment,
+            st.major,
+            mca.original_mentor_id AS originalMentorId,
+            ot.teacher_name AS originalMentorName,
+            ot.title AS originalMentorTitle,
+            ot.department AS originalMentorDepartment,
+            mca.new_mentor_id AS newMentorId,
+            nt.teacher_name AS newMentorName,
+            nt.title AS newMentorTitle,
+            nt.department AS newMentorDepartment,
+            mca.change_reason AS changeReason,
+            mca.overall_status AS overallStatus,
+            mca.apply_time AS applyTime
+        FROM mentor_change_application mca
+        LEFT JOIN student st ON mca.student_id = st.id
+        LEFT JOIN teacher ot ON mca.original_mentor_id = ot.id
+        LEFT JOIN teacher nt ON mca.new_mentor_id = nt.id
+        WHERE mca.id = #{id}
+    </select>
+
 </mapper>

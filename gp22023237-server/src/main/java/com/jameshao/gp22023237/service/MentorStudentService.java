@@ -49,4 +49,14 @@ public interface MentorStudentService extends IService<MentorStudent> {
      * 获取学生当前的导师信息
      */
     Map<String, Object> getStudentCurrentMentor(Long studentId);
+
+    /**
+     * 导出单个学生志愿表
+     */
+    void exportStudentVolunteer(Long studentId, jakarta.servlet.http.HttpServletResponse response);
+
+    /**
+     * 导出导师学生关系汇总表
+     */
+    void exportMentorStudentSummary(jakarta.servlet.http.HttpServletResponse response);
 }

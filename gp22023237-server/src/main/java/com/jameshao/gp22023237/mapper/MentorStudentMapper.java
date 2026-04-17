@@ -39,6 +39,21 @@ public interface MentorStudentMapper extends BaseMapper<MentorStudent> {
      * 获取学生当前的导师信息
      */
     Map<String, Object> getStudentCurrentMentor(@Param("studentId") Long studentId);
+
+    /**
+     * 获取学生的所有志愿（用于导出）
+     */
+    List<Map<String, Object>> getStudentVolunteers(@Param("studentId") Long studentId);
+
+    /**
+     * 获取学生基本信息（用于导出）
+     */
+    Map<String, Object> getStudentInfo(@Param("studentId") Long studentId);
+
+    /**
+     * 获取已确认的导师学生关系列表（用于导出汇总表）
+     */
+    List<Map<String, Object>> listConfirmedRelationships();
 }
 
 

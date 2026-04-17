@@ -19,4 +19,9 @@ public interface MentorChangeApplicationService extends IService<MentorChangeApp
      * 新导师审批
      */
     boolean newMentorApprove(Long id, Integer status, String comment);
+
+    /**
+     * 导出导师更换申请表
+     */
+    void exportMentorChangeApplication(Long id, jakarta.servlet.http.HttpServletResponse response);
 }

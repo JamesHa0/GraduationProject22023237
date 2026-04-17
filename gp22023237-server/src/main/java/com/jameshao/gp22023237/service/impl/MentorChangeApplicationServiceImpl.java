@@ -11,7 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Date;
+import java.util.Map;
 
 @Service
 public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChangeApplicationMapper, MentorChangeApplication>
@@ -103,5 +106,78 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
         newRelationship.setCreateTime(new Date());
         newRelationship.setUpdateTime(new Date());
         mentorStudentService.save(newRelationship);
+    }
+
+    @Override
+    public void exportMentorChangeApplication(Long id, jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            // 获取导师更换申请详情
+            com.jameshao.gp22023237.DTO.MentorChangeApplicationWithDetailsDTO application = baseMapper.getExportDetail(id);
+            if (application == null) {
+                throw new IllegalArgumentException("申请记录不存在");
+            }
+
+            // 设置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            response.setCharacterEncoding("utf-8");
+            String studentName = application.getStudentName() != null ? application.getStudentName() : "学生";
+            String fileName = java.net.URLEncoder.encode("导师更换申请表_" + studentName, java.nio.charset.StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".docx");
+
+            // 准备文本占位符数据
+            java.util.Map<String, String> dataMap = new java.util.HashMap<>();
+            dataMap.put("studentNo", application.getStudentNo() != null ? application.getStudentNo() : "");
+            dataMap.put("studentName", studentName);
+            dataMap.put("studentDepartment", application.getStudentDepartment() != null ? application.getStudentDepartment() : "");
+            dataMap.put("major", application.getMajor() != null ? application.getMajor() : "");
+            dataMap.put("originalMentorName", application.getOriginalMentorName() != null ? application.getOriginalMentorName() : "");
+            dataMap.put("originalMentorTitle", application.getOriginalMentorTitle() != null ? application.getOriginalMentorTitle() : "");
+            dataMap.put("originalMentorDepartment", application.getOriginalMentorDepartment() != null ? application.getOriginalMentorDepartment() : "");
+            dataMap.put("newMentorName", application.getNewMentorName() != null ? application.getNewMentorName() : "");
+            dataMap.put("newMentorTitle", application.getNewMentorTitle() != null ? application.getNewMentorTitle() : "");
+            dataMap.put("newMentorDepartment", application.getNewMentorDepartment() != null ? application.getNewMentorDepartment() : "");
+            dataMap.put("changeReason", application.getChangeReason() != null ? application.getChangeReason() : "");
+            dataMap.put("applyTime", application.getApplyTime() != null ? application.getApplyTime().toString() : "");
+
+            // 状态转换
+            Integer overallStatus = application.getOverallStatus();
+            String statusText = "待审批";
+            if (overallStatus != null) {
+                switch (overallStatus) {
+                    case 0:
+                        statusText = "待原导师审批";
+                        break;
+                    case 1:
+                        statusText = "待新导师审批";
+                        break;
+                    case 2:
+                        statusText = "已通过";
+                        break;
+                    case 3:
+                        statusText = "已拒绝";
+                        break;
+                }
+            }
+            dataMap.put("overallStatus", statusText);
+
+            // 加载模板并填充（不需要表格数据）- 使用类加载器加载资源
+            try (InputStream templateInputStream = getClass().getClassLoader().getResourceAsStream("templates/word/导师更换申请表.docx");
+                 OutputStream outputStream = response.getOutputStream()) {
+
+                if (templateInputStream == null) {
+                    throw new RuntimeException("模板文件未找到: templates/word/导师更换申请表.docx");
+                }
+
+                System.out.println("=== 导师更换申请表 dataMap ===");
+                System.out.println(dataMap.toString());
+
+                com.jameshao.gp22023237.utils.WordExportUtil.fillTemplateAndExport(
+                    templateInputStream, outputStream, dataMap, null);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("导出失败：" + e.getMessage());
+        }
     }
 }

@@ -6,12 +6,12 @@
                     <span>导师学生关系管理</span>
                     <div class="header-actions">
                         <el-button type="primary" @click="loadData" icon="Refresh">刷新</el-button>
+                        <el-button type="warning" @click="handleExportSummary" icon="Download">导出汇总表</el-button>
                         <el-button v-if="canModify" type="success" @click="showAddDialog" icon="Plus">新增关系</el-button>
                     </div>
                 </div>
             </template>
 
-            <!-- 搜索表单 -->
             <el-form :inline="true" :model="queryForm" class="search-form">
                 <el-form-item label="学生姓名">
                     <el-input v-model="queryForm.studentName" placeholder="请输入学生姓名" clearable style="width: 200px" />
@@ -28,7 +28,6 @@
                 </el-form-item>
             </el-form>
 
-            <!-- 数据表格 -->
             <el-table v-loading="loading" :data="tableData" border style="width: 100%;">
                 <el-table-column label="序号" width="60" type="index" align="center" />
                 <el-table-column label="学生信息" width="280">
@@ -66,8 +65,11 @@
                         {{ formatDate(scope.row.confirmTime) }}
                     </template>
                 </el-table-column>
-                <el-table-column v-if="canModify" fixed="right" label="操作" align="center" width="180">
+                <el-table-column v-if="canModify" fixed="right" label="操作" align="center" width="280">
                     <template #default="scope">
+                        <el-button type="primary" link size="small" @click="handleExportVolunteer(scope.row)">
+                            导出志愿表
+                        </el-button>
                         <el-button type="primary" link size="small" @click="showEditDialog(scope.row)">
                             编辑
                         </el-button>
@@ -78,7 +80,6 @@
                 </el-table-column>
             </el-table>
 
-            <!-- 分页 -->
             <el-pagination
                 v-model:current-page="queryForm.pageNum"
                 v-model:page-size="queryForm.pageSize"
@@ -91,7 +92,6 @@
             />
         </el-card>
 
-        <!-- 新增/编辑对话框 -->
         <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" :close-on-click-modal="false">
             <el-form :model="form" :rules="rules" ref="formRef" label-width="120px">
                 <el-form-item label="学生" prop="studentId" required>
@@ -138,6 +138,9 @@
 
 <script setup>
 import { listRelationship, createRelationship, updateRelationship, deleteRelationship, listStudents, listMentors } from "@/api/selection/relationship";
+import { saveAs } from 'file-saver';
+import axios from 'axios';
+import { getToken } from '@/utils/auth';
 import useUserStore from '@/store/modules/user';
 import { useRoute } from 'vue-router';
 
@@ -180,14 +183,12 @@ const rules = {
     mentorId: [{ required: true, message: '请选择导师', trigger: 'change' }]
 };
 
-// 判断是否有修改权限
 const canModify = computed(() => {
     if (userStore.roles && userStore.roles.length > 0) {
         const roleId = userStore.roles[0];
-        console.log('Current user roleId:', roleId);
         return roleId === 1 || roleId === 4 || roleId === 5;
     }
-    return true; // 默认允许
+    return true;
 });
 
 const getMentorTypeName = (type) => {
@@ -218,10 +219,7 @@ const formatDate = (date) => {
 const loadData = () => {
     loading.value = true;
     listRelationship(queryForm.value).then(response => {
-        console.log('API Response:', response);
-        // request.js已经把records作为data返回了，分页信息在pagination中
         let records = response.data || [];
-        // 根据查询条件进行前端过滤
         if (queryForm.value.studentName) {
             records = records.filter(item =>
                 item.studentName && item.studentName.includes(queryForm.value.studentName)
@@ -235,7 +233,6 @@ const loadData = () => {
         tableData.value = records;
         total.value = response.pagination?.total || 0;
     }).catch((error) => {
-        console.error('Load data error:', error);
         proxy.$modal.msgError('获取数据失败');
     }).finally(() => {
         loading.value = false;
@@ -303,10 +300,8 @@ const showEditDialog = (row) => {
         studentChoiceOrder: row.studentChoiceOrder || 1,
         studentStatus: row.studentStatus || 1
     };
-    // 编辑时加载所有学生和导师
     loadAvailableStudents();
     loadAvailableMentors();
-    // 将当前学生和导师添加到可选列表（如果不在列表中）
     if (row.studentId && !availableStudents.value.find(s => s.id === row.studentId)) {
         availableStudents.value.push({
             id: row.studentId,
@@ -326,13 +321,8 @@ const showEditDialog = (row) => {
     dialogVisible.value = true;
 };
 
-const onStudentChange = () => {
-    // 学生选择变化时的处理
-};
-
-const onMentorChange = () => {
-    // 导师选择变化时的处理
-};
+const onStudentChange = () => {};
+const onMentorChange = () => {};
 
 const handleSubmit = () => {
     proxy.$refs.formRef.validate(valid => {
@@ -352,6 +342,46 @@ const handleSubmit = () => {
     });
 };
 
+const handleExportVolunteer = (row) => {
+    proxy.$modal.confirm(`确定要导出学生"${row.studentName}"的志愿表吗？`).then(() => {
+        axios({
+            method: 'get',
+            url: import.meta.env.VITE_APP_BASE_API + '/selection/relationship/export/student-volunteer/' + row.studentId,
+            responseType: 'blob',
+            headers: { 'Token': getToken() }
+        }).then(response => {
+            const blob = new Blob([response.data], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+            saveAs(blob, `学生志愿表_${row.studentName}.docx`);
+            proxy.$modal.msgSuccess('导出成功');
+        }).catch(error => {
+            console.error('导出失败', error);
+            proxy.$modal.msgError('导出失败');
+        });
+    }).catch(() => {});
+};
+
+const handleExportSummary = () => {
+    proxy.$modal.confirm('确定要导出导师学生关系汇总表吗？').then(() => {
+        axios({
+            method: 'get',
+            url: import.meta.env.VITE_APP_BASE_API + '/selection/relationship/export/summary',
+            responseType: 'blob',
+            headers: { 'Token': getToken() }
+        }).then(response => {
+            const blob = new Blob([response.data], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+            saveAs(blob, '导师学生关系汇总表.docx');
+            proxy.$modal.msgSuccess('导出成功');
+        }).catch(error => {
+            console.error('导出失败', error);
+            proxy.$modal.msgError('导出失败');
+        });
+    }).catch(() => {});
+};
+
 const handleDelete = (row) => {
     proxy.$modal.confirm(`确定要删除学生"${row.studentName}"与导师"${row.teacherName}"的关系吗？`).then(() => {
         deleteRelationship(row.id).then(() => {
@@ -364,7 +394,6 @@ const handleDelete = (row) => {
 };
 
 onMounted(() => {
-    // 检查是否从轮次管理页面跳转过来，如果是则默认勾选"只查看未确定的学生"
     if (route.query.onlyUndetermined === 'true') {
         queryForm.value.onlyUndetermined = true;
     }
