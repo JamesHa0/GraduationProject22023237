@@ -18,6 +18,7 @@ public class StudentStatusChangeWithDetailsDTO {
     private Date endDate;
     private Integer mentorStatus;
     private Long mentorId;
+    private String mentorName;
     private Date mentorApprovalTime;
     private Integer secretaryStatus;
     private Long secretaryId;
@@ -33,10 +34,5 @@ public class StudentStatusChangeWithDetailsDTO {
 
     public Date getApplyTime() {
         return createTime;
-    }
-
-    // 前端需要deanStatus，但数据库没有，默认返回null或0
-    public Integer getDeanStatus() {
-        return null;
     }
 }

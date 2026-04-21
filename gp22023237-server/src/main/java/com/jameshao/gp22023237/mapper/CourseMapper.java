@@ -5,6 +5,7 @@ import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
 import java.util.List;
 
 /**
@@ -20,12 +21,35 @@ public interface CourseMapper extends BaseMapper<Course> {
      * 查询课程列表，关联教师信息
      */
     List<CourseWithTeacherDTO> listCourseWithTeacher(@Param("name") String name,
-                                                  @Param("courseNo") String courseNo,
-                                                  @Param("status") Integer status,
-                                                  @Param("semester") String semester);
+                                                     @Param("courseNo") String courseNo,
+                                                     @Param("status") Integer status,
+                                                     @Param("semester") String semester);
+
+    /**
+     * 查询课程列表，关联教师信息（分页）
+     */
+    List<CourseWithTeacherDTO> listCourseWithTeacherPage(@Param("name") String name,
+                                                         @Param("courseNo") String courseNo,
+                                                         @Param("status") Integer status,
+                                                         @Param("semester") String semester,
+                                                         @Param("offset") Integer offset,
+                                                         @Param("pageSize") Integer pageSize);
+
+    /**
+     * 统计课程总数
+     */
+    int countCourseWithTeacher(@Param("name") String name,
+                              @Param("courseNo") String courseNo,
+                              @Param("status") Integer status,
+                              @Param("semester") String semester);
 
     /**
      * 根据ID查询课程详情，关联教师信息
      */
     CourseWithTeacherDTO getCourseWithTeacherById(@Param("id") Long id);
+
+    /**
+     * 按课程编号集合批量查询，用于导入前预加载校验
+     */
+    List<Course> listByCourseNos(@Param("courseNos") List<String> courseNos);
 }

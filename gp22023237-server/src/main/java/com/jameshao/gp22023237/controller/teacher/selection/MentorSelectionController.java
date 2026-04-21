@@ -73,8 +73,10 @@ public class MentorSelectionController {
             System.out.println("已被接受的学生ID列表: " + acceptedStudentIds);
 
             for (MentorStudent ms : list) {
-                // 如果该学生已被某个导师接受，则跳过
-                if (acceptedStudentIds.contains(ms.getStudentId())) {
+                // 如果该学生已被某个导师接受，则跳过（仅当查询非已确认状态时才应用此过滤）
+                // 当 teacherStatus == 1 时（查询已确认学生），不应用此过滤
+                boolean isQueryingConfirmed = (mentorStudent.getTeacherStatus() != null && mentorStudent.getTeacherStatus() == 1);
+                if (!isQueryingConfirmed && acceptedStudentIds.contains(ms.getStudentId())) {
                     System.out.println("学生 " + ms.getStudentId() + " 已被接受，跳过");
                     continue;
                 }

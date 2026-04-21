@@ -124,12 +124,17 @@
             <version>3.3.2</version>
         </dependency>
 
-        <!--Add full OOXML schemas for Word document processing (complementary to EasyExcel's POI)-->
+        <!-- CSV解析 -->
         <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml-full</artifactId>
-            <version>5.2.5</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.12.0</version>
         </dependency>
+
+
+
+
+
 
     </dependencies>
 

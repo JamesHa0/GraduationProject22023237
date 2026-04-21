@@ -35,8 +35,9 @@
     <el-table v-loading="loading" :data="scoreList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="ID" align="center" prop="id" width="80" />
-      <el-table-column label="学生ID" align="center" prop="studentId" width="100" />
+      <el-table-column label="学生ID" align="center" prop="studentId" width="120" />
       <el-table-column label="课程ID" align="center" prop="courseId" width="100" />
+      <el-table-column label="课程名称" align="center" prop="courseName" :show-overflow-tooltip="true" />
       <el-table-column label="平时成绩" align="center" prop="usualScore" width="100" />
       <el-table-column label="期末成绩" align="center" prop="examScore" width="100" />
       <el-table-column label="总成绩" align="center" prop="totalScore" width="100" />

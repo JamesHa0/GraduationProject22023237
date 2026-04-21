@@ -29,6 +29,9 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Upload" @click="handleImport">批量导入</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
@@ -61,7 +64,6 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <el-dialog :title="title" v-model="open" width="800px" append-to-body>
-      <!-- 表单模式（新增/修改） -->
       <el-form :model="form" :rules="rules" ref="studentRef" label-width="100px" v-if="!isView">
         <el-row>
           <el-col :span="12">
@@ -133,7 +135,6 @@
         </el-row>
       </el-form>
 
-      <!-- 详情模式 -->
       <el-descriptions :column="1" border v-if="isView && currentRow">
         <el-descriptions-item label="学号">{{ currentRow.studentNo || '-' }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ currentRow.studentName || '-' }}</el-descriptions-item>
@@ -156,12 +157,99 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog title="批量导入学生" v-model="importOpen" width="700px" append-to-body>
+      <el-alert title="导入提示" type="info" :closable="false" show-icon style="margin-bottom: 12px;">
+        <template #default>
+          <div>请先下载模板（当前版本：{{ templateVersion }}），按“学生模板”Sheet填写，CSV请保持UTF-8编码和模板列名一致。</div>
+          <el-button link type="primary" @click="downloadTemplate">点击下载导入模板</el-button>
+        </template>
+      </el-alert>
+
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 20px;">
+        <template #default>
+          <div>关键规则：学号唯一；年份范围2000-2100；状态仅支持0/1；双选状态仅支持0/1/2/3。</div>
+        </template>
+      </el-alert>
+
+      <el-upload
+        ref="uploadRef"
+        :auto-upload="false"
+        :limit="1"
+        :on-change="handleFileChange"
+        :on-exceed="handleExceed"
+        accept=".xlsx,.xls,.csv"
+        drag>
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          拖拽文件到此处或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            支持 .xls/.xlsx/.csv，单文件不超过10MB
+          </div>
+        </template>
+      </el-upload>
+
+      <div v-if="taskInfo" style="margin-top: 16px;">
+        <el-divider content-position="left">导入进度</el-divider>
+        <el-progress :percentage="taskInfo.progress || 0" :status="progressStatus" :stroke-width="18" />
+        <div style="margin-top: 8px; color: #606266;">{{ taskInfo.message || '正在处理...' }}</div>
+      </div>
+
+      <div v-if="importResult" style="margin-top: 20px;">
+        <el-divider content-position="left">导入结果</el-divider>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="总记录数">{{ importResult.total }}</el-descriptions-item>
+          <el-descriptions-item label="成功数量">
+            <span style="color: #67C23A;">{{ importResult.successCount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="失败数量">
+            <span style="color: #F56C6C;">{{ importResult.failCount }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div v-if="importResult.failDetails && importResult.failDetails.length > 0" style="margin-top: 15px;">
+          <el-alert title="失败详情（请按建议修复后重试）" type="warning" :closable="false">
+            <ul style="margin: 0; padding-left: 20px; max-height: 220px; overflow-y: auto;">
+              <li v-for="(item, index) in importResult.failDetails" :key="index" style="margin-bottom: 8px;">
+                第{{ item.row }}行（学号：{{ item.studentNo || '-' }})
+                <span> - {{ item.reason }}</span>
+                <span v-if="item.errorCode">（{{ item.errorCode }}）</span>
+                <div v-if="item.field || item.suggestion" style="color: #909399; margin-top: 2px;">
+                  <span v-if="item.field">字段：{{ item.field }}；</span>
+                  <span v-if="item.suggestion">建议：{{ item.suggestion }}</span>
+                </div>
+              </li>
+            </ul>
+          </el-alert>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitImport" :loading="importLoading" :disabled="!uploadFile">开始导入</el-button>
+          <el-button @click="cancelImport">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Student">
-import { listStudent, getStudentDetail, addStudent, updateStudent, deleteStudent } from "@/api/student/info";
-import { getCurrentInstance, ref, reactive, toRefs } from "vue";
+import {
+  listStudent,
+  getStudentDetail,
+  addStudent,
+  updateStudent,
+  deleteStudent,
+  createStudentImportTask,
+  queryStudentImportTask,
+  importStudent,
+  downloadStudentImportTemplate
+} from "@/api/student/info";
+import { UploadFilled } from '@element-plus/icons-vue';
+import { getCurrentInstance, ref, reactive, toRefs, onBeforeUnmount } from "vue";
 
 const { proxy } = getCurrentInstance();
 
@@ -176,6 +264,17 @@ const total = ref(0);
 const title = ref("");
 const isView = ref(false);
 const currentRow = ref(null);
+
+const importOpen = ref(false);
+const importLoading = ref(false);
+const uploadFile = ref(null);
+const uploadRef = ref();
+const importResult = ref(null);
+const templateVersion = ref('v1.0');
+const taskInfo = ref(null);
+const currentTaskId = ref('');
+const progressStatus = ref('');
+let pollTimer = null;
 
 const columns = ref([
   { key: 0, label: `学号`, visible: true },
@@ -232,6 +331,10 @@ function getList() {
     loading.value = false;
     studentList.value = res.data || [];
     total.value = studentList.value.length;
+  }).catch(() => {
+    loading.value = false;
+    studentList.value = [];
+    total.value = 0;
   });
 }
 
@@ -327,6 +430,149 @@ function handleDelete(row) {
     proxy.$modal.msgSuccess("删除成功");
   }).catch(() => {});
 }
+
+function handleImport() {
+  resetImport();
+  importOpen.value = true;
+}
+
+function resetImport() {
+  uploadFile.value = null;
+  importResult.value = null;
+  taskInfo.value = null;
+  currentTaskId.value = '';
+  progressStatus.value = '';
+  stopPolling();
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+  }
+}
+
+function cancelImport() {
+  importOpen.value = false;
+  resetImport();
+}
+
+function handleFileChange(file) {
+  const fileName = file?.name || '';
+  const lowerName = fileName.toLowerCase();
+  const validType = lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv');
+  if (!validType) {
+    proxy.$modal.msgWarning("只能上传 .xls、.xlsx 或 .csv 文件");
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
+  const maxSizeMb = 10;
+  const isLt10Mb = (file.size || 0) / 1024 / 1024 <= maxSizeMb;
+  if (!isLt10Mb) {
+    proxy.$modal.msgWarning(`文件大小不能超过 ${maxSizeMb}MB`);
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
+  uploadFile.value = file.raw;
+}
+
+function handleExceed() {
+  proxy.$modal.msgWarning("只能上传一个文件");
+}
+
+function downloadTemplate() {
+  downloadStudentImportTemplate().then(res => {
+    const blob = new Blob([res], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '学生导入模板.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    proxy.$modal.msgSuccess("模板下载成功");
+  }).catch(() => {
+    proxy.$modal.msgError("模板下载失败");
+  });
+}
+
+function submitImport() {
+  if (!uploadFile.value) {
+    proxy.$modal.msgWarning("请选择要上传的文件");
+    return;
+  }
+
+  importLoading.value = true;
+  importResult.value = null;
+
+  createStudentImportTask().then(taskRes => {
+    const taskId = taskRes?.data?.taskId;
+    if (!taskId) {
+      throw new Error('创建任务失败');
+    }
+    currentTaskId.value = taskId;
+    taskInfo.value = { progress: 1, message: '导入任务已创建，准备上传文件...' };
+    progressStatus.value = '';
+
+    const formData = new FormData();
+    formData.append('file', uploadFile.value);
+    formData.append('taskId', taskId);
+    return importStudent(formData);
+  }).then(() => {
+    startPolling(currentTaskId.value);
+    proxy.$modal.msgSuccess("文件上传成功，开始导入");
+  }).catch(() => {
+    proxy.$modal.msgError("导入启动失败，请检查文件后重试");
+  }).finally(() => {
+    importLoading.value = false;
+  });
+}
+
+function startPolling(taskId) {
+  stopPolling();
+  pollTimer = setInterval(() => {
+    queryStudentImportTask(taskId).then(res => {
+      const task = res?.data;
+      if (!task) {
+        return;
+      }
+      taskInfo.value = task;
+      if (task.status === 'SUCCESS') {
+        progressStatus.value = 'success';
+        importResult.value = {
+          total: task.total || 0,
+          successCount: task.successCount || 0,
+          failCount: task.failCount || 0,
+          failDetails: task.failDetails || []
+        };
+        if ((task.successCount || 0) > 0) {
+          getList();
+        }
+        stopPolling();
+      } else if (task.status === 'FAILED') {
+        progressStatus.value = 'exception';
+        proxy.$modal.msgError(task.message || '导入失败');
+        stopPolling();
+      }
+    }).catch(() => {
+      stopPolling();
+      progressStatus.value = 'exception';
+      proxy.$modal.msgError('查询导入进度失败');
+    });
+  }, 1000);
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+onBeforeUnmount(() => {
+  stopPolling();
+});
 
 getList();
 </script>

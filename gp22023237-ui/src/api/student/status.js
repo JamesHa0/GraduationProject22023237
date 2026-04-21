@@ -40,14 +40,6 @@ export function approveStatusChangeSecretary(id, status, comment) {
   })
 }
 
-export function approveStatusChangeDean(id, status, comment) {
-  return request({
-    url: '/student/status/change/dean/approve',
-    method: 'post',
-    params: { id, status, comment }
-  })
-}
-
 // 毕业资格审核相关API
 export function listGraduationAudit(params) {
   return request({

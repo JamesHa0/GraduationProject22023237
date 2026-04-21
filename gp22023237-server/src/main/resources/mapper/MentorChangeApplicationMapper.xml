@@ -43,6 +43,15 @@
             <if test="studentName != null and studentName != ''">
                 AND st.student_name LIKE CONCAT('%', #{studentName}, '%')
             </if>
+            <if test="originalMentorId != null">
+                AND mca.original_mentor_id = #{originalMentorId}
+            </if>
+            <if test="newMentorId != null">
+                AND mca.new_mentor_id = #{newMentorId}
+            </if>
+            <if test="mentorId != null">
+                AND (mca.original_mentor_id = #{mentorId} OR mca.new_mentor_id = #{mentorId})
+            </if>
         </where>
         ORDER BY mca.create_time DESC
     </select>

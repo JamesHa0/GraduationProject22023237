@@ -17,7 +17,10 @@ public interface MentorChangeApplicationMapper extends BaseMapper<MentorChangeAp
     List<MentorChangeApplicationWithDetailsDTO> listWithDetails(@Param("studentId") Long studentId,
                                                                    @Param("studentNo") String studentNo,
                                                                    @Param("studentName") String studentName,
-                                                                   @Param("overallStatus") Integer overallStatus);
+                                                                   @Param("overallStatus") Integer overallStatus,
+                                                                   @Param("originalMentorId") Long originalMentorId,
+                                                                   @Param("newMentorId") Long newMentorId,
+                                                                   @Param("mentorId") Long mentorId);
 
     /**
      * 查询导师更换申请详情，关联学生和导师信息

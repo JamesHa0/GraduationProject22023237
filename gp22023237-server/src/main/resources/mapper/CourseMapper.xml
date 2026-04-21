@@ -47,6 +47,72 @@
         ORDER BY c.create_time DESC
     </select>
 
+    <!-- 查询课程列表，关联教师信息（分页） -->
+    <select id="listCourseWithTeacherPage" resultType="com.jameshao.gp22023237.DTO.CourseWithTeacherDTO">
+        SELECT
+            c.id,
+            c.course_no AS courseNo,
+            c.name,
+            c.credit,
+            c.hours,
+            c.teacher_id AS teacherId,
+            t.teacher_name AS teacherName,
+            c.semester,
+            c.year,
+            c.max_students AS maxStudents,
+            c.day_of_week AS dayOfWeek,
+            c.start_time AS startTime,
+            c.end_time AS endTime,
+            c.classroom,
+            c.max_credits AS maxCredits,
+            c.status,
+            c.description,
+            c.study_nature AS studyNature,
+            c.textbook,
+            c.external_selection AS externalSelection,
+            c.remark,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            DATE_FORMAT(c.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+        FROM course c
+        LEFT JOIN teacher t ON c.teacher_id = t.id
+        <where>
+            <if test="name != null and name != ''">
+                AND c.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="courseNo != null and courseNo != ''">
+                AND c.course_no LIKE CONCAT('%', #{courseNo}, '%')
+            </if>
+            <if test="status != null">
+                AND c.status = #{status}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+        </where>
+        ORDER BY c.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计课程总数 -->
+    <select id="countCourseWithTeacher" resultType="int">
+        SELECT COUNT(*)
+        FROM course c
+        <where>
+            <if test="name != null and name != ''">
+                AND c.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="courseNo != null and courseNo != ''">
+                AND c.course_no LIKE CONCAT('%', #{courseNo}, '%')
+            </if>
+            <if test="status != null">
+                AND c.status = #{status}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+        </where>
+    </select>
+
     <!-- 根据ID查询课程详情，关联教师信息 -->
     <select id="getCourseWithTeacherById" resultType="com.jameshao.gp22023237.DTO.CourseWithTeacherDTO">
         SELECT
@@ -76,6 +142,16 @@
         FROM course c
         LEFT JOIN teacher t ON c.teacher_id = t.id
         WHERE c.id = #{id}
+    </select>
+
+    <!-- 导入预加载：按课程编号批量查询 -->
+    <select id="listByCourseNos" resultType="com.jameshao.gp22023237.po.Course">
+        SELECT id, course_no
+        FROM course
+        WHERE course_no IN
+        <foreach collection="courseNos" item="courseNo" open="(" separator="," close=")">
+            #{courseNo}
+        </foreach>
     </select>
 
 </mapper>

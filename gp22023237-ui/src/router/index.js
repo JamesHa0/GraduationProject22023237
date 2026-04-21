@@ -150,19 +150,25 @@ export const constantRoutes = [
         path: 'change',
         component: () => import('@/views/student/change/index'),
         name: 'StudentChange',
-        meta: { title: '学籍变更申请', icon: 'edit' }
+        meta: { title: '学籍异动申请', icon: 'edit' }
       },
       {
         path: 'approval',
         component: () => import('@/views/student/approval/index'),
         name: 'StudentApproval',
-        meta: { title: '学籍变更审批', icon: 'check' }
+        meta: { title: '学籍异动审核', icon: 'check' }
       },
       {
         path: 'graduation',
         component: () => import('@/views/student/graduation/index'),
         name: 'GraduationAudit',
         meta: { title: '毕业资格审核', icon: 'finished' }
+      },
+      {
+        path: 'student-change',
+        component: () => import('@/views/student/student-change/index'),
+        name: 'StudentChangeApply',
+        meta: { title: '学籍异动申请', icon: 'edit' }
       }
     ]
   },
@@ -342,9 +348,15 @@ export const constantRoutes = [
       },
       {
         path: 'mentor-change',
-        component: () => import('@/views/selection/mentor-change/index'),
+        component: () => import('@/views/selection/mentor-change-application/index'),
         name: 'MentorChange',
         meta: { title: '导师更换申请', icon: 'people' }
+      },
+      {
+        path: 'mentor-change-manage',
+        component: () => import('@/views/selection/mentor-change/index'),
+        name: 'MentorChangeManage',
+        meta: { title: '导师更换申请管理', icon: 'people' }
       },
       {
         path: 'round-manage',

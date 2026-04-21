@@ -175,6 +175,11 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
     }
 
     @Override
+    public List<Map<String, Object>> listAvailableMentorsForStudent() {
+        return baseMapper.listAvailableMentors();
+    }
+
+    @Override
     public Map<String, Object> getStudentCurrentMentor(Long studentId) {
         return baseMapper.getStudentCurrentMentor(studentId);
     }

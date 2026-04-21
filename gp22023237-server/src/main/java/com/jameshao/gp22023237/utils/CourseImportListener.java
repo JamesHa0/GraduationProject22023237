@@ -6,6 +6,8 @@ import com.alibaba.excel.util.ListUtils;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.jameshao.gp22023237.DTO.CourseImportDTO;
 import com.jameshao.gp22023237.DTO.CourseImportResultDTO;
+import com.jameshao.gp22023237.common.error.ImportErrorCode;
+import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.CourseService;
@@ -15,7 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 课程导入Excel监听器
@@ -23,147 +29,228 @@ import java.util.List;
 @Slf4j
 public class CourseImportListener implements ReadListener<CourseImportDTO> {
 
-    /**
-     * 每隔100条存储数据库
-     */
-    private static final int BATCH_COUNT = 100;
+    private final int batchCount;
 
     /**
      * 缓存的数据
      */
-    private List<CourseImportDTO> cachedDataList = ListUtils.newArrayListWithExpectedSize(BATCH_COUNT);
+    private List<RowData> cachedDataList;
 
     private final CourseService courseService;
     private final TeacherService teacherService;
+    private final CourseMapper courseMapper;
 
     private final List<CourseImportResultDTO.FailDetail> failDetails = new ArrayList<>();
     private int successCount = 0;
     private int totalCount = 0;
-    private int currentRow = 1; // 表头是第1行，数据从第2行开始
-
-    // 用于存储需要保存的课程
-    private final List<Course> coursesToSave = new ArrayList<>();
 
     // 待定教师ID，由外部传入
-    private Long defaultTeacherId;
+    private final Long defaultTeacherId;
 
-    public CourseImportListener(CourseService courseService, TeacherService teacherService, Long defaultTeacherId) {
+    // 文件内判重，避免同一批导入重复课程号
+    private final Set<String> fileCourseNoSet = new HashSet<>();
+
+    public CourseImportListener(CourseService courseService,
+                                TeacherService teacherService,
+                                CourseMapper courseMapper,
+                                Long defaultTeacherId,
+                                int batchCount) {
         this.courseService = courseService;
         this.teacherService = teacherService;
+        this.courseMapper = courseMapper;
         this.defaultTeacherId = defaultTeacherId;
+        this.batchCount = batchCount;
+        this.cachedDataList = ListUtils.newArrayListWithExpectedSize(batchCount);
     }
 
     @Override
     public void invoke(CourseImportDTO data, AnalysisContext context) {
-        currentRow++;
         totalCount++;
-        log.info("解析到第{}条数据: {}", currentRow, data);
-
-        // 校验数据
-        String error = validateData(data);
-        if (error != null) {
-            failDetails.add(new CourseImportResultDTO.FailDetail(currentRow, data.getCourseNo(), error));
-            return;
-        }
-
-        cachedDataList.add(data);
-        if (cachedDataList.size() >= BATCH_COUNT) {
+        int row = context.readRowHolder().getRowIndex() + 1;
+        cachedDataList.add(new RowData(row, data));
+        if (cachedDataList.size() >= batchCount) {
             saveData();
-            cachedDataList = ListUtils.newArrayListWithExpectedSize(BATCH_COUNT);
+            cachedDataList = ListUtils.newArrayListWithExpectedSize(batchCount);
         }
     }
 
     @Override
     public void doAfterAllAnalysed(AnalysisContext context) {
         saveData();
-        log.info("所有数据解析完成！");
+        log.info("课程导入解析完成，总记录:{}，成功:{}，失败:{}", totalCount, successCount, failDetails.size());
+    }
+
+    /**
+     * 批量保存并校验
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveData() {
+        if (cachedDataList.isEmpty()) {
+            return;
+        }
+
+        long start = System.currentTimeMillis();
+
+        Set<String> courseNos = new HashSet<>();
+        Set<String> teacherNos = new HashSet<>();
+        for (RowData rowData : cachedDataList) {
+            if (rowData.dto.getCourseNo() != null && !rowData.dto.getCourseNo().trim().isEmpty()) {
+                courseNos.add(rowData.dto.getCourseNo().trim());
+            }
+            if (rowData.dto.getTeacherNo() != null && !rowData.dto.getTeacherNo().trim().isEmpty()) {
+                teacherNos.add(rowData.dto.getTeacherNo().trim());
+            }
+        }
+
+        Map<String, Boolean> existingCourseNoMap = preloadExistingCourseNoMap(courseNos);
+        Map<String, Long> teacherNoToIdMap = preloadTeacherNoMap(teacherNos);
+
+        List<Course> validCourses = new ArrayList<>();
+
+        for (RowData rowData : cachedDataList) {
+            CourseImportResultDTO.FailDetail failDetail = validateData(rowData, existingCourseNoMap);
+            if (failDetail != null) {
+                failDetails.add(failDetail);
+                continue;
+            }
+            try {
+                Course course = convertToCourse(rowData.dto, teacherNoToIdMap);
+                validCourses.add(course);
+            } catch (Exception e) {
+                log.error("第{}行数据转换失败", rowData.row, e);
+                failDetails.add(toFailDetail(rowData.row, rowData.dto.getCourseNo(), ImportErrorCode.SYSTEM_ERROR,
+                        "数据转换失败: " + e.getMessage()));
+            }
+        }
+
+        if (!validCourses.isEmpty()) {
+            courseService.saveBatch(validCourses, batchCount);
+            successCount += validCourses.size();
+        }
+
+        long cost = System.currentTimeMillis() - start;
+        log.info("课程导入批次处理完成，批次大小:{}，成功:{}，失败:{}，耗时:{}ms",
+                cachedDataList.size(), validCourses.size(), cachedDataList.size() - validCourses.size(), cost);
+    }
+
+    private Map<String, Boolean> preloadExistingCourseNoMap(Set<String> courseNos) {
+        Map<String, Boolean> map = new HashMap<>();
+        if (courseNos.isEmpty()) {
+            return map;
+        }
+        List<Course> existingCourses = courseMapper.listByCourseNos(new ArrayList<>(courseNos));
+        for (Course course : existingCourses) {
+            if (course.getCourseNo() != null) {
+                map.put(course.getCourseNo(), true);
+            }
+        }
+        return map;
+    }
+
+    private Map<String, Long> preloadTeacherNoMap(Set<String> teacherNos) {
+        Map<String, Long> map = new HashMap<>();
+        if (teacherNos.isEmpty()) {
+            return map;
+        }
+        QueryWrapper<Teacher> wrapper = new QueryWrapper<>();
+        wrapper.in("teacher_no", teacherNos).select("id", "teacher_no");
+        List<Teacher> teachers = teacherService.list(wrapper);
+        for (Teacher teacher : teachers) {
+            map.put(teacher.getTeacherNo(), teacher.getId());
+        }
+        return map;
     }
 
     /**
      * 校验数据
      */
-    private String validateData(CourseImportDTO data) {
+    private CourseImportResultDTO.FailDetail validateData(RowData rowData, Map<String, Boolean> existingCourseNoMap) {
+        CourseImportDTO data = rowData.dto;
+
         // 课程编号必填
         if (data.getCourseNo() == null || data.getCourseNo().trim().isEmpty()) {
-            return "课程编号不能为空";
+            return toFailDetail(rowData.row, data.getCourseNo(), ImportErrorCode.COURSE_NO_REQUIRED);
         }
+        String courseNo = data.getCourseNo().trim();
+
         // 课程编号长度检查
-        if (data.getCourseNo().length() > 20) {
-            return "课程编号长度不能超过20";
+        if (courseNo.length() > 20) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.COURSE_NO_REQUIRED, "课程编号长度不能超过20");
         }
-        // 课程编号唯一性检查
-        QueryWrapper<Course> courseWrapper = new QueryWrapper<>();
-        courseWrapper.eq("course_no", data.getCourseNo());
-        if (courseService.getOne(courseWrapper) != null) {
-            return "课程编号已存在";
+
+        // 课程编号唯一性检查（系统已存在）
+        if (Boolean.TRUE.equals(existingCourseNoMap.get(courseNo))) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.COURSE_NO_DUPLICATE_DB);
+        }
+
+        // 文件内重复课程号检查
+        if (fileCourseNoSet.contains(courseNo)) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.COURSE_NO_DUPLICATE_FILE);
         }
 
         // 课程名称必填
         if (data.getName() == null || data.getName().trim().isEmpty()) {
-            return "课程名称不能为空";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.NAME_REQUIRED);
         }
+
         // 课程名称长度检查
         if (data.getName().length() > 100) {
-            return "课程名称长度不能超过100";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.NAME_REQUIRED, "课程名称长度不能超过100");
         }
 
-        // 学分必填
-        if (data.getCredit() == null) {
-            return "学分不能为空";
-        }
-        if (data.getCredit() < 0.5 || data.getCredit() > 10) {
-            return "学分必须在0.5-10之间";
+        // 学分必填和范围
+        if (data.getCredit() == null || data.getCredit() < 0.5 || data.getCredit() > 10) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.CREDIT_RANGE_INVALID);
         }
 
-        // 学时必填
-        if (data.getHours() == null) {
-            return "学时不能为空";
-        }
-        if (data.getHours() < 1 || data.getHours() > 200) {
-            return "学时必须在1-200之间";
+        // 学时必填和范围
+        if (data.getHours() == null || data.getHours() < 1 || data.getHours() > 200) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.HOURS_RANGE_INVALID);
         }
 
         // 学期必填
         if (data.getSemester() == null || data.getSemester().trim().isEmpty()) {
-            return "学期不能为空";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SEMESTER_REQUIRED);
         }
+
         if (data.getSemester().length() > 20) {
-            return "学期长度不能超过20";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SEMESTER_REQUIRED, "学期长度不能超过20");
         }
 
         // 学年必填
         if (data.getYear() == null) {
-            return "学年不能为空";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SEMESTER_REQUIRED, "学年不能为空");
         }
 
         // 星期几校验
         if (data.getDayOfWeek() != null && (data.getDayOfWeek() < 1 || data.getDayOfWeek() > 7)) {
-            return "星期几必须在1-7之间";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SYSTEM_ERROR, "星期几必须在1-7之间");
         }
 
         // 时间格式校验
         if (data.getStartTime() != null && !data.getStartTime().isEmpty() && !isValidTimeFormat(data.getStartTime())) {
-            return "开始时间格式不正确，应为HH:mm:ss";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.TIME_FORMAT_INVALID, "开始时间格式不正确，应为HH:mm:ss");
         }
         if (data.getEndTime() != null && !data.getEndTime().isEmpty() && !isValidTimeFormat(data.getEndTime())) {
-            return "结束时间格式不正确，应为HH:mm:ss";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.TIME_FORMAT_INVALID, "结束时间格式不正确，应为HH:mm:ss");
         }
 
-        // 状态校验
-        if (data.getStatus() != null && data.getStatus() < 0 && data.getStatus() > 2) {
-            return "课程状态必须是0-未开课、1-已开课或2-已结课";
+        // 状态校验（修复逻辑错误：&& -> ||）
+        if (data.getStatus() != null && (data.getStatus() < 0 || data.getStatus() > 2)) {
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.STATUS_INVALID);
         }
 
         // 教材校验
         if (data.getTextbook() != null && data.getTextbook() != 0 && data.getTextbook() != 1) {
-            return "教材必须是0-否或1-是";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SYSTEM_ERROR, "教材必须是0-否或1-是");
         }
 
         // 外年级选课校验
         if (data.getExternalSelection() != null && data.getExternalSelection() != 0 && data.getExternalSelection() != 1) {
-            return "外年级选课必须是0-否或1-是";
+            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SYSTEM_ERROR, "外年级选课必须是0-否或1-是");
         }
 
+        fileCourseNoSet.add(courseNo);
         return null;
     }
 
@@ -175,43 +262,12 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
     }
 
     /**
-     * 加上存储数据库
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void saveData() {
-        if (cachedDataList.isEmpty()) {
-            return;
-        }
-
-        log.info("开始存储{}条数据到数据库...", cachedDataList.size());
-
-        for (CourseImportDTO dto : cachedDataList) {
-            try {
-                Course course = convertToCourse(dto);
-                coursesToSave.add(course);
-                successCount++;
-            } catch (Exception e) {
-                log.error("转换课程数据失败: {}", dto, e);
-                failDetails.add(new CourseImportResultDTO.FailDetail(currentRow, dto.getCourseNo(), "数据转换失败: " + e.getMessage()));
-            }
-        }
-
-        // 批量保存
-        if (!coursesToSave.isEmpty()) {
-            courseService.saveBatch(coursesToSave);
-            coursesToSave.clear();
-        }
-
-        log.info("存储数据库成功！");
-    }
-
-    /**
      * 转换DTO为Course实体
      */
-    private Course convertToCourse(CourseImportDTO dto) {
+    private Course convertToCourse(CourseImportDTO dto, Map<String, Long> teacherNoToIdMap) {
         Course course = new Course();
-        course.setCourseNo(dto.getCourseNo());
-        course.setName(dto.getName());
+        course.setCourseNo(dto.getCourseNo().trim());
+        course.setName(dto.getName().trim());
         course.setCredit(dto.getCredit());
         course.setHours(dto.getHours());
         course.setSemester(dto.getSemester());
@@ -234,7 +290,7 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
         course.setRemark(dto.getRemark());
 
         // 设置教师ID
-        course.setTeacherId(getTeacherId(dto.getTeacherNo()));
+        course.setTeacherId(resolveTeacherId(dto.getTeacherNo(), teacherNoToIdMap));
 
         // 设置时间
         Date now = new Date();
@@ -247,19 +303,35 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
     /**
      * 根据教师工号获取教师ID，如果没有则使用待定教师
      */
-    private Long getTeacherId(String teacherNo) {
+    private Long resolveTeacherId(String teacherNo, Map<String, Long> teacherNoToIdMap) {
         if (teacherNo == null || teacherNo.trim().isEmpty()) {
             return defaultTeacherId;
         }
+        return teacherNoToIdMap.getOrDefault(teacherNo.trim(), defaultTeacherId);
+    }
 
-        QueryWrapper<Teacher> wrapper = new QueryWrapper<>();
-        wrapper.eq("teacher_no", teacherNo);
-        Teacher teacher = teacherService.getOne(wrapper);
-        if (teacher != null) {
-            return teacher.getId();
-        }
+    private CourseImportResultDTO.FailDetail toFailDetail(int row, String courseNo, ImportErrorCode code) {
+        return new CourseImportResultDTO.FailDetail(
+                row,
+                courseNo,
+                code.getMessage(),
+                code.getCode(),
+                code.getField(),
+                code.getSuggestion(),
+                code.getRule()
+        );
+    }
 
-        return defaultTeacherId;
+    private CourseImportResultDTO.FailDetail toFailDetail(int row, String courseNo, ImportErrorCode code, String customReason) {
+        return new CourseImportResultDTO.FailDetail(
+                row,
+                courseNo,
+                customReason,
+                code.getCode(),
+                code.getField(),
+                code.getSuggestion(),
+                code.getRule()
+        );
     }
 
     /**
@@ -267,10 +339,20 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
      */
     public CourseImportResultDTO getResult() {
         return new CourseImportResultDTO(
-            totalCount,
-            successCount,
-            failDetails.size(),
-            failDetails
+                totalCount,
+                successCount,
+                failDetails.size(),
+                failDetails
         );
+    }
+
+    private static class RowData {
+        private final int row;
+        private final CourseImportDTO dto;
+
+        private RowData(int row, CourseImportDTO dto) {
+            this.row = row;
+            this.dto = dto;
+        }
     }
 }

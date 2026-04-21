@@ -13,17 +13,19 @@
             ssc.reason,
             ssc.start_date AS startDate,
             ssc.end_date AS endDate,
-            ssc.tutor_approval AS mentorStatus,
-            ssc.tutor_id AS mentorId,
-            ssc.tutor_approval_time AS mentorApprovalTime,
-            ssc.counselor_approval AS secretaryStatus,
-            ssc.counselor_id AS secretaryId,
-            ssc.counselor_approval_time AS secretaryApprovalTime,
+            ssc.mentor_approval AS mentorStatus,
+            ssc.mentor_id AS mentorId,
+            t.teacher_name AS mentorName,
+            ssc.mentor_approval_time AS mentorApprovalTime,
+            ssc.secretary_approval AS secretaryStatus,
+            ssc.secretary_id AS secretaryId,
+            ssc.secretary_approval_time AS secretaryApprovalTime,
             ssc.status,
             ssc.create_time AS createTime,
             ssc.update_time AS updateTime
         FROM student_status_change ssc
         LEFT JOIN student st ON ssc.student_id = st.id
+        LEFT JOIN teacher t ON ssc.mentor_id = t.id
         <where>
             <if test="studentId != null">
                 AND ssc.student_id = #{studentId}
@@ -36,6 +38,29 @@
             </if>
             <if test="studentName != null and studentName != ''">
                 AND st.student_name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+            <if test="status != null">
+                <choose>
+                    <!-- 待导师审批：导师未审批 -->
+                    <when test="status == 0">
+                        AND ssc.mentor_approval = 0
+                    </when>
+                    <!-- 待秘书审批：导师已通过，秘书未审批 -->
+                    <when test="status == 1">
+                        AND ssc.mentor_approval = 1 AND (ssc.secretary_approval IS NULL OR ssc.secretary_approval = 0)
+                    </when>
+                    <!-- 已通过：导师通过且秘书通过 -->
+                    <when test="status == 2">
+                        AND ssc.mentor_approval = 1 AND ssc.secretary_approval = 1
+                    </when>
+                    <!-- 已拒绝：任一级拒绝 -->
+                    <when test="status == 3">
+                        AND (ssc.mentor_approval = 2 OR ssc.secretary_approval = 2)
+                    </when>
+                </choose>
+            </if>
+            <if test="mentorId != null">
+                AND ssc.mentor_id = #{mentorId}
             </if>
         </where>
         ORDER BY ssc.create_time DESC
@@ -52,17 +77,19 @@
             ssc.reason,
             ssc.start_date AS startDate,
             ssc.end_date AS endDate,
-            ssc.tutor_approval AS mentorStatus,
-            ssc.tutor_id AS mentorId,
-            ssc.tutor_approval_time AS mentorApprovalTime,
-            ssc.counselor_approval AS secretaryStatus,
-            ssc.counselor_id AS secretaryId,
-            ssc.counselor_approval_time AS secretaryApprovalTime,
+            ssc.mentor_approval AS mentorStatus,
+            ssc.mentor_id AS mentorId,
+            t.teacher_name AS mentorName,
+            ssc.mentor_approval_time AS mentorApprovalTime,
+            ssc.secretary_approval AS secretaryStatus,
+            ssc.secretary_id AS secretaryId,
+            ssc.secretary_approval_time AS secretaryApprovalTime,
             ssc.status,
             ssc.create_time AS createTime,
             ssc.update_time AS updateTime
         FROM student_status_change ssc
         LEFT JOIN student st ON ssc.student_id = st.id
+        LEFT JOIN teacher t ON ssc.mentor_id = t.id
         WHERE ssc.id = #{id}
     </select>
 

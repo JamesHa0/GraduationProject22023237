@@ -56,8 +56,14 @@
           {{ parseDate(scope.row.applyTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="250" class-name="small-padding fixed-width">
         <template #default="scope">
+          <!-- 原导师审批按钮：仅导师角色 + 是该申请的原导师 + 待审批 -->
+          <el-button v-if="isTeacher && isOriginalMentor(scope.row) && scope.row.originalMentorStatus === 0"
+            link type="primary" icon="Edit" @click="handleApprove(scope.row, 'original')">原导师审批</el-button>
+          <!-- 新导师审批按钮：仅导师角色 + 是该申请的新导师 + 待审批 -->
+          <el-button v-if="isTeacher && isNewMentor(scope.row) && scope.row.originalMentorStatus === 1 && scope.row.newMentorStatus === 0"
+            link type="primary" icon="Edit" @click="handleApprove(scope.row, 'new')">新导师审批</el-button>
           <el-button link type="primary" icon="Download" @click="handleExport(scope.row)">导出</el-button>
           <el-button link type="primary" icon="View" @click="handleView(scope.row)"></el-button>
         </template>
@@ -66,6 +72,7 @@
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
+    <!-- 查看详情对话框 -->
     <el-dialog :title="title" v-model="open" width="700px" append-to-body>
       <el-form :model="form" :rules="rules" ref="changeRef" label-width="100px">
         <el-row>
@@ -83,7 +90,7 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="原导师">
-              <el-input v-model="originalMentorName" disabled />
+              <el-input v-model="form.originalMentorName" disabled />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -124,17 +131,45 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 审批对话框 -->
+    <el-dialog title="导师审批" v-model="approveDialogVisible" width="500px" append-to-body>
+      <el-form :model="approveForm" label-width="80px">
+        <el-form-item label="学生姓名">
+          <el-input :model-value="approveRow?.studentName" disabled />
+        </el-form-item>
+        <el-form-item label="审批类型">
+          <el-input :model-value="approveType === 'original' ? '原导师审批' : '新导师审批'" disabled />
+        </el-form-item>
+        <el-form-item label="审批意见">
+          <el-input v-model="approveForm.comment" type="textarea" :rows="3" placeholder="请输入审批意见（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="danger" @click="submitApprove(2)">拒 绝</el-button>
+          <el-button type="primary" @click="submitApprove(1)">通 过</el-button>
+          <el-button @click="approveDialogVisible = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="MentorChangeManage">
-import { listMentorChange, getMentorChangeDetail } from "@/api/student/mentorChange";
+import { listMentorChange, getMentorChangeDetail, approveMentorChangeOriginalMentor, approveMentorChangeNewMentor } from "@/api/student/mentorChange";
 import { saveAs } from 'file-saver';
 import axios from 'axios';
 import { getToken } from '@/utils/auth';
 import { getCurrentInstance, ref, reactive, toRefs } from "vue";
+import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
+const userStore = useUserStore();
+
+// 判断当前用户角色
+const isTeacher = Number(userStore.roles) === 7;
+const currentTeacherId = isTeacher && userStore.roleInfo && userStore.roleInfo[0] ? userStore.roleInfo[0].id : null;
 
 const changeList = ref([]);
 const open = ref(false);
@@ -142,7 +177,12 @@ const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
 const title = ref("");
-const originalMentorName = ref('');
+
+// 审批相关
+const approveDialogVisible = ref(false);
+const approveType = ref('');
+const approveRow = ref(null);
+const approveForm = reactive({ comment: '' });
 
 const columns = ref([
   { key: 0, label: `学号`, visible: true },
@@ -195,9 +235,20 @@ function parseDate(dateStr) {
   return date.toLocaleString('zh-CN');
 }
 
+// 判断当前老师是否是该申请的原导师
+function isOriginalMentor(row) {
+  return currentTeacherId && row.originalMentorId === currentTeacherId;
+}
+
+// 判断当前老师是否是该申请的新导师
+function isNewMentor(row) {
+  return currentTeacherId && row.newMentorId === currentTeacherId;
+}
+
 function getList() {
   loading.value = true;
-  listMentorChange(queryParams.value).then(res => {
+  const params = { ...queryParams.value };
+  listMentorChange(params).then(res => {
     loading.value = false;
     changeList.value = res.data.records || res.data || [];
     total.value = res.data.total || changeList.value.length;
@@ -216,7 +267,6 @@ function resetQuery() {
 
 function reset() {
   form.value = {};
-  originalMentorName.value = '';
   proxy.resetForm("changeRef");
 }
 
@@ -229,9 +279,34 @@ function handleView(row) {
   reset();
   getMentorChangeDetail(row.id).then(res => {
     form.value = res.data;
-    originalMentorName.value = res.data.originalMentorName || '';
     open.value = true;
     title.value = "查看详情";
+  });
+}
+
+// 打开审批对话框
+function handleApprove(row, type) {
+  approveRow.value = row;
+  approveType.value = type;
+  approveForm.comment = '';
+  approveDialogVisible.value = true;
+}
+
+// 提交审批
+function submitApprove(status) {
+  const id = approveRow.value.id;
+  const comment = approveForm.comment;
+  const apiCall = approveType.value === 'original'
+    ? approveMentorChangeOriginalMentor
+    : approveMentorChangeNewMentor;
+
+  apiCall(id, status, comment).then(() => {
+    proxy.$modal.msgSuccess(status === 1 ? '审批通过' : '已拒绝');
+    approveDialogVisible.value = false;
+    getList();
+  }).catch(error => {
+    console.error('审批失败', error);
+    proxy.$modal.msgError('审批失败');
   });
 }
 

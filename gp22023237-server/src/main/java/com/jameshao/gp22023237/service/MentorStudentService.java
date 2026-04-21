@@ -41,9 +41,14 @@ public interface MentorStudentService extends IService<MentorStudent> {
     List<Map<String, Object>> listAvailableStudents();
 
     /**
-     * 获取可选导师列表（还有剩余名额的导师）
+     * 获取可选导师列表（还有剩余名额的导师）- 管理端，需查看权限
      */
     List<Map<String, Object>> listAvailableMentors();
+
+    /**
+     * 获取可选导师列表（学生端，用于导师更换申请，无需查看权限检查）
+     */
+    List<Map<String, Object>> listAvailableMentorsForStudent();
 
     /**
      * 获取学生当前的导师信息

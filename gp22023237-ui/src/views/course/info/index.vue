@@ -151,16 +151,22 @@
     </el-dialog>
 
     <!-- 批量导入对话框 -->
-    <el-dialog title="批量导入课程" v-model="importOpen" width="600px" append-to-body>
+    <el-dialog title="批量导入课程" v-model="importOpen" width="680px" append-to-body>
       <el-alert
-        title="提示"
+        title="导入提示"
         type="info"
         :closable="false"
         show-icon
-        style="margin-bottom: 20px;">
+        style="margin-bottom: 12px;">
         <template #default>
-          <div>请先下载模板，按照模板格式填写课程信息后上传</div>
+          <div>请先下载模板（当前版本：{{ templateVersion }}），按“课程模板”Sheet填写，参考“填写说明”Sheet中的字段规则与错误码。</div>
           <el-button link type="primary" @click="downloadTemplate">点击下载导入模板</el-button>
+        </template>
+      </el-alert>
+
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 20px;">
+        <template #default>
+          <div>关键规则：课程编号唯一；学分范围0.5-10；学时范围1-200；时间格式必须是HH:mm:ss；状态仅支持0/1/2。</div>
         </template>
       </el-alert>
 
@@ -178,7 +184,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            只能上传 .xls 或 .xlsx 格式的Excel文件
+            仅支持 .xls/.xlsx，单文件不超过10MB
           </div>
         </template>
       </el-upload>
@@ -197,10 +203,16 @@
         </el-descriptions>
 
         <div v-if="importResult.failDetails && importResult.failDetails.length > 0" style="margin-top: 15px;">
-          <el-alert title="失败详情" type="warning" :closable="false">
-            <ul style="margin: 0; padding-left: 20px;">
-              <li v-for="(item, index) in importResult.failDetails" :key="index" style="margin-bottom: 5px;">
-                第{{ item.row }}行（课程编号：{{ item.courseNo }}）- {{ item.reason }}
+          <el-alert title="失败详情（请按建议修复后重试）" type="warning" :closable="false">
+            <ul style="margin: 0; padding-left: 20px; max-height: 220px; overflow-y: auto;">
+              <li v-for="(item, index) in importResult.failDetails" :key="index" style="margin-bottom: 8px;">
+                第{{ item.row }}行（课程编号：{{ item.courseNo || '-' }}）
+                <span> - {{ item.reason }}</span>
+                <span v-if="item.errorCode">（{{ item.errorCode }}）</span>
+                <div v-if="item.field || item.suggestion" style="color: #909399; margin-top: 2px;">
+                  <span v-if="item.field">字段：{{ item.field }}；</span>
+                  <span v-if="item.suggestion">建议：{{ item.suggestion }}</span>
+                </div>
               </li>
             </ul>
           </el-alert>
@@ -218,7 +230,7 @@
 </template>
 
 <script setup name="Course">
-import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse, importCourse, downloadImportTemplate } from "@/api/course/course";
+import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse, delCourseBatch, importCourse, downloadImportTemplate } from "@/api/course/course";
 import { UploadFilled } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
@@ -240,6 +252,7 @@ const importLoading = ref(false);
 const uploadFile = ref(null);
 const uploadRef = ref();
 const importResult = ref(null);
+const templateVersion = ref('v2.0');
 
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
@@ -291,9 +304,13 @@ function getTeacherList() {
 function getList() {
   loading.value = true;
   listCourse(queryParams.value).then(res => {
+    courseList.value = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
+  }).catch(() => {
+    courseList.value = [];
+    total.value = 0;
+  }).finally(() => {
     loading.value = false;
-    courseList.value = res.data || [];
-    total.value = courseList.value.length;
   });
 }
 
@@ -309,7 +326,7 @@ function resetQuery() {
 
 function handleSelectionChange(selection) {
   ids.value = selection.map(item => item.id);
-  single.value = selection.length != 1;
+  single.value = selection.length !== 1;
   multiple.value = !selection.length;
 }
 
@@ -348,7 +365,6 @@ function handleUpdate(row) {
   const id = row.id || ids.value;
   getCourse(id).then(res => {
     form.value = res.data;
-    // 如果teacherId对应的是"待定教师"，设置为0表示待定
     if (form.value.teacherName === '待定教师') {
       form.value.teacherId = 0;
     }
@@ -360,19 +376,17 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["courseRef"].validate(valid => {
     if (valid) {
-      if (form.value.id != undefined) {
-        // 更新时删除日期字段，让后端处理
+      if (form.value.id !== undefined) {
         const updateData = { ...form.value };
         delete updateData.createTime;
         delete updateData.updateTime;
-        delete updateData.teacherName; // 这个字段不需要传到后端
+        delete updateData.teacherName;
         updateCourse(updateData).then(() => {
           proxy.$modal.msgSuccess("修改成功");
           open.value = false;
           getList();
         });
       } else {
-        // 新增时也删除不需要的字段
         const addData = { ...form.value };
         delete addData.teacherName;
         addCourse(addData).then(() => {
@@ -386,9 +400,11 @@ function submitForm() {
 }
 
 function handleDelete(row) {
-  const courseIds = row.id || ids.value;
+  const isSingle = !!row?.id;
+  const request = isSingle ? delCourse(row.id) : delCourseBatch(ids.value);
+
   proxy.$modal.confirm('是否确认删除？').then(() => {
-    return delCourse(courseIds);
+    return request;
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
@@ -415,6 +431,23 @@ function cancelImport() {
 }
 
 function handleFileChange(file) {
+  const fileName = file?.name || '';
+  const lowerName = fileName.toLowerCase();
+  const isExcel = lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx');
+  if (!isExcel) {
+    proxy.$modal.msgWarning("只能上传 .xls 或 .xlsx 文件");
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
+  const maxSizeMb = 10;
+  const isLt10Mb = (file.size || 0) / 1024 / 1024 <= maxSizeMb;
+  if (!isLt10Mb) {
+    proxy.$modal.msgWarning(`文件大小不能超过 ${maxSizeMb}MB`);
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
   uploadFile.value = file.raw;
 }
 
@@ -453,12 +486,16 @@ function submitImport() {
 
   importCourse(formData).then(res => {
     importResult.value = res.data;
-    proxy.$modal.msgSuccess("导入完成");
+    if (importResult.value.failCount > 0) {
+      proxy.$modal.msgWarning(`导入完成：成功 ${importResult.value.successCount} 条，失败 ${importResult.value.failCount} 条`);
+    } else {
+      proxy.$modal.msgSuccess("导入完成，全部成功");
+    }
     if (importResult.value.successCount > 0) {
       getList();
     }
   }).catch(() => {
-    proxy.$modal.msgError("导入失败");
+    proxy.$modal.msgError("导入失败，请检查模板和数据后重试");
   }).finally(() => {
     importLoading.value = false;
   });

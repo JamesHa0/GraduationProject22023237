@@ -8,8 +8,11 @@ import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.mapper.StudentStatusChangeMapper;
 import com.jameshao.gp22023237.po.GraduationAudit;
 import com.jameshao.gp22023237.po.StudentStatusChange;
+import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.GraduationAuditService;
 import com.jameshao.gp22023237.service.StudentStatusChangeService;
+import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +41,9 @@ public class StudentStatusController {
     private GraduationAuditService graduationAuditService;
 
     @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
     private JSONReturn jsonReturn;
 
     /**
@@ -52,9 +58,11 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("申请提交失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 
@@ -67,9 +75,22 @@ public class StudentStatusController {
                                       @RequestParam(required = false) Long studentId,
                                       @RequestParam(required = false) Integer changeType,
                                       @RequestParam(required = false) String studentNo,
-                                      @RequestParam(required = false) String studentName) {
+                                      @RequestParam(required = false) String studentName,
+                                      @RequestParam(required = false) Integer status) {
         try {
-            List<StudentStatusChangeWithDetailsDTO> list = studentStatusChangeMapper.listWithDetails(studentId, changeType, studentNo, studentName);
+            // 导师登录时，只能看到自己是导师的记录
+            Long mentorId = null;
+            if (CurrentUserUtil.isMentor()) {
+                Long userId = CurrentUserUtil.getCurrentUserId();
+                LambdaQueryWrapper<Teacher> teacherWrapper = new LambdaQueryWrapper<>();
+                teacherWrapper.eq(Teacher::getUserId, userId);
+                Teacher teacher = teacherService.getOne(teacherWrapper);
+                if (teacher != null) {
+                    mentorId = teacher.getId();
+                }
+            }
+
+            List<StudentStatusChangeWithDetailsDTO> list = studentStatusChangeMapper.listWithDetails(studentId, changeType, studentNo, studentName, status, mentorId);
 
             // 手动分页
             int total = list.size();
@@ -122,9 +143,11 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("审批失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 
@@ -142,29 +165,11 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("审批失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    /**
-     * 分管院长审批
-     */
-    @PostMapping("/change/dean/approve")
-    public String deanApprove(@RequestParam Long id,
-                                  @RequestParam Integer status,
-                                  @RequestParam(required = false) String comment) {
-        try {
-            boolean success = studentStatusChangeService.deanApprove(id, status, comment);
-            if (success) {
-                return jsonReturn.returnSuccess("审批成功");
-            } else {
-                return jsonReturn.returnFailed("审批失败");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 

@@ -84,3 +84,37 @@ export function listCohortYears() {
     method: 'get'
   })
 }
+
+// 学生批量导入
+export function createStudentImportTask() {
+  return request({
+    url: '/student/importTask/create',
+    method: 'post'
+  })
+}
+
+export function queryStudentImportTask(taskId) {
+  return request({
+    url: `/student/importTask/${taskId}`,
+    method: 'get'
+  })
+}
+
+export function importStudent(data) {
+  return request({
+    url: '/student/import',
+    method: 'post',
+    data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+export function downloadStudentImportTemplate() {
+  return request({
+    url: '/student/importTemplate',
+    method: 'get',
+    responseType: 'blob'
+  })
+}

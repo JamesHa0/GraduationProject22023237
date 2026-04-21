@@ -28,12 +28,7 @@ public class ScoreController {
     @GetMapping("/list")
     public String list(Long studentId, Long courseId, String grade) {
         try {
-            LambdaQueryWrapper<Score> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(!ObjectUtils.isEmpty(studentId), Score::getStudentId, studentId)
-                    .eq(!ObjectUtils.isEmpty(courseId), Score::getCourseId, courseId)
-                    .eq(!ObjectUtils.isEmpty(grade), Score::getGrade, grade)
-                    .orderByDesc(Score::getUpdateTime);
-            List<Score> list = scoreService.list(queryWrapper);
+            List<ScoreWithDetailsDTO> list = scoreMapper.listScoreWithDetails(studentId, courseId, grade, null);
             return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
             e.printStackTrace();
