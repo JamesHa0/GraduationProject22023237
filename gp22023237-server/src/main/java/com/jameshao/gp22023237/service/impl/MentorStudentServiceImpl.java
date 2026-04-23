@@ -117,6 +117,14 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
                 }
                 teacherService.updateById(teacher);
             }
+
+            // 更新学生selection_status为3（已确定）
+            Student student = studentService.getById(mentorStudent.getStudentId());
+            if (student != null) {
+                student.setSelectionStatus(3);
+                student.setUpdateTime(new Date());
+                studentService.updateById(student);
+            }
         }
         return saved;
     }

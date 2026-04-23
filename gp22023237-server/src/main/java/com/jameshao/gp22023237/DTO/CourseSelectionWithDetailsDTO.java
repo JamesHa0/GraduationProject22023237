@@ -53,16 +53,6 @@ public class CourseSelectionWithDetailsDTO {
     private Integer hours;
 
     /**
-     * 授课教师ID
-     */
-    private Long teacherId;
-
-    /**
-     * 授课教师姓名
-     */
-    private String teacherName;
-
-    /**
      * 学期
      */
     private String semester;
@@ -71,31 +61,6 @@ public class CourseSelectionWithDetailsDTO {
      * 学年
      */
     private Object year;
-
-    /**
-     * 最大选课人数
-     */
-    private Integer maxStudents;
-
-    /**
-     * 星期几(1-7)
-     */
-    private Integer dayOfWeek;
-
-    /**
-     * 开始时间
-     */
-    private String startTime;
-
-    /**
-     * 结束时间
-     */
-    private String endTime;
-
-    /**
-     * 教室
-     */
-    private String classroom;
 
     /**
      * 最大学分限制

@@ -47,16 +47,12 @@ public class DictDataController {
     }
 
     /**
-     * 根据字典类型查询字典数据
+     * 根据字典类型查询字典数据（优先从Redis缓存获取）
      */
     @RequestMapping("/type/{dictType}")
     public String dictType(@PathVariable String dictType) {
         try {
-            LambdaQueryWrapper<DictData> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(DictData::getDictType, dictType)
-                    .eq(DictData::getStatus, "0")
-                    .orderByAsc(DictData::getDictSort);
-            List<DictData> list = dictDataService.list(queryWrapper);
+            List<DictData> list = dictDataService.getDictDataByType(dictType);
             return jsonReturn.returnSuccess(list);
         } catch (Exception e) {
             e.printStackTrace();
@@ -79,14 +75,14 @@ public class DictDataController {
     }
 
     /**
-     * 新增字典数据
+     * 新增字典数据（同步刷新缓存）
      */
     @PostMapping
     public String add(@RequestBody DictData dictData) {
         try {
             dictData.setCreateTime(new Date());
             dictData.setUpdateTime(new Date());
-            dictDataService.save(dictData);
+            dictDataService.addDictData(dictData);
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -95,13 +91,13 @@ public class DictDataController {
     }
 
     /**
-     * 修改字典数据
+     * 修改字典数据（同步刷新缓存）
      */
     @PutMapping
     public String edit(@RequestBody DictData dictData) {
         try {
             dictData.setUpdateTime(new Date());
-            dictDataService.updateById(dictData);
+            dictDataService.updateDictData(dictData);
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -110,13 +106,13 @@ public class DictDataController {
     }
 
     /**
-     * 删除字典数据
+     * 删除字典数据（同步刷新缓存）
      */
     @DeleteMapping("/{dictCodes}")
     public String remove(@PathVariable Long[] dictCodes) {
         try {
             for (Long dictCode : dictCodes) {
-                dictDataService.removeById(dictCode);
+                dictDataService.deleteDictDataById(dictCode);
             }
             return jsonReturn.returnSuccess();
         } catch (Exception e) {

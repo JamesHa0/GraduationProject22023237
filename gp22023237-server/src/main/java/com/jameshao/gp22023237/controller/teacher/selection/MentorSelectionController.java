@@ -240,6 +240,14 @@ public class MentorSelectionController {
                         System.out.println("已拒绝学生 " + originalRecord.getStudentId() + " 的志愿 " + choice.getStudentChoiceOrder());
                     }
                 }
+
+                // 更新学生selection_status为3（已确定）
+                Student student = studentService.getById(originalRecord.getStudentId());
+                if (student != null) {
+                    student.setSelectionStatus(3);
+                    student.setUpdateTime(new Date());
+                    studentService.updateById(student);
+                }
             }
 
             return jsonReturn.returnSuccess();

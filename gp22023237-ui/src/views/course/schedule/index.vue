@@ -5,12 +5,7 @@
       <el-form :inline="true">
         <el-form-item label="学期">
           <el-select v-model="currentSemester" placeholder="请选择学期" style="width: 220px">
-            <el-option
-              v-for="item in semesterOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in semesterOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -30,12 +25,12 @@
           </el-radio-group>
         </div>
       </template>
-      <el-empty v-if="!loading && selectedCourses.length === 0" description="暂无课程，请先进行选课" class="py20" />
+      <el-empty v-if="!loading && scheduleList.length === 0" description="暂无排课信息" class="py20" />
       <div v-else>
         <!-- 表格模式 -->
         <div v-if="displayMode === 'table'" class="schedule-container">
           <el-table :data="scheduleData" border style="width: 100%">
-            <el-table-column label="时间" width="100" align="center">
+            <el-table-column label="时间" width="120" align="center">
               <template #default="scope">
                 <div class="time-cell">
                   <div class="time-slot">{{ scope.row.slot }}</div>
@@ -43,48 +38,12 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="周一" align="center">
+            <el-table-column v-for="d in 5" :key="d" :label="dayNames[d]" align="center">
               <template #default="scope">
-                <div v-if="scope.row.monday" class="course-cell" :style="{ background: scope.row.monday.color }">
-                  <div class="course-name">{{ scope.row.monday.name }}</div>
-                  <div class="course-info">{{ scope.row.monday.teacher }}</div>
-                  <div class="course-info">{{ scope.row.monday.classroom }}</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="周二" align="center">
-              <template #default="scope">
-                <div v-if="scope.row.tuesday" class="course-cell" :style="{ background: scope.row.tuesday.color }">
-                  <div class="course-name">{{ scope.row.tuesday.name }}</div>
-                  <div class="course-info">{{ scope.row.tuesday.teacher }}</div>
-                  <div class="course-info">{{ scope.row.tuesday.classroom }}</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="周三" align="center">
-              <template #default="scope">
-                <div v-if="scope.row.wednesday" class="course-cell" :style="{ background: scope.row.wednesday.color }">
-                  <div class="course-name">{{ scope.row.wednesday.name }}</div>
-                  <div class="course-info">{{ scope.row.wednesday.teacher }}</div>
-                  <div class="course-info">{{ scope.row.wednesday.classroom }}</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="周四" align="center">
-              <template #default="scope">
-                <div v-if="scope.row.thursday" class="course-cell" :style="{ background: scope.row.thursday.color }">
-                  <div class="course-name">{{ scope.row.thursday.name }}</div>
-                  <div class="course-info">{{ scope.row.thursday.teacher }}</div>
-                  <div class="course-info">{{ scope.row.thursday.classroom }}</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="周五" align="center">
-              <template #default="scope">
-                <div v-if="scope.row.friday" class="course-cell" :style="{ background: scope.row.friday.color }">
-                  <div class="course-name">{{ scope.row.friday.name }}</div>
-                  <div class="course-info">{{ scope.row.friday.teacher }}</div>
-                  <div class="course-info">{{ scope.row.friday.classroom }}</div>
+                <div v-if="scope.row.days[d]" class="course-cell" :style="{ background: scope.row.days[d].color }">
+                  <div class="course-name">{{ scope.row.days[d].name }}</div>
+                  <div class="course-info">{{ scope.row.days[d].teacher }}</div>
+                  <div class="course-info">{{ scope.row.days[d].classroom }}</div>
                 </div>
               </template>
             </el-table-column>
@@ -92,38 +51,19 @@
         </div>
         <!-- 列表模式 -->
         <div v-else class="list-container">
-          <el-table :data="sortedCourses" border style="width: 100%">
+          <el-table :data="scheduleList" border style="width: 100%">
             <el-table-column label="序号" width="60" type="index" align="center" />
-            <el-table-column label="课程编号" prop="courseNo" width="120" />
-            <el-table-column label="课程名称" prop="name" min-width="150" />
-            <el-table-column label="总学时" prop="hours" width="80" align="center" />
-            <el-table-column label="学分" prop="credit" width="80" align="center" />
-            <el-table-column label="修读性质" prop="studyNature" width="100" />
+            <el-table-column label="课程名称" prop="courseName" min-width="150" />
             <el-table-column label="任课教师" prop="teacherName" width="120" />
-            <el-table-column label="选课状态" width="100" align="center">
-              <template #default="scope">
-                <el-tag type="success" size="small">已选</el-tag>
-              </template>
+            <el-table-column label="班级" prop="className" width="120" />
+            <el-table-column label="星期" width="80" align="center">
+              <template #default="scope">{{ dayNames[scope.row.dayOfWeek] }}</template>
             </el-table-column>
-            <el-table-column label="教材" width="80" align="center">
-              <template #default="scope">
-                {{ scope.row.textbook === 1 ? '是' : '否' }}
-              </template>
+            <el-table-column label="节次" prop="sectionDisplay" width="110" align="center" />
+            <el-table-column label="时间" width="160">
+              <template #default="scope">{{ scope.row.startSectionValue }} ~ {{ scope.row.endSectionValue }}</template>
             </el-table-column>
-            <el-table-column label="外年级/专业选课" width="120" align="center">
-              <template #default="scope">
-                {{ scope.row.externalSelection === 1 ? '是' : '否' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="上课时间地点" width="200">
-              <template #default="scope">
-                <div v-if="scope.row.dayOfWeek">
-                  周{{ scope.row.dayOfWeek }} {{ scope.row.startTime || '-' }}-{{ scope.row.endTime || '-' }}
-                </div>
-                <div v-if="scope.row.classroom">{{ scope.row.classroom }}</div>
-              </template>
-            </el-table-column>
-            <el-table-column label="备注" prop="remark" min-width="150" show-overflow-tooltip />
+            <el-table-column label="教室" prop="classroom" width="100" />
           </el-table>
         </div>
       </div>
@@ -132,106 +72,53 @@
 </template>
 
 <script setup name="CourseSchedule">
-import { listCourseSelection } from "@/api/course/selection";
+import { listSchedule, listTimeSlots } from "@/api/course/schedule";
 import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
 
-// 当前学期
 const currentSemester = ref('');
-
-// 显示模式：table-表格模式，list-列表模式
 const displayMode = ref('table');
-
-// 加载状态
 const loading = ref(true);
-
-// 学期选项列表
 const semesterOptions = ref([]);
+const scheduleList = ref([]);
+const timeSlots = ref([]);
 
-// 已选课程
-const selectedCourses = ref([]);
+const dayNames = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 7: '周日' };
 
-// 课程颜色
 const courseColors = [
   '#E6F7FF', '#F6FFED', '#FFF7E6', '#FFF1F0', '#F9F0FF',
   '#E0F7FA', '#E8F5E9', '#FFF3E0', '#FCE4EC', '#F3E5F5'
 ];
 
-// 排序后的课程列表（按星期和时间排序）
-const sortedCourses = computed(() => {
-  return [...selectedCourses.value].sort((a, b) => {
-    // 先按星期几排序
-    const dayA = a.dayOfWeek || 0;
-    const dayB = b.dayOfWeek || 0;
-    if (dayA !== dayB) {
-      return dayA - dayB;
-    }
-    // 再按开始时间排序
-    const timeA = a.startTime || '';
-    const timeB = b.startTime || '';
-    return timeA.localeCompare(timeB);
-  });
-});
+// 课程表数据（动态从 timeSlots 生成）
+const scheduleData = ref([]);
 
-// 课程表数据
-const scheduleData = ref([
-  { slot: '第1-2节', time: '08:00-09:40', monday: null, tuesday: null, wednesday: null, thursday: null, friday: null },
-  { slot: '第3-4节', time: '10:00-11:40', monday: null, tuesday: null, wednesday: null, thursday: null, friday: null },
-  { slot: '第5-6节', time: '14:00-15:40', monday: null, tuesday: null, wednesday: null, thursday: null, friday: null },
-  { slot: '第7-8节', time: '16:00-17:40', monday: null, tuesday: null, wednesday: null, thursday: null, friday: null },
-  { slot: '第9-10节', time: '19:00-20:40', monday: null, tuesday: null, wednesday: null, thursday: null, friday: null }
-]);
-
-// 星期映射
-const dayMap = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
-
-// 获取用户store中的学生信息
 const getUserRoleInfo = () => {
   const userStore = useUserStore();
   if (userStore.roleInfo && userStore.roleInfo[0]) {
     return userStore.roleInfo[0];
-  } else {
-    return null;
   }
+  return null;
 };
 
-// 生成学期选项
 function generateSemesterOptions(admissionYear) {
   const options = [];
   const now = new Date();
   const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-12
+  const currentMonth = now.getMonth() + 1;
 
-  // 生成从入学年份到当前年份的所有学年
-  // 注意：year表示学年的起始年份，如2025表示2025-2026学年
   for (let year = admissionYear; year <= currentYear; year++) {
-    // 第一学期：year年9月 - year+1年1月
-    // 显示条件：已到year年9月，或者已过year+1年1月
-    const firstSemesterAvailable = (year < currentYear) || (year === currentYear && currentMonth >= 9);
-    if (firstSemesterAvailable) {
-      options.push({
-        label: `${year}-${year + 1}学年第一学期`,
-        value: `${year}-${year + 1}-1`
-      });
+    if ((year < currentYear) || (year === currentYear && currentMonth >= 9)) {
+      options.push({ label: `${year}-${year + 1}学年第一学期`, value: `${year}-${year + 1}-1` });
     }
-
-    // 第二学期：year+1年2月 - year+1年7月
-    // 显示条件：已到year+1年2月
-    const secondSemesterAvailable = (year + 1 < currentYear) || (year + 1 === currentYear && currentMonth >= 2);
-    if (secondSemesterAvailable) {
-      options.push({
-        label: `${year}-${year + 1}学年第二学期`,
-        value: `${year}-${year + 1}-2`
-      });
+    if ((year + 1 < currentYear) || (year + 1 === currentYear && currentMonth >= 2)) {
+      options.push({ label: `${year}-${year + 1}学年第二学期`, value: `${year}-${year + 1}-2` });
     }
   }
 
   semesterOptions.value = options;
-
-  // 默认选中最后一个学期（最新的学期）
   if (options.length > 0) {
-    // 如果当前选中的学期不在选项列表中，或者没有选中，则选中最后一个
     const currentOption = options.find(opt => opt.value === currentSemester.value);
     if (!currentOption || !currentSemester.value) {
       currentSemester.value = options[options.length - 1].value;
@@ -239,8 +126,20 @@ function generateSemesterOptions(admissionYear) {
   }
 }
 
-// 获取已选课程
-function getSelectedCourses() {
+// 初始化课表网格行（从 timeSlots API 获取单节时间片）
+function initScheduleData() {
+  return listTimeSlots().then(res => {
+    timeSlots.value = res.data || [];
+    scheduleData.value = timeSlots.value.map(slot => ({
+      slot: slot.dictLabel,
+      time: slot.dictValue,
+      sectionCode: slot.dictCode,
+      days: {} // { 1: {name, teacher, classroom, color}, ... }
+    }));
+  });
+}
+
+function getScheduleData() {
   const roleInfo = getUserRoleInfo();
   if (!roleInfo || !roleInfo.id) {
     loading.value = false;
@@ -248,164 +147,82 @@ function getSelectedCourses() {
   }
 
   loading.value = true;
-  console.log('查询学生选课，studentId:', roleInfo.id, 'semester:', currentSemester.value);
+  const params = {
+    classId: roleInfo.classId || undefined,
+    semester: currentSemester.value,
+    pageSize: 9999
+  };
 
-  const params = { studentId: roleInfo.id, status: 1, semester: currentSemester.value };
-
-  listCourseSelection(params).then(res => {
-    console.log('选课返回数据:', res);
-    selectedCourses.value = res.data || [];
-    console.log('已选课程列表:', selectedCourses.value);
+  listSchedule(params).then(res => {
+    scheduleList.value = res.data.rows || res.data || [];
     generateSchedule();
     loading.value = false;
   }).catch((err) => {
-    console.error('查询选课失败:', err);
+    console.error('查询排课信息失败:', err);
+    scheduleList.value = [];
     loading.value = false;
   });
 }
 
-// 生成课程表
+// 生成课程表（使用范围判断）
 function generateSchedule() {
-  console.log('开始生成课程表，课程数量:', selectedCourses.value.length);
-  // 重置课程表
-  scheduleData.value.forEach(row => {
-    row.monday = null;
-    row.tuesday = null;
-    row.wednesday = null;
-    row.thursday = null;
-    row.friday = null;
-  });
+  // 重置
+  scheduleData.value.forEach(row => { row.days = {}; });
 
-  // 填充课程
-  selectedCourses.value.forEach((course, index) => {
-    console.log('处理课程:', course.name, 'dayOfWeek:', course.dayOfWeek, 'startTime:', course.startTime);
-    if (course.dayOfWeek && dayMap[course.dayOfWeek]) {
-      const dayKey = dayMap[course.dayOfWeek];
-      const timeSlot = getTimeSlot(course.startTime);
-      console.log('dayKey:', dayKey, 'timeSlot:', timeSlot);
-      if (timeSlot >= 0 && timeSlot < scheduleData.value.length) {
-        scheduleData.value[timeSlot][dayKey] = {
-          name: course.name,
-          teacher: course.teacherName || '-',
-          classroom: course.classroom || '-',
-          color: courseColors[index % courseColors.length]
-        };
-        console.log('课程已添加到课程表');
-      } else {
-        console.log('时间段无效，跳过');
+  // 填充课程：每节时间片行检查是否有课程覆盖
+  scheduleList.value.forEach((item, index) => {
+    if (!item.dayOfWeek) return;
+    scheduleData.value.forEach(row => {
+      // 范围判断：课程的 startSection <= 当前行 sectionCode <= endSection
+      if (item.startSection <= row.sectionCode && item.endSection >= row.sectionCode) {
+        if (!row.days[item.dayOfWeek]) {
+          row.days[item.dayOfWeek] = {
+            name: item.courseName,
+            teacher: item.teacherName || '-',
+            classroom: item.classroom || '-',
+            color: courseColors[index % courseColors.length]
+          };
+        }
       }
-    } else {
-      console.log('dayOfWeek无效，跳过');
-    }
+    });
   });
-  console.log('课程表生成完成:', scheduleData.value);
 }
 
-// 根据开始时间获取时间段索引
-function getTimeSlot(startTime) {
-  if (!startTime) {
-    console.log('startTime为空');
-    return -1;
-  }
-  // 提取小时部分进行匹配，更灵活
-  const hour = parseInt(startTime.split(':')[0]);
-  console.log('startTime:', startTime, 'hour:', hour);
-
-  if (hour >= 8 && hour < 10) return 0;    // 08:00-09:59
-  if (hour >= 10 && hour < 12) return 1;   // 10:00-11:59
-  if (hour >= 14 && hour < 16) return 2;   // 14:00-15:59
-  if (hour >= 16 && hour < 18) return 3;   // 16:00-17:59
-  if (hour >= 19 && hour < 21) return 4;   // 19:00-20:59
-
-  console.log('未匹配到时间段');
-  return -1;
-}
-
-// 查询
 function handleQuery() {
-  getSelectedCourses();
+  getScheduleData();
 }
 
-// 初始化
-function init() {
+async function init() {
   const roleInfo = getUserRoleInfo();
   if (!roleInfo) {
     loading.value = false;
     return;
   }
 
-  // 从roleInfo中获取入学年份并生成学期选项
+  // 先加载时间片再加载排课数据
+  await initScheduleData();
+
   if (roleInfo.admissionYear) {
     generateSemesterOptions(roleInfo.admissionYear);
   } else {
-    // 如果没有入学年份，使用默认值（当前年份往前推3年）
-    const defaultYear = new Date().getFullYear() - 3;
-    generateSemesterOptions(defaultYear);
+    generateSemesterOptions(new Date().getFullYear() - 3);
   }
 
-  getSelectedCourses();
+  getScheduleData();
 }
 
 init();
 </script>
 
 <style scoped>
-.mb20 {
-  margin-bottom: 20px;
-}
-
-.mt20 {
-  margin-top: 20px;
-}
-
-.py20 {
-  padding: 20px 0;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.time-cell {
-  padding: 8px 0;
-}
-
-.time-slot {
-  font-weight: bold;
-  color: #303133;
-}
-
-.time-range {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.course-cell {
-  padding: 8px;
-  border-radius: 4px;
-  min-height: 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.course-name {
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 4px;
-}
-
-.course-info {
-  font-size: 12px;
-  color: #606266;
-  margin-top: 2px;
-}
+.mb20 { margin-bottom: 20px; }
+.py20 { padding: 20px 0; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-size: 16px; font-weight: bold; }
+.time-cell { padding: 8px 0; }
+.time-slot { font-weight: bold; color: #303133; }
+.time-range { font-size: 12px; color: #909399; margin-top: 4px; }
+.course-cell { padding: 8px; border-radius: 4px; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+.course-name { font-weight: bold; color: #303133; margin-bottom: 4px; }
+.course-info { font-size: 12px; color: #606266; margin-top: 2px; }
 </style>

@@ -77,7 +77,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
     }
 
     @Override
-    public void startImportTask(String taskId, MultipartFile file) {
+    public void startImportTask(String taskId, MultipartFile file, Long classId) {
         StudentImportTaskDTO task = TASK_STORE.get(taskId);
         if (task == null) {
             throw new RuntimeException("导入任务不存在或已过期");
@@ -96,7 +96,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
 
         CompletableFuture.runAsync(() -> {
             try {
-                StudentImportResultDTO result = doImport(lowerName, bytes, task);
+                StudentImportResultDTO result = doImport(lowerName, bytes, task, classId);
                 task.setStatus("SUCCESS");
                 task.setTotal(result.getTotal());
                 task.setSuccessCount(result.getSuccessCount());
@@ -123,7 +123,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         task.setUpdatedAt(new Date());
     }
 
-    private StudentImportResultDTO doImport(String lowerName, byte[] bytes, StudentImportTaskDTO task) {
+    private StudentImportResultDTO doImport(String lowerName, byte[] bytes, StudentImportTaskDTO task, Long classId) {
         List<StudentImportDTO> rows = parseImportRows(lowerName, bytes);
 
         int total = rows.size();
@@ -201,6 +201,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
 
                 Student student = new Student();
                 student.setUserId(user.getId());
+                student.setClassId(classId);
                 student.setStudentNo(dto.getStudentNo());
                 student.setStudentName(dto.getStudentName());
                 student.setDepartment(dto.getDepartment());
@@ -211,7 +212,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
                 student.setResearchDirection(dto.getResearchDirection());
                 student.setStatus(dto.getStatus());
                 student.setSelectionStatus(dto.getSelectionStatus());
-                student.setNeedSupplementary(dto.getNeedSupplementary());
                 student.setCreateTime(now);
                 student.setUpdateTime(now);
 
@@ -289,7 +289,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
                 dto.setResearchDirection(read(record, "研究方向"));
                 dto.setStatus(toInteger(read(record, "状态")));
                 dto.setSelectionStatus(toInteger(read(record, "双选状态")));
-                dto.setNeedSupplementary(toInteger(read(record, "需补选")));
                 rows.add(dto);
             }
             return rows;
@@ -398,13 +397,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         }
         if (dto.getSelectionStatus() < 0 || dto.getSelectionStatus() > 3) {
             return toFail(row, dto.getStudentNo(), StudentImportErrorCode.SELECTION_STATUS_INVALID);
-        }
-
-        if (dto.getNeedSupplementary() == null) {
-            dto.setNeedSupplementary(0);
-        }
-        if (dto.getNeedSupplementary() != 0 && dto.getNeedSupplementary() != 1) {
-            return toFail(row, dto.getStudentNo(), StudentImportErrorCode.NEED_SUPPLEMENTARY_INVALID);
         }
 
         fileStudentNos.add(dto.getStudentNo());

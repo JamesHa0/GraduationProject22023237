@@ -11,14 +11,12 @@ import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.po.Teacher;
-import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.CourseService;
 import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,7 +36,7 @@ import java.util.Map;
 @RequestMapping("/course")
 public class CourseController {
 
-    private static final String TEMPLATE_VERSION = "v2.0";
+    private static final String TEMPLATE_VERSION = "v3.0";
 
     @Autowired
     private JSONReturn jsonReturn;
@@ -107,11 +105,6 @@ public class CourseController {
             course.setCreateTime(new Date());
             course.setUpdateTime(new Date());
 
-            if (course.getTeacherId() != null && course.getTeacherId() <= 0) {
-                Long defaultTeacherId = getOrCreateDefaultTeacher();
-                course.setTeacherId(defaultTeacherId);
-            }
-
             boolean success = courseService.save(course);
             if (success) {
                 return jsonReturn.returnSuccess("新增成功");
@@ -124,52 +117,10 @@ public class CourseController {
         }
     }
 
-    /**
-     * 获取或创建默认的"待定教师"
-     */
-    @Transactional(rollbackFor = Exception.class)
-    private Long getOrCreateDefaultTeacher() {
-        QueryWrapper<Teacher> wrapper = new QueryWrapper<>();
-        wrapper.eq("teacher_no", "TBD001");
-        Teacher defaultTeacher = teacherService.getOne(wrapper);
-
-        if (defaultTeacher != null) {
-            return defaultTeacher.getId();
-        }
-
-        User user = new User();
-        user.setUsername("tbd_teacher");
-        user.setPassword("tbd_teacher");
-        user.setName("待定教师");
-        user.setRoleId(3);
-        user.setStatus(1);
-        user.setCreateTime(new Date());
-        user.setUpdateTime(new Date());
-        userService.save(user);
-
-        defaultTeacher = new Teacher();
-        defaultTeacher.setUserId(user.getId());
-        defaultTeacher.setTeacherNo("TBD001");
-        defaultTeacher.setTeacherName("待定教师");
-        defaultTeacher.setTitle("待定");
-        defaultTeacher.setDepartment("待定");
-        defaultTeacher.setIsMentor(0);
-        defaultTeacher.setCreateTime(new Date());
-        defaultTeacher.setUpdateTime(new Date());
-        teacherService.save(defaultTeacher);
-
-        return defaultTeacher.getId();
-    }
-
     @PutMapping("/update")
     public String update(@RequestBody Course course) {
         try {
             course.setUpdateTime(new Date());
-
-            if (course.getTeacherId() != null && course.getTeacherId() <= 0) {
-                Long defaultTeacherId = getOrCreateDefaultTeacher();
-                course.setTeacherId(defaultTeacherId);
-            }
 
             boolean success = courseService.updateById(course);
             if (success) {
@@ -238,7 +189,7 @@ public class CourseController {
     }
 
     /**
-     * 下载导入模板（双Sheet：课程模板 + 填写说明）
+     * 下载导入模板
      */
     @GetMapping("/importTemplate")
     public void downloadTemplate(HttpServletResponse response) {
@@ -257,14 +208,8 @@ public class CourseController {
             example.setName("数据结构");
             example.setCredit(3.0);
             example.setHours(48);
-            example.setTeacherNo("T001");
             example.setSemester("2024-2025-2");
             example.setYear(2024);
-            example.setMaxStudents(50);
-            example.setDayOfWeek(1);
-            example.setStartTime("08:00:00");
-            example.setEndTime("09:40:00");
-            example.setClassroom("A201");
             example.setMaxCredits(6.0);
             example.setStatus(0);
             example.setStudyNature("必修");
@@ -316,11 +261,8 @@ public class CourseController {
         rows.add(Arrays.asList("课程名称", "是", "<=100字符", "数据结构", "IMP-COURSE-004", "建议使用规范课程名称"));
         rows.add(Arrays.asList("学分", "是", "0.5-10", "3.0", "IMP-COURSE-005", "建议按0.5步长"));
         rows.add(Arrays.asList("学时", "是", "1-200整数", "48", "IMP-COURSE-006", "与教学计划保持一致"));
-        rows.add(Arrays.asList("授课教师工号", "否", "若空则自动设为待定教师", "T001", "-", "未知教师可先留空"));
         rows.add(Arrays.asList("学期", "是", "<=20字符", "2024-2025-2", "IMP-COURSE-007", "按系统已有学期规则填写"));
         rows.add(Arrays.asList("学年", "是", "四位数字", "2024", "IMP-COURSE-007", "建议与学期一致"));
-        rows.add(Arrays.asList("开始时间", "否", "HH:mm:ss", "08:00:00", "IMP-COURSE-008", "24小时制"));
-        rows.add(Arrays.asList("结束时间", "否", "HH:mm:ss", "09:40:00", "IMP-COURSE-008", "需晚于开始时间"));
         rows.add(Arrays.asList("课程状态", "否", "0/1/2", "0", "IMP-COURSE-009", "0未开课，1已开课，2已结课"));
         rows.add(Arrays.asList("教材", "否", "0/1", "0", "-", "1代表有教材"));
         rows.add(Arrays.asList("外年级选课", "否", "0/1", "0", "-", "1代表允许"));

@@ -18,7 +18,7 @@ import java.util.List;
 public interface CourseMapper extends BaseMapper<Course> {
 
     /**
-     * 查询课程列表，关联教师信息
+     * 查询课程列表
      */
     List<CourseWithTeacherDTO> listCourseWithTeacher(@Param("name") String name,
                                                      @Param("courseNo") String courseNo,
@@ -26,7 +26,7 @@ public interface CourseMapper extends BaseMapper<Course> {
                                                      @Param("semester") String semester);
 
     /**
-     * 查询课程列表，关联教师信息（分页）
+     * 查询课程列表（分页）
      */
     List<CourseWithTeacherDTO> listCourseWithTeacherPage(@Param("name") String name,
                                                          @Param("courseNo") String courseNo,
@@ -44,7 +44,7 @@ public interface CourseMapper extends BaseMapper<Course> {
                               @Param("semester") String semester);
 
     /**
-     * 根据ID查询课程详情，关联教师信息
+     * 根据ID查询课程详情
      */
     CourseWithTeacherDTO getCourseWithTeacherById(@Param("id") Long id);
 

@@ -21,29 +21,11 @@ public class CourseImportDTO {
     @ExcelProperty("学时")
     private Integer hours;
 
-    @ExcelProperty("授课教师工号")
-    private String teacherNo;
-
     @ExcelProperty("学期")
     private String semester;
 
     @ExcelProperty("学年")
     private Integer year;
-
-    @ExcelProperty("最大选课人数")
-    private Integer maxStudents;
-
-    @ExcelProperty("星期几")
-    private Integer dayOfWeek;
-
-    @ExcelProperty("开始时间")
-    private String startTime;
-
-    @ExcelProperty("结束时间")
-    private String endTime;
-
-    @ExcelProperty("教室")
-    private String classroom;
 
     @ExcelProperty("最大学分限制")
     private Double maxCredits;

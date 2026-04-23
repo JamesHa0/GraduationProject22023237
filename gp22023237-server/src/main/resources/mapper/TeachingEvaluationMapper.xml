@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.TeachingEvaluationMapper">
+
+    <!-- 查询学生的待评价课程列表 -->
+    <select id="listPendingCourses" resultType="com.jameshao.gp22023237.DTO.EvaluationCourseDTO">
+        SELECT
+            c.id AS courseId,
+            c.name AS courseName,
+            c.course_no AS courseNo,
+            c.credit,
+            c.hours,
+            c.semester,
+            s.teacher_id AS teacherId,
+            t.teacher_name AS teacherName,
+            false AS evaluated
+        FROM course_selection cs
+        INNER JOIN course c ON cs.course_id = c.id
+        INNER JOIN schedule s ON s.course_id = c.id
+        INNER JOIN teacher t ON s.teacher_id = t.id
+        <where>
+            cs.student_id = #{studentId}
+            AND cs.status = 1
+            AND NOT EXISTS (
+                SELECT 1 FROM teaching_evaluation te
+                WHERE te.student_id = cs.student_id AND te.course_id = cs.course_id
+            )
+        </where>
+        GROUP BY c.id, c.name, c.course_no, c.credit, c.hours, c.semester, s.teacher_id, t.teacher_name
+        ORDER BY c.semester DESC, c.name ASC
+    </select>
+
+    <!-- 查询学生的已评价课程列表 -->
+    <select id="listCompletedCourses" resultType="com.jameshao.gp22023237.DTO.EvaluationCourseDTO">
+        SELECT
+            c.id AS courseId,
+            c.name AS courseName,
+            c.course_no AS courseNo,
+            c.credit,
+            c.hours,
+            c.semester,
+            t.id AS teacherId,
+            t.teacher_name AS teacherName,
+            true AS evaluated,
+            te.attitude_score AS attitudeScore,
+            te.content_score AS contentScore,
+            te.method_score AS methodScore,
+            te.effect_score AS effectScore,
+            ROUND((te.attitude_score + te.content_score + te.method_score + te.effect_score) / 4.0, 1) AS overallScore,
+            DATE_FORMAT(te.create_time, '%Y-%m-%d %H:%i:%s') AS evaluateTime,
+            te.comment
+        FROM teaching_evaluation te
+        INNER JOIN course c ON te.course_id = c.id
+        INNER JOIN teacher t ON te.teacher_id = t.id
+        WHERE te.student_id = #{studentId}
+        ORDER BY te.create_time DESC
+    </select>
+
+    <!-- 检查某学生某课程是否已评价 -->
+    <select id="checkEvaluated" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM teaching_evaluation
+        WHERE student_id = #{studentId} AND course_id = #{courseId}
+    </select>
+
+    <!-- 教师查看自己收到的评价统计 -->
+    <select id="getTeacherStats" resultType="com.jameshao.gp22023237.DTO.TeacherEvaluationStatsDTO">
+        SELECT
+            t.id AS teacherId,
+            t.teacher_name AS teacherName,
+            COUNT(te.id) AS totalEvaluations,
+            ROUND(AVG(te.attitude_score), 1) AS avgAttitudeScore,
+            ROUND(AVG(te.content_score), 1) AS avgContentScore,
+            ROUND(AVG(te.method_score), 1) AS avgMethodScore,
+            ROUND(AVG(te.effect_score), 1) AS avgEffectScore,
+            ROUND((AVG(te.attitude_score) + AVG(te.content_score) + AVG(te.method_score) + AVG(te.effect_score)) / 4.0, 1) AS avgOverallScore
+        FROM teacher t
+        LEFT JOIN teaching_evaluation te ON te.teacher_id = t.id
+        WHERE t.id = #{teacherId}
+        GROUP BY t.id, t.teacher_name
+    </select>
+
+</mapper>

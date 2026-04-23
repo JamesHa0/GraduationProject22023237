@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -384,6 +386,60 @@ public class StudentController {
                 return jsonReturn.returnSuccess("更新双选状态成功");
             } else {
                 return jsonReturn.returnFailed("更新双选状态失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 根据班级ID查询学生列表（分页）
+     * @param classId 班级ID
+     * @param studentNo 学号（可选）
+     * @param studentName 学生姓名（可选）
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @return 学生分页列表
+     */
+    @GetMapping("/listByClass/{classId}")
+    public String listByClass(@PathVariable Long classId, String studentNo, String studentName,
+                              Integer pageNum, Integer pageSize) {
+        try {
+            QueryWrapper<Student> wrapper = new QueryWrapper<>();
+            wrapper.eq("class_id", classId);
+            if (studentNo != null && !studentNo.isEmpty()) {
+                wrapper.like("student_no", studentNo);
+            }
+            if (studentName != null && !studentName.isEmpty()) {
+                wrapper.like("student_name", studentName);
+            }
+            wrapper.orderByDesc("create_time");
+
+            if (pageNum != null && pageSize != null) {
+                // 分页查询
+                int offset = (pageNum - 1) * pageSize;
+                wrapper.last("LIMIT " + offset + ", " + pageSize);
+                List<Student> rows = studentService.list(wrapper);
+
+                // 查询总数
+                QueryWrapper<Student> countWrapper = new QueryWrapper<>();
+                countWrapper.eq("class_id", classId);
+                if (studentNo != null && !studentNo.isEmpty()) {
+                    countWrapper.like("student_no", studentNo);
+                }
+                if (studentName != null && !studentName.isEmpty()) {
+                    countWrapper.like("student_name", studentName);
+                }
+                long total = studentService.count(countWrapper);
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<Student> list = studentService.list(wrapper);
+                return jsonReturn.returnSuccess(list);
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jameshao.gp22023237.mapper.ScoreMapper">
 
-    <!-- 查询成绩列表，关联课程、学生和教师信息 -->
+    <!-- 查询成绩列表，关联课程、学生和教师信息（支持分页和teacherId过滤） -->
     <select id="listScoreWithDetails" resultType="com.jameshao.gp22023237.DTO.ScoreWithDetailsDTO">
         SELECT
             s.id,
@@ -25,11 +25,12 @@
             s.exam_weight AS examWeight,
             s.grade,
             s.comment,
+            s.teacher_id AS teacherId,
             DATE_FORMAT(s.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
         FROM score s
         LEFT JOIN course c ON s.course_id = c.id
         LEFT JOIN student st ON s.student_id = st.id
-        LEFT JOIN teacher t ON c.teacher_id = t.id
+        LEFT JOIN teacher t ON s.teacher_id = t.id
         <where>
             <if test="studentId != null">
                 AND s.student_id = #{studentId}
@@ -43,8 +44,90 @@
             <if test="semester != null and semester != ''">
                 AND c.semester = #{semester}
             </if>
+            <if test="teacherId != null">
+                AND s.teacher_id = #{teacherId}
+            </if>
         </where>
         ORDER BY c.semester DESC, s.update_time DESC
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+
+    <!-- 统计成绩记录数（支持teacherId过滤） -->
+    <select id="countScoreWithDetails" resultType="int">
+        SELECT COUNT(*)
+        FROM score s
+        LEFT JOIN course c ON s.course_id = c.id
+        <where>
+            <if test="studentId != null">
+                AND s.student_id = #{studentId}
+            </if>
+            <if test="courseId != null">
+                AND s.course_id = #{courseId}
+            </if>
+            <if test="grade != null and grade != ''">
+                AND s.grade = #{grade}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+            <if test="teacherId != null">
+                AND s.teacher_id = #{teacherId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 查询某课程下所有选课学生及其成绩状态（含未录入成绩的学生） -->
+    <select id="listCourseStudentsWithScore" resultType="com.jameshao.gp22023237.DTO.CourseStudentScoreDTO">
+        SELECT
+            sc.id AS scoreId,
+            st.id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            cs.course_id AS courseId,
+            c.name AS courseName,
+            sc.usual_score AS usualScore,
+            sc.exam_score AS examScore,
+            sc.total_score AS totalScore,
+            sc.usual_weight AS usualWeight,
+            sc.exam_weight AS examWeight,
+            sc.grade,
+            sc.comment,
+            sc.teacher_id AS teacherId,
+            DATE_FORMAT(sc.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime,
+            CASE WHEN te.id IS NOT NULL THEN true ELSE false END AS evaluated
+        FROM course_selection cs
+        INNER JOIN student st ON cs.student_id = st.id
+        INNER JOIN course c ON cs.course_id = c.id
+        LEFT JOIN score sc ON sc.student_id = st.id AND sc.course_id = cs.course_id
+        LEFT JOIN teaching_evaluation te ON te.student_id = st.id AND te.course_id = cs.course_id
+        <where>
+            cs.status = 1
+            <if test="courseId != null">
+                AND cs.course_id = #{courseId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (st.student_no LIKE CONCAT('%', #{keyword}, '%') OR st.student_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="grade != null and grade != ''">
+                AND sc.grade = #{grade}
+            </if>
+        </where>
+        ORDER BY st.student_no ASC
+    </select>
+
+    <!-- 统计某课程下选课学生数 -->
+    <select id="countCourseStudents" resultType="int">
+        SELECT COUNT(*)
+        FROM course_selection cs
+        INNER JOIN student st ON cs.student_id = st.id
+        <where>
+            cs.status = 1
+            <if test="courseId != null">
+                AND cs.course_id = #{courseId}
+            </if>
+        </where>
     </select>
 
 </mapper>

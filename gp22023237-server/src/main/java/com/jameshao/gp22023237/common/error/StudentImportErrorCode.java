@@ -11,8 +11,7 @@ public enum StudentImportErrorCode {
     ADMISSION_YEAR_INVALID("IMP-STU-008", "入学年份不合法", "admissionYear", "请填写2000-2100之间的年份", "R-STU-ADMISSION-YEAR"),
     GRADUATION_YEAR_INVALID("IMP-STU-009", "毕业年份不合法", "graduationYear", "请填写不早于入学年份的毕业年份", "R-STU-GRAD-YEAR"),
     STATUS_INVALID("IMP-STU-010", "状态必须是0或1", "status", "0-禁用，1-正常", "R-STU-STATUS-ENUM"),
-    SELECTION_STATUS_INVALID("IMP-STU-011", "双选状态必须是0/1/2/3", "selectionStatus", "0-未开始，1-第一轮，2-第二轮，3-已确定", "R-STU-SELECT-ENUM"),
-    NEED_SUPPLEMENTARY_INVALID("IMP-STU-012", "需补选必须是0或1", "needSupplementary", "0-否，1-是", "R-STU-SUP-ENUM"),
+    SELECTION_STATUS_INVALID("IMP-STU-011", "双选状态必须是0/1/2/3", "selectionStatus", "0-未开始，1-双选中，2-补选中，3-已确定", "R-STU-SELECT-ENUM"),
     SYSTEM_ERROR("IMP-STU-500", "系统处理失败", "system", "请联系管理员并重试", "R-STU-SYSTEM");
 
     private final String code;

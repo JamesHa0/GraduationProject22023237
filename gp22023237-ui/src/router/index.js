@@ -131,6 +131,30 @@ export const constantRoutes = [
         component: () => import('@/views/course/student-score/index'),
         name: 'StudentScore',
         meta: { title: '学业成绩', icon: 'score' }
+      },
+      {
+        path: 'phase-manage',
+        component: () => import('@/views/course/phase-manage/index'),
+        name: 'CoursePhaseManage',
+        meta: { title: '课程阶段管理', icon: 'build' }
+      },
+      {
+        path: 'teacher-score',
+        component: () => import('@/views/course/teacher-score/index'),
+        name: 'TeacherScore',
+        meta: { title: '成绩录入', icon: 'edit' }
+      },
+      {
+        path: 'evaluation',
+        component: () => import('@/views/course/evaluation/index'),
+        name: 'TeachingEvaluation',
+        meta: { title: '教学评价', icon: 'education' }
+      },
+      {
+        path: 'schedule-manage',
+        component: () => import('@/views/course/schedule-manage/index'),
+        name: 'ScheduleManage',
+        meta: { title: '排课管理', icon: 'date' }
       }
     ]
   },
@@ -169,6 +193,12 @@ export const constantRoutes = [
         component: () => import('@/views/student/student-change/index'),
         name: 'StudentChangeApply',
         meta: { title: '学籍异动申请', icon: 'edit' }
+      },
+      {
+        path: 'student-profile',
+        component: () => import('@/views/student/student-profile/index'),
+        name: 'StudentProfile',
+        meta: { title: '学籍信息维护', icon: 'user' }
       }
     ]
   },
@@ -395,20 +425,6 @@ export const dynamicRoutes = [
         component: () => import('@/views/system/role/authUser'),
         name: 'AuthUser',
         meta: { title: '分配用户', activeMenu: '/system/role' }
-      }
-    ]
-  },
-  {
-    path: '/system/dict-data',
-    component: Layout,
-    hidden: true,
-    permissions: ['system:dict:list'],
-    children: [
-      {
-        path: 'index/:dictId(\\d+)',
-        component: () => import('@/views/system/dict/data'),
-        name: 'Data',
-        meta: { title: '字典数据', activeMenu: '/system/dict' }
       }
     ]
   },

@@ -16,5 +16,5 @@ public interface StudentService extends IService<Student> {
 
     StudentImportTaskDTO queryImportTask(String taskId);
 
-    void startImportTask(String taskId, MultipartFile file);
+    void startImportTask(String taskId, MultipartFile file, Long classId);
 }

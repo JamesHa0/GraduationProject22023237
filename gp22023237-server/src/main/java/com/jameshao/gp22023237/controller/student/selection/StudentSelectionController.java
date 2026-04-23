@@ -192,7 +192,21 @@ public class StudentSelectionController {
                 return jsonReturn.returnError("提交失败");
             }
 
-
+            // 更新学生selection_status
+            // 补选阶段（round==7）设为2（补选中），其他阶段设为1（双选中）
+            Long studentIdForStatus = mentorStudent.getStudentId();
+            if (studentIdForStatus != null) {
+                Student studentForStatus = studentService.getById(studentIdForStatus);
+                if (studentForStatus != null && studentForStatus.getSelectionStatus() != null && studentForStatus.getSelectionStatus() != 3) {
+                    if (currentRound == 7) {
+                        studentForStatus.setSelectionStatus(2); // 补选中
+                    } else {
+                        studentForStatus.setSelectionStatus(1); // 双选中
+                    }
+                    studentForStatus.setUpdateTime(new Date());
+                    studentService.updateById(studentForStatus);
+                }
+            }
 
             // 根据 StudentStatus 调整导师剩余名额（仅当从0变为1时扣除名额）
             int quotaChange = 0;
@@ -344,6 +358,19 @@ public class StudentSelectionController {
                         throw new RuntimeException("更新导师剩余名额失败");
                     }
                 }
+            }
+
+            // 更新学生selection_status
+            // 补选阶段（queryRound==7）设为2（补选中），其他阶段设为1（双选中）
+            Student studentForStatus = studentService.getById(batchDTO.getStudentId());
+            if (studentForStatus != null && studentForStatus.getSelectionStatus() != null && studentForStatus.getSelectionStatus() != 3) {
+                if (queryRound == 7) {
+                    studentForStatus.setSelectionStatus(2); // 补选中
+                } else {
+                    studentForStatus.setSelectionStatus(1); // 双选中
+                }
+                studentForStatus.setUpdateTime(new Date());
+                studentService.updateById(studentForStatus);
             }
 
             return jsonReturn.returnSuccess();

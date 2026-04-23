@@ -44,21 +44,16 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
     private int successCount = 0;
     private int totalCount = 0;
 
-    // 待定教师ID，由外部传入
-    private final Long defaultTeacherId;
-
     // 文件内判重，避免同一批导入重复课程号
     private final Set<String> fileCourseNoSet = new HashSet<>();
 
     public CourseImportListener(CourseService courseService,
                                 TeacherService teacherService,
                                 CourseMapper courseMapper,
-                                Long defaultTeacherId,
                                 int batchCount) {
         this.courseService = courseService;
         this.teacherService = teacherService;
         this.courseMapper = courseMapper;
-        this.defaultTeacherId = defaultTeacherId;
         this.batchCount = batchCount;
         this.cachedDataList = ListUtils.newArrayListWithExpectedSize(batchCount);
     }
@@ -92,18 +87,13 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
         long start = System.currentTimeMillis();
 
         Set<String> courseNos = new HashSet<>();
-        Set<String> teacherNos = new HashSet<>();
         for (RowData rowData : cachedDataList) {
             if (rowData.dto.getCourseNo() != null && !rowData.dto.getCourseNo().trim().isEmpty()) {
                 courseNos.add(rowData.dto.getCourseNo().trim());
             }
-            if (rowData.dto.getTeacherNo() != null && !rowData.dto.getTeacherNo().trim().isEmpty()) {
-                teacherNos.add(rowData.dto.getTeacherNo().trim());
-            }
         }
 
         Map<String, Boolean> existingCourseNoMap = preloadExistingCourseNoMap(courseNos);
-        Map<String, Long> teacherNoToIdMap = preloadTeacherNoMap(teacherNos);
 
         List<Course> validCourses = new ArrayList<>();
 
@@ -114,7 +104,7 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
                 continue;
             }
             try {
-                Course course = convertToCourse(rowData.dto, teacherNoToIdMap);
+                Course course = convertToCourse(rowData.dto);
                 validCourses.add(course);
             } catch (Exception e) {
                 log.error("第{}行数据转换失败", rowData.row, e);
@@ -143,20 +133,6 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
             if (course.getCourseNo() != null) {
                 map.put(course.getCourseNo(), true);
             }
-        }
-        return map;
-    }
-
-    private Map<String, Long> preloadTeacherNoMap(Set<String> teacherNos) {
-        Map<String, Long> map = new HashMap<>();
-        if (teacherNos.isEmpty()) {
-            return map;
-        }
-        QueryWrapper<Teacher> wrapper = new QueryWrapper<>();
-        wrapper.in("teacher_no", teacherNos).select("id", "teacher_no");
-        List<Teacher> teachers = teacherService.list(wrapper);
-        for (Teacher teacher : teachers) {
-            map.put(teacher.getTeacherNo(), teacher.getId());
         }
         return map;
     }
@@ -222,20 +198,7 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
             return toFailDetail(rowData.row, courseNo, ImportErrorCode.SEMESTER_REQUIRED, "学年不能为空");
         }
 
-        // 星期几校验
-        if (data.getDayOfWeek() != null && (data.getDayOfWeek() < 1 || data.getDayOfWeek() > 7)) {
-            return toFailDetail(rowData.row, courseNo, ImportErrorCode.SYSTEM_ERROR, "星期几必须在1-7之间");
-        }
-
-        // 时间格式校验
-        if (data.getStartTime() != null && !data.getStartTime().isEmpty() && !isValidTimeFormat(data.getStartTime())) {
-            return toFailDetail(rowData.row, courseNo, ImportErrorCode.TIME_FORMAT_INVALID, "开始时间格式不正确，应为HH:mm:ss");
-        }
-        if (data.getEndTime() != null && !data.getEndTime().isEmpty() && !isValidTimeFormat(data.getEndTime())) {
-            return toFailDetail(rowData.row, courseNo, ImportErrorCode.TIME_FORMAT_INVALID, "结束时间格式不正确，应为HH:mm:ss");
-        }
-
-        // 状态校验（修复逻辑错误：&& -> ||）
+        // 状态校验
         if (data.getStatus() != null && (data.getStatus() < 0 || data.getStatus() > 2)) {
             return toFailDetail(rowData.row, courseNo, ImportErrorCode.STATUS_INVALID);
         }
@@ -255,16 +218,9 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
     }
 
     /**
-     * 校验时间格式 HH:mm:ss
-     */
-    private boolean isValidTimeFormat(String time) {
-        return time.matches("^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$");
-    }
-
-    /**
      * 转换DTO为Course实体
      */
-    private Course convertToCourse(CourseImportDTO dto, Map<String, Long> teacherNoToIdMap) {
+    private Course convertToCourse(CourseImportDTO dto) {
         Course course = new Course();
         course.setCourseNo(dto.getCourseNo().trim());
         course.setName(dto.getName().trim());
@@ -274,23 +230,15 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
         course.setYear(dto.getYear());
 
         // 设置默认值
-        course.setMaxStudents(dto.getMaxStudents() != null ? dto.getMaxStudents() : 50);
         course.setStatus(dto.getStatus() != null ? dto.getStatus() : 0);
         course.setTextbook(dto.getTextbook() != null ? dto.getTextbook() : 0);
         course.setExternalSelection(dto.getExternalSelection() != null ? dto.getExternalSelection() : 0);
 
         // 设置可选字段
-        course.setDayOfWeek(dto.getDayOfWeek());
-        course.setStartTime(dto.getStartTime());
-        course.setEndTime(dto.getEndTime());
-        course.setClassroom(dto.getClassroom());
         course.setMaxCredits(dto.getMaxCredits());
         course.setDescription(dto.getDescription());
         course.setStudyNature(dto.getStudyNature());
         course.setRemark(dto.getRemark());
-
-        // 设置教师ID
-        course.setTeacherId(resolveTeacherId(dto.getTeacherNo(), teacherNoToIdMap));
 
         // 设置时间
         Date now = new Date();
@@ -298,16 +246,6 @@ public class CourseImportListener implements ReadListener<CourseImportDTO> {
         course.setUpdateTime(now);
 
         return course;
-    }
-
-    /**
-     * 根据教师工号获取教师ID，如果没有则使用待定教师
-     */
-    private Long resolveTeacherId(String teacherNo, Map<String, Long> teacherNoToIdMap) {
-        if (teacherNo == null || teacherNo.trim().isEmpty()) {
-            return defaultTeacherId;
-        }
-        return teacherNoToIdMap.getOrDefault(teacherNo.trim(), defaultTeacherId);
     }
 
     private CourseImportResultDTO.FailDetail toFailDetail(int row, String courseNo, ImportErrorCode code) {

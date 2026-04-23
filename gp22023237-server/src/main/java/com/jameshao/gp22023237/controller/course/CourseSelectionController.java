@@ -6,10 +6,14 @@ import com.jameshao.gp22023237.DTO.BatchCourseSelectionDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.mapper.CourseSelectionMapper;
+import com.jameshao.gp22023237.mapper.ScheduleMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
 import com.jameshao.gp22023237.po.CourseSelection;
+import com.jameshao.gp22023237.po.Schedule;
+import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.service.CourseSelectionService;
+import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.service.CourseService;
 import com.jameshao.gp22023237.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +22,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/course/selection")
@@ -41,6 +47,12 @@ public class CourseSelectionController {
 
     @Autowired
     private CourseMapper courseMapper;
+
+    @Autowired
+    private CoursePhaseService coursePhaseService;
+
+    @Autowired
+    private ScheduleMapper scheduleMapper;
 
     @GetMapping("/list")
     public String list(Long studentId, Long courseId, Integer status, String semester) {
@@ -100,6 +112,11 @@ public class CourseSelectionController {
     @Transactional(rollbackFor = Exception.class)
     public String save(@RequestBody BatchCourseSelectionDTO batchDTO) {
         try {
+            // 校验选课时间窗口
+            if (!coursePhaseService.isSelectionOpen()) {
+                return jsonReturn.returnError("当前不在选课时间窗口内，无法选课");
+            }
+
             System.out.println("保存学生选课:" + batchDTO);
 
             if (batchDTO.getStudentId() == null) {
@@ -117,6 +134,10 @@ public class CourseSelectionController {
             if (submittedCount > 0) {
                 return jsonReturn.returnError("您已提交选课，不可修改");
             }
+
+            // 获取学生所在班级
+            Student student = studentService.getById(batchDTO.getStudentId());
+            Long studentClassId = student != null ? student.getClassId() : null;
 
             Date now = new Date();
             List<Long> courseIds = new ArrayList<>();
@@ -139,17 +160,10 @@ public class CourseSelectionController {
                 if (course.getStatus() != 1) {
                     return jsonReturn.returnError("课程《" + course.getName() + "》未开课，无法选择");
                 }
-
-                LambdaQueryWrapper<CourseSelection> countWrapper = new LambdaQueryWrapper<>();
-                countWrapper.eq(CourseSelection::getCourseId, choice.getCourseId())
-                        .eq(CourseSelection::getStatus, 1);
-                long currentCount = courseSelectionService.count(countWrapper);
-                if (course.getMaxStudents() != null && currentCount >= course.getMaxStudents()) {
-                    return jsonReturn.returnError("课程《" + course.getName() + "》选课人数已满");
-                }
             }
 
-            String timeConflict = checkTimeConflict(batchDTO.getStudentId(), courseIds);
+            // 通过schedule表检查时间冲突
+            String timeConflict = checkTimeConflictViaSchedule(studentClassId, courseIds, batchDTO.getStudentId());
             if (timeConflict != null) {
                 return jsonReturn.returnError(timeConflict);
             }
@@ -183,54 +197,54 @@ public class CourseSelectionController {
         }
     }
 
-    private String checkTimeConflict(Long studentId, List<Long> courseIds) {
-        List<Course> courses = new ArrayList<>();
-        for (Long courseId : courseIds) {
-            Course course = courseService.getById(courseId);
-            if (course != null) {
-                courses.add(course);
+    /**
+     * 通过schedule表检查选课时间冲突
+     * 逻辑：查询学生班级对应的所有schedule记录，检查所选课程的排课时间是否有重叠
+     */
+    private String checkTimeConflictViaSchedule(Long studentClassId, List<Long> courseIds, Long studentId) {
+        if (studentClassId == null) {
+            return null; // 无班级信息，跳过冲突检测
+        }
+
+        // 查询学生班级的所有排课记录
+        LambdaQueryWrapper<Schedule> classWrapper = new LambdaQueryWrapper<>();
+        classWrapper.eq(Schedule::getClassId, studentClassId);
+        List<Schedule> classSchedules = scheduleMapper.selectList(classWrapper);
+
+        // 筛选出所选课程对应的排课
+        Set<Long> courseIdSet = new HashSet<>(courseIds);
+        List<Schedule> selectedSchedules = new ArrayList<>();
+        for (Schedule s : classSchedules) {
+            if (courseIdSet.contains(s.getCourseId())) {
+                selectedSchedules.add(s);
             }
         }
 
-        for (int i = 0; i < courses.size(); i++) {
-            Course course1 = courses.get(i);
-            if (course1.getDayOfWeek() == null || course1.getStartTime() == null) {
+        // 检查排课之间是否有时间冲突（范围重叠判断）
+        for (int i = 0; i < selectedSchedules.size(); i++) {
+            Schedule s1 = selectedSchedules.get(i);
+            if (s1.getDayOfWeek() == null || s1.getStartSection() == null || s1.getEndSection() == null) {
                 continue;
             }
-            for (int j = i + 1; j < courses.size(); j++) {
-                Course course2 = courses.get(j);
-                if (course2.getDayOfWeek() == null || course2.getStartTime() == null) {
+            for (int j = i + 1; j < selectedSchedules.size(); j++) {
+                Schedule s2 = selectedSchedules.get(j);
+                if (s2.getDayOfWeek() == null || s2.getStartSection() == null || s2.getEndSection() == null) {
                     continue;
                 }
-                if (course1.getDayOfWeek().equals(course2.getDayOfWeek())) {
-                    if (isTimeOverlap(course1.getStartTime(), course1.getEndTime(),
-                            course2.getStartTime(), course2.getEndTime())) {
-                        return "课程《" + course1.getName() + "》与《" + course2.getName() + "》时间冲突";
-                    }
+                // 同一天 + 节次范围重叠
+                if (s1.getDayOfWeek().equals(s2.getDayOfWeek())
+                        && s1.getStartSection() <= s2.getEndSection()
+                        && s1.getEndSection() >= s2.getStartSection()) {
+                    // 获取课程名称用于提示
+                    Course c1 = courseService.getById(s1.getCourseId());
+                    Course c2 = courseService.getById(s2.getCourseId());
+                    String name1 = c1 != null ? c1.getName() : "课程" + s1.getCourseId();
+                    String name2 = c2 != null ? c2.getName() : "课程" + s2.getCourseId();
+                    return "课程《" + name1 + "》与《" + name2 + "》时间冲突";
                 }
             }
         }
         return null;
-    }
-
-    private boolean isTimeOverlap(String start1, String end1, String start2, String end2) {
-        if (start1 == null || end1 == null || start2 == null || end2 == null) {
-            return false;
-        }
-        try {
-            int s1 = timeToMinutes(start1);
-            int e1 = timeToMinutes(end1);
-            int s2 = timeToMinutes(start2);
-            int e2 = timeToMinutes(end2);
-            return s1 < e2 && s2 < e1;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private int timeToMinutes(String time) {
-        String[] parts = time.split(":");
-        return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
     }
 
     @PutMapping("/update")

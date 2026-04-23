@@ -66,7 +66,6 @@
         <el-table-column label="学分" prop="credit" width="80" align="center" />
         <el-table-column label="学时" prop="hours" width="80" align="center" />
         <el-table-column label="修读性质" prop="studyNature" width="100" />
-        <el-table-column label="授课教师" prop="teacherName" width="120" />
         <el-table-column label="平时成绩" prop="usualScore" width="90" align="center">
           <template #default="scope">
             {{ scope.row.usualScore != null ? scope.row.usualScore : '-' }}

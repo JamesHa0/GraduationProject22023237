@@ -53,3 +53,43 @@ export function listScoreWithDetails(query) {
     params: query
   })
 }
+
+// 批量更新成绩
+export function batchUpdateScore(data) {
+  return request({
+    url: '/course/score/batchUpdate',
+    method: 'put',
+    data: data
+  })
+}
+
+// Excel导入成绩
+export function importScore(data) {
+  return request({
+    url: '/course/score/import',
+    method: 'post',
+    data: data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+// 下载成绩导入模板
+export function downloadScoreTemplate() {
+  return request({
+    url: '/course/score/importTemplate',
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 导出成绩
+export function exportScore(query) {
+  return request({
+    url: '/course/score/export',
+    method: 'get',
+    params: query,
+    responseType: 'blob'
+  })
+}

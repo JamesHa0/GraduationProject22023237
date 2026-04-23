@@ -28,6 +28,11 @@ public class Student {
     private Long userId;
 
     /**
+     * 班级ID(关联class表)
+     */
+    private Long classId;
+
+    /**
      * 学号 - 学生唯一标识，如：2023001
      */
     private String studentNo;
@@ -68,7 +73,7 @@ public class Student {
     private String researchDirection;
 
     /**
-     * 导师双选状态 - 0:未开始 1:第一轮双选 2:第二轮双选 3:已确定导师
+     * 导师双选状态 - 0:未开始 1:双选中 2:补选中 3:已确定
      */
     private Integer selectionStatus;
 
@@ -76,11 +81,6 @@ public class Student {
      * 学籍状态 - 1:在读 2:休学 3:毕业 4:退学
      */
     private Integer status;
-
-    /**
-     * 是否需要补选 - 1:是, 0:否
-     */
-    private Integer needSupplementary;
 
     /**
      * 创建时间 - 记录学生信息创建的时间

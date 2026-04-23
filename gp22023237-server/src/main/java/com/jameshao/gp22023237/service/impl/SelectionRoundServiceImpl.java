@@ -471,6 +471,14 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                             .set("round", nextRound);
                     mentorStudentService.update(null, updateWrapper);
                     System.out.println("学生 " + studentId + " 的志愿 " + nextChoice.getStudentChoiceOrder() + " 推进到第 " + nextRound + " 轮");
+
+                    // 更新学生selection_status为1（双选中）
+                    Student student = studentService.getById(studentId);
+                    if (student != null && student.getSelectionStatus() != null && student.getSelectionStatus() != 3) {
+                        student.setSelectionStatus(1);
+                        student.setUpdateTime(new java.util.Date());
+                        studentService.updateById(student);
+                    }
                 }
             }
 
@@ -548,6 +556,14 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 teacherWrapper.eq("id", mentorId)
                         .set("confirmed_quota", teacher.getConfirmedQuota() + 1);
                 teacherService.update(null, teacherWrapper);
+            }
+
+            // 更新学生selection_status为3（已确定）
+            Student student = studentService.getById(studentId);
+            if (student != null) {
+                student.setSelectionStatus(3);
+                student.setUpdateTime(new java.util.Date());
+                studentService.updateById(student);
             }
 
             return true;
@@ -858,10 +874,11 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
 
                 // 如果没有任何志愿被同意，则标记为需要补选
                 if (!hasAccepted) {
-                    // 1. 标记学生需要补选
+                    // 1. 标记学生需要补选 - 设置selection_status为2（补选中）
                     Student student = studentService.getById(studentId);
                     if (student != null) {
-                        student.setNeedSupplementary(1);
+                        student.setSelectionStatus(2);
+                        student.setUpdateTime(new java.util.Date());
                         studentService.updateById(student);
                     }
 

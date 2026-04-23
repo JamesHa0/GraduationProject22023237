@@ -68,6 +68,8 @@ public class DictTypeController {
             dictType.setCreateTime(new Date());
             dictType.setUpdateTime(new Date());
             dictTypeService.save(dictType);
+            // 新增字典类型后刷新Redis缓存
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -83,6 +85,8 @@ public class DictTypeController {
         try {
             dictType.setUpdateTime(new Date());
             dictTypeService.updateById(dictType);
+            // 如果dictType字段被修改，需要刷新缓存
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,13 +95,13 @@ public class DictTypeController {
     }
 
     /**
-     * 删除字典类型
+     * 删除字典类型（级联删除该类型下所有字典数据并清理缓存）
      */
     @DeleteMapping("/{dictIds}")
     public String remove(@PathVariable Long[] dictIds) {
         try {
             for (Long dictId : dictIds) {
-                dictTypeService.removeById(dictId);
+                dictTypeService.deleteDictTypeById(dictId);
             }
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
@@ -112,6 +116,7 @@ public class DictTypeController {
     @DeleteMapping("/refreshCache")
     public String refreshCache() {
         try {
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();

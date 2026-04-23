@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jameshao.gp22023237.mapper.MentorChangeApplicationMapper;
 import com.jameshao.gp22023237.po.MentorChangeApplication;
 import com.jameshao.gp22023237.po.MentorStudent;
+import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.service.MentorChangeApplicationService;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,9 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
 
     @Autowired
     private MentorStudentService mentorStudentService;
+
+    @Autowired
+    private StudentService studentService;
 
     @Override
     @Transactional
@@ -106,6 +111,14 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
         newRelationship.setCreateTime(new Date());
         newRelationship.setUpdateTime(new Date());
         mentorStudentService.save(newRelationship);
+
+        // 3. 更新学生selection_status为3（已确定）
+        Student student = studentService.getById(application.getStudentId());
+        if (student != null) {
+            student.setSelectionStatus(3);
+            student.setUpdateTime(new Date());
+            studentService.updateById(student);
+        }
     }
 
     @Override

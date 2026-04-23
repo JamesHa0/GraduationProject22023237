@@ -38,7 +38,4 @@ public class StudentImportDTO {
 
     @ExcelProperty("双选状态")
     private Integer selectionStatus;
-
-    @ExcelProperty("需补选")
-    private Integer needSupplementary;
 }

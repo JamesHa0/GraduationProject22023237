@@ -5,6 +5,8 @@ import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.jameshao.gp22023237.DTO.StudentImportDTO;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.po.ClassEntity;
+import com.jameshao.gp22023237.service.ClassService;
 import com.jameshao.gp22023237.service.StudentService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -39,9 +41,13 @@ public class StudentImportController {
     @Autowired
     private StudentService studentService;
 
+    @Autowired
+    private ClassService classService;
+
     @PostMapping("/import")
     public String importStudents(@RequestParam("file") MultipartFile file,
-                                 @RequestParam("taskId") String taskId) {
+                                 @RequestParam("taskId") String taskId,
+                                 @RequestParam(value = "classId", required = false) Long classId) {
         try {
             if (file == null || file.isEmpty()) {
                 return jsonReturn.returnFailed("请选择要上传的文件");
@@ -51,7 +57,7 @@ public class StudentImportController {
             if (!lowerName.endsWith(".xls") && !lowerName.endsWith(".xlsx") && !lowerName.endsWith(".csv")) {
                 return jsonReturn.returnFailed("请上传 .xls/.xlsx/.csv 文件");
             }
-            studentService.startImportTask(taskId, file);
+            studentService.startImportTask(taskId, file, classId);
             Map<String, Object> data = new HashMap<>();
             data.put("taskId", taskId);
             return jsonReturn.returnSuccess(data);
@@ -62,17 +68,15 @@ public class StudentImportController {
     }
 
     @GetMapping("/importTemplate")
-    public void downloadTemplate(HttpServletResponse response) {
+    public void downloadTemplate(@RequestParam(value = "classId", required = false) Long classId,
+                                 HttpServletResponse response) {
         ExcelWriter excelWriter = null;
         try {
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("utf-8");
-            String fileName = URLEncoder.encode("学生导入模板", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
-            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
 
-            excelWriter = EasyExcel.write(response.getOutputStream()).build();
-
-            List<StudentImportDTO> dataList = new ArrayList<>();
+            // 根据是否传入classId决定模板类型
+            String templateName = "学生导入模板";
             StudentImportDTO example = new StudentImportDTO();
             example.setStudentNo("22023237");
             example.setStudentName("张三");
@@ -84,7 +88,28 @@ public class StudentImportController {
             example.setResearchDirection("计算机视觉");
             example.setStatus(1);
             example.setSelectionStatus(0);
-            example.setNeedSupplementary(0);
+
+            if (classId != null) {
+                ClassEntity classEntity = classService.getById(classId);
+                if (classEntity != null) {
+                    templateName = classEntity.getClassName() + " 班级导入模板";
+                    example.setDepartment(classEntity.getDepartment());
+                    example.setMajor(classEntity.getMajor());
+                    if (classEntity.getAdmissionYear() != null) {
+                        example.setAdmissionYear(classEntity.getAdmissionYear());
+                        example.setCohortYear(classEntity.getAdmissionYear());
+                        example.setGraduationYear(classEntity.getAdmissionYear() + 3);
+                    }
+                    example.setResearchDirection("");
+                }
+            }
+
+            String fileName = URLEncoder.encode(templateName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+
+            excelWriter = EasyExcel.write(response.getOutputStream()).build();
+
+            List<StudentImportDTO> dataList = new ArrayList<>();
             dataList.add(example);
 
             WriteSheet templateSheet = EasyExcel.writerSheet("学生模板").head(StudentImportDTO.class).build();
@@ -130,8 +155,7 @@ public class StudentImportController {
         rows.add(Arrays.asList("归属年级", "否", "2000-2100，空则默认入学年份", "2022", "-", "建议与入学年份一致"));
         rows.add(Arrays.asList("毕业年份", "是", "2000-2100，且>=入学年份", "2026", "IMP-STU-009", "通常为入学年份+3/4"));
         rows.add(Arrays.asList("状态", "否", "0/1", "1", "IMP-STU-010", "0禁用，1正常"));
-        rows.add(Arrays.asList("双选状态", "否", "0/1/2/3", "0", "IMP-STU-011", "0未开始，1第一轮，2第二轮，3已确定"));
-        rows.add(Arrays.asList("需补选", "否", "0/1", "0", "IMP-STU-012", "0否，1是"));
+        rows.add(Arrays.asList("双选状态", "否", "0/1/2/3", "0", "IMP-STU-011", "0未开始，1双选中，2补选中，3已确定"));
         rows.add(Arrays.asList("CSV说明", "是", "UTF-8编码，列名需与模板一致", "student.csv", "-", "建议先下载模板再另存为CSV填写"));
         return rows;
     }

@@ -77,6 +77,15 @@ export function updateSelectionStatus(id, selectionStatus) {
   })
 }
 
+// 根据班级ID查询学生列表（分页）
+export function listStudentByClass(classId, params) {
+  return request({
+    url: `/student/listByClass/${classId}`,
+    method: 'get',
+    params: params
+  })
+}
+
 // 获取归属年级列表
 export function listCohortYears() {
   return request({
@@ -111,10 +120,11 @@ export function importStudent(data) {
   })
 }
 
-export function downloadStudentImportTemplate() {
+export function downloadStudentImportTemplate(classId) {
   return request({
     url: '/student/importTemplate',
     method: 'get',
+    params: classId ? { classId } : {},
     responseType: 'blob'
   })
 }
