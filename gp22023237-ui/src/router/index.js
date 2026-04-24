@@ -337,6 +337,12 @@ export const constantRoutes = [
         component: () => import('@/views/system/permission/index'),
         name: 'PermissionManage',
         meta: { title: '权限管理', icon: 'lock' }
+      },
+      {
+        path: 'oplog',
+        component: () => import('@/views/system/oplog/index'),
+        name: 'Oplog',
+        meta: { title: '操作日志', icon: 'log' }
       }
     ]
   },

@@ -2,7 +2,9 @@ package com.jameshao.gp22023237.controller.selection;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.service.MentorStudentService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -174,6 +176,7 @@ public class MentorStudentRelationshipController {
     /**
      * 导出导师学生关系汇总表
      */
+    @Log(title = "双选关系", businessType = BusinessType.EXPORT)
     @GetMapping("/export/summary")
     public void exportMentorStudentSummary(HttpServletResponse response) {
         try {

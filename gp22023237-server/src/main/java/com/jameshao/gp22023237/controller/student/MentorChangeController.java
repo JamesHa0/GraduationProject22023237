@@ -1,6 +1,8 @@
 package com.jameshao.gp22023237.controller.student;
 
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.DTO.MentorChangeApplicationWithDetailsDTO;
 import com.jameshao.gp22023237.mapper.MentorChangeApplicationMapper;
 import com.jameshao.gp22023237.po.MentorChangeApplication;
@@ -53,6 +55,7 @@ public class MentorChangeController {
     /**
      * 提交导师更换申请
      */
+    @Log(title = "导师变更", businessType = BusinessType.INSERT)
     @PostMapping("/submit")
     public String submitApplication(@RequestBody MentorChangeApplication application) {
         try {
@@ -140,6 +143,7 @@ public class MentorChangeController {
     /**
      * 原导师审批（仅原导师本人可操作）
      */
+    @Log(title = "导师变更", businessType = BusinessType.UPDATE)
     @PostMapping("/original-mentor/approve")
     public String originalMentorApprove(@RequestParam Long id,
                                          @RequestParam Integer status,
@@ -175,6 +179,7 @@ public class MentorChangeController {
     /**
      * 新导师审批（仅新导师本人可操作）
      */
+    @Log(title = "导师变更", businessType = BusinessType.UPDATE)
     @PostMapping("/new-mentor/approve")
     public String newMentorApprove(@RequestParam Long id,
                                       @RequestParam Integer status,
@@ -214,6 +219,7 @@ public class MentorChangeController {
     /**
      * 导出导师更换申请表
      */
+    @Log(title = "导师变更", businessType = BusinessType.EXPORT)
     @GetMapping("/export/{id}")
     public void exportMentorChangeApplication(@PathVariable Long id, HttpServletResponse response) {
         try {

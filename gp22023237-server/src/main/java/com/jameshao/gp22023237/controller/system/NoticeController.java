@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Notice;
 import com.jameshao.gp22023237.service.NoticeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +63,7 @@ public class NoticeController {
     /**
      * 新增通知公告
      */
+    @Log(title = "通知公告", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody Notice notice) {
         try {
@@ -77,6 +80,7 @@ public class NoticeController {
     /**
      * 修改通知公告
      */
+    @Log(title = "通知公告", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody Notice notice) {
         try {
@@ -92,6 +96,7 @@ public class NoticeController {
     /**
      * 删除通知公告
      */
+    @Log(title = "通知公告", businessType = BusinessType.DELETE)
     @DeleteMapping("/{noticeIds}")
     public String remove(@PathVariable Long[] noticeIds) {
         try {

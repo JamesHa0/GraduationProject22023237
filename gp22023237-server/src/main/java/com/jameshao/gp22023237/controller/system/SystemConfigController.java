@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.SystemConfig;
 import com.jameshao.gp22023237.service.SystemConfigService;
 import com.jameshao.gp22023237.utils.ConfigUtil;
@@ -79,6 +81,7 @@ public class SystemConfigController {
     /**
      * 新增参数配置
      */
+    @Log(title = "参数设置", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody SystemConfig config) {
         try {
@@ -99,6 +102,7 @@ public class SystemConfigController {
     /**
      * 修改参数配置
      */
+    @Log(title = "参数设置", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody SystemConfig config) {
         try {
@@ -115,6 +119,7 @@ public class SystemConfigController {
     /**
      * 删除参数配置
      */
+    @Log(title = "参数设置", businessType = BusinessType.DELETE)
     @DeleteMapping("/{configIds}")
     public String remove(@PathVariable Long[] configIds) {
         try {
@@ -135,6 +140,7 @@ public class SystemConfigController {
     /**
      * 刷新参数缓存
      */
+    @Log(title = "参数设置", businessType = BusinessType.UPDATE)
     @DeleteMapping("/refreshCache")
     public String refreshCache() {
         try {

@@ -1,6 +1,8 @@
 package com.jameshao.gp22023237.controller.selection;
 
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.service.SelectionRoundService;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -293,6 +295,7 @@ public class SelectionRoundController {
     /**
      * 开启补选轮次
      */
+    @Log(title = "选轮次管理", businessType = BusinessType.UPDATE)
     @PostMapping("/startSupplementary")
     public String startSupplementaryRound(@RequestBody Map<String, String> params) {
         try {

@@ -2,7 +2,9 @@ package com.jameshao.gp22023237.controller.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Dept;
 import com.jameshao.gp22023237.service.DeptService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +82,7 @@ public class DeptController {
     /**
      * 新增部门
      */
+    @Log(title = "部门管理", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody Dept dept) {
         try {
@@ -97,6 +100,7 @@ public class DeptController {
     /**
      * 修改部门
      */
+    @Log(title = "部门管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody Dept dept) {
         try {
@@ -112,6 +116,7 @@ public class DeptController {
     /**
      * 删除部门
      */
+    @Log(title = "部门管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{deptId}")
     public String remove(@PathVariable Long deptId) {
         try {

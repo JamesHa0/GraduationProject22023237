@@ -7,7 +7,9 @@ import com.jameshao.gp22023237.DTO.UserProfileUpdateDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.UserService;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
@@ -65,6 +67,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody User user) {
         try {
@@ -87,6 +90,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody User user) {
         try {
@@ -99,6 +103,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
     public String remove(@PathVariable Long[] userIds) {
         try {
@@ -112,6 +117,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
     public String changeStatus(@RequestBody User user) {
         try {
@@ -124,6 +130,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/resetPwd")
     public String resetPwd(@RequestBody User user) {
         try {
@@ -172,6 +179,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.UPDATE)
     @PutMapping("/profile")
     public String updateProfile(@RequestBody UserProfileUpdateDTO updateDTO) {
         try {
@@ -219,6 +227,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.UPDATE)
     @PutMapping("/profile/updatePwd")
     public String updatePwd(@RequestBody UserPasswordUpdateDTO passwordDTO) {
         try {
@@ -258,6 +267,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.INSERT)
     @PostMapping("/profile/avatar")
     public String uploadAvatar(@RequestParam(value = "avatarfile", required = false) MultipartFile avatarFile) {
         try {
@@ -312,6 +322,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.INSERT)
     @PostMapping("/profile/avatar/base64")
     public String uploadAvatarBase64(@RequestBody Map<String, String> params) {
         try {
@@ -354,6 +365,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.INSERT)
     @PostMapping("/profile/signature/base64")
     public String uploadSignatureBase64(@RequestBody Map<String, String> params) {
         try {
@@ -396,6 +408,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.INSERT)
     @PostMapping("/profile/signature/file")
     public String uploadSignatureFile(@RequestParam("file") MultipartFile file) {
         try {
@@ -451,6 +464,7 @@ public class SystemUserController {
         }
     }
 
+    @Log(title = "个人资料", businessType = BusinessType.DELETE)
     @DeleteMapping("/profile/signature")
     public String deleteSignature() {
         try {

@@ -2,7 +2,9 @@ package com.jameshao.gp22023237.controller.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Menu;
 import com.jameshao.gp22023237.service.MenuService;
 import com.jameshao.gp22023237.service.RoleMenuService;
@@ -119,6 +121,7 @@ public class MenuController {
     /**
      * 修改菜单
      */
+    @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody Menu menu) {
         try {

@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.DictData;
 import com.jameshao.gp22023237.service.DictDataService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,6 +79,7 @@ public class DictDataController {
     /**
      * 新增字典数据（同步刷新缓存）
      */
+    @Log(title = "字典数据", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody DictData dictData) {
         try {
@@ -93,6 +96,7 @@ public class DictDataController {
     /**
      * 修改字典数据（同步刷新缓存）
      */
+    @Log(title = "字典数据", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody DictData dictData) {
         try {
@@ -108,6 +112,7 @@ public class DictDataController {
     /**
      * 删除字典数据（同步刷新缓存）
      */
+    @Log(title = "字典数据", businessType = BusinessType.DELETE)
     @DeleteMapping("/{dictCodes}")
     public String remove(@PathVariable Long[] dictCodes) {
         try {

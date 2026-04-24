@@ -1,6 +1,8 @@
 package com.jameshao.gp22023237.controller;
 
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ public class FileController {
     // 文件上传保存的路径（可配置）
     private static final String UPLOAD_PATH = "upload/";
 
+    @Log(title = "文件管理", businessType = BusinessType.INSERT)
     @PostMapping("/upload")
     public String uploadFile(@RequestParam("file") MultipartFile file) {
         try {

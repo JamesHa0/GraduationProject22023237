@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.po.User;
@@ -119,6 +121,7 @@ public class UserController {
 
 
     //添加用户
+    @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @RequestMapping("adduser")
     public String addOne(User user){
         try{

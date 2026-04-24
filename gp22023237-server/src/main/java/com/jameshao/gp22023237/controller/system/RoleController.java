@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Role;
 import com.jameshao.gp22023237.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +63,7 @@ public class RoleController {
     /**
      * 新增角色
      */
+    @Log(title = "角色管理", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody Role role) {
         try {
@@ -78,6 +81,7 @@ public class RoleController {
     /**
      * 修改角色
      */
+    @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody Role role) {
         try {
@@ -93,6 +97,7 @@ public class RoleController {
     /**
      * 删除角色
      */
+    @Log(title = "角色管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{roleIds}")
     public String remove(@PathVariable Long[] roleIds) {
         try {

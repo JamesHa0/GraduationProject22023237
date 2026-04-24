@@ -1,6 +1,8 @@
 package com.jameshao.gp22023237.controller.course;
 
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +60,7 @@ public class CoursePhaseController {
     /**
      * 重置课程阶段（仅管理员）
      */
+    @Log(title = "课程阶段", businessType = BusinessType.UPDATE)
     @PostMapping("/reset")
     public String resetPhase() {
         try {

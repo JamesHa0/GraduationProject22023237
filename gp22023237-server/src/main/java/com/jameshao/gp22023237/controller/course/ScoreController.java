@@ -7,7 +7,9 @@ import com.jameshao.gp22023237.DTO.CourseStudentScoreDTO;
 import com.jameshao.gp22023237.DTO.ScoreImportDTO;
 import com.jameshao.gp22023237.DTO.ScoreImportResultDTO;
 import com.jameshao.gp22023237.DTO.ScoreWithDetailsDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.ScoreMapper;
 import com.jameshao.gp22023237.po.Score;
 import com.jameshao.gp22023237.service.CoursePhaseService;
@@ -193,6 +195,7 @@ public class ScoreController {
         }
     }
 
+    @Log(title = "成绩管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     public String deleteBatch(@RequestBody List<Long> ids) {
         try {

@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.jameshao.gp22023237.DTO.CourseImportDTO;
 import com.jameshao.gp22023237.DTO.CourseImportResultDTO;
 import com.jameshao.gp22023237.DTO.CourseWithTeacherDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.po.Teacher;
@@ -99,6 +101,7 @@ public class CourseController {
         }
     }
 
+    @Log(title = "课程管理", businessType = BusinessType.INSERT)
     @PostMapping("/add")
     public String add(@RequestBody Course course) {
         try {
@@ -117,6 +120,7 @@ public class CourseController {
         }
     }
 
+    @Log(title = "课程管理", businessType = BusinessType.UPDATE)
     @PutMapping("/update")
     public String update(@RequestBody Course course) {
         try {
@@ -134,6 +138,7 @@ public class CourseController {
         }
     }
 
+    @Log(title = "课程管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
         try {
@@ -149,6 +154,7 @@ public class CourseController {
         }
     }
 
+    @Log(title = "课程管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     public String deleteBatch(@RequestBody List<Long> ids) {
         try {
@@ -167,6 +173,7 @@ public class CourseController {
     /**
      * 批量导入课程
      */
+    @Log(title = "课程管理", businessType = BusinessType.IMPORT)
     @PostMapping("/import")
     public String importCourses(@RequestParam("file") MultipartFile file) {
         try {

@@ -1,7 +1,9 @@
 package com.jameshao.gp22023237.controller.course;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.ScheduleMapper;
 import com.jameshao.gp22023237.po.ClassEntity;
 import com.jameshao.gp22023237.service.ClassService;
@@ -167,6 +169,7 @@ public class ClassController {
         }
     }
 
+    @Log(title = "班级管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
         try {

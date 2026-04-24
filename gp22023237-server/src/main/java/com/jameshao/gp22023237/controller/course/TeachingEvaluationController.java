@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.course;
 import com.jameshao.gp22023237.DTO.EvaluationCourseDTO;
 import com.jameshao.gp22023237.DTO.TeacherEvaluationStatsDTO;
 import com.jameshao.gp22023237.DTO.TeachingEvaluationDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.service.TeachingEvaluationService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class TeachingEvaluationController {
     /**
      * 提交教学评价
      */
+    @Log(title = "教学评教", businessType = BusinessType.INSERT)
     @PostMapping("/submit")
     public String submit(@RequestBody TeachingEvaluationDTO dto, @RequestParam Long studentId) {
         try {

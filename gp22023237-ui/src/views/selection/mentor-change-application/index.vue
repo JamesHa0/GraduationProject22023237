@@ -9,6 +9,7 @@
       </template>
 
       <el-form :model="form" :rules="rules" ref="changeRef" label-width="100px">
+        <el-alert v-if="hasPendingApplication" title="您有待审批的更换申请，暂不能再次申请" type="warning" :closable="false" show-icon class="mb10" />
         <el-row>
           <el-col :span="12">
             <el-form-item label="学号" prop="studentNo">
@@ -29,7 +30,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="新导师" prop="newMentorId">
-              <el-select v-model="form.newMentorId" placeholder="请选择新导师" style="width: 100%" :disabled="!hasCurrentMentor">
+              <el-select v-model="form.newMentorId" placeholder="请选择新导师" style="width: 100%" :disabled="!hasCurrentMentor || hasPendingApplication">
                 <el-option
                   v-for="mentor in mentorList.filter(m => m.id !== form.originalMentorId)"
                   :key="mentor.id"
@@ -43,15 +44,15 @@
         <el-row>
           <el-col :span="24">
             <el-form-item label="更换原因" prop="changeReason">
-              <el-input v-model="form.changeReason" type="textarea" :rows="4" placeholder="请输入更换原因" :disabled="!hasCurrentMentor" />
+              <el-input v-model="form.changeReason" type="textarea" :rows="4" placeholder="请输入更换原因" :disabled="!hasCurrentMentor || hasPendingApplication" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="24">
             <el-form-item>
-              <el-button type="primary" @click="submitForm" :loading="submitLoading" :disabled="!hasCurrentMentor">提交申请</el-button>
-              <el-button @click="resetForm" :disabled="!hasCurrentMentor">重置</el-button>
+              <el-button type="primary" @click="submitForm" :loading="submitLoading" :disabled="!hasCurrentMentor || hasPendingApplication">提交申请</el-button>
+              <el-button @click="resetForm" :disabled="!hasCurrentMentor || hasPendingApplication">重置</el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -167,6 +168,7 @@ const originalMentorName = ref('');
 const mentorList = ref([]);
 const hasCurrentMentor = ref(true);
 const currentStudentId = ref(null);
+const hasPendingApplication = ref(false);
 
 const data = reactive({
   form: {
@@ -277,6 +279,7 @@ function getList() {
     loading.value = false;
     changeList.value = res.data.records || res.data || [];
     total.value = res.data.total || changeList.value.length;
+    hasPendingApplication.value = changeList.value.some(item => item.overallStatus === 0 || item.overallStatus === 1);
   }).catch(() => {
     loading.value = false;
   });
@@ -363,6 +366,10 @@ watch(
 </script>
 
 <style scoped>
+.mb10 {
+  margin-bottom: 10px;
+}
+
 .mb20 {
   margin-bottom: 20px;
 }

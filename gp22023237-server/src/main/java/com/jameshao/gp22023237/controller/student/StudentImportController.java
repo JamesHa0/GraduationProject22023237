@@ -4,7 +4,9 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.jameshao.gp22023237.DTO.StudentImportDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.ClassEntity;
 import com.jameshao.gp22023237.service.ClassService;
 import com.jameshao.gp22023237.service.StudentService;
@@ -44,6 +46,7 @@ public class StudentImportController {
     @Autowired
     private ClassService classService;
 
+    @Log(title = "学生管理", businessType = BusinessType.IMPORT)
     @PostMapping("/import")
     public String importStudents(@RequestParam("file") MultipartFile file,
                                  @RequestParam("taskId") String taskId,

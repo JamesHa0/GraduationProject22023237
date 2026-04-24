@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.course;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.jameshao.gp22023237.DTO.CourseSelectionWithDetailsDTO;
 import com.jameshao.gp22023237.DTO.BatchCourseSelectionDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.mapper.CourseSelectionMapper;
 import com.jameshao.gp22023237.mapper.ScheduleMapper;
@@ -108,6 +110,7 @@ public class CourseSelectionController {
         }
     }
 
+    @Log(title = "选课管理", businessType = BusinessType.INSERT)
     @PostMapping("/save")
     @Transactional(rollbackFor = Exception.class)
     public String save(@RequestBody BatchCourseSelectionDTO batchDTO) {
@@ -247,6 +250,7 @@ public class CourseSelectionController {
         return null;
     }
 
+    @Log(title = "选课管理", businessType = BusinessType.UPDATE)
     @PutMapping("/update")
     public String update(@RequestBody CourseSelection courseSelection) {
         try {
@@ -262,6 +266,7 @@ public class CourseSelectionController {
         }
     }
 
+    @Log(title = "选课管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
         try {
@@ -277,6 +282,7 @@ public class CourseSelectionController {
         }
     }
 
+    @Log(title = "选课管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     public String deleteBatch(@RequestBody List<Long> ids) {
         try {

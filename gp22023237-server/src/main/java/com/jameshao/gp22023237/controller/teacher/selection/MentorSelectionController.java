@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
@@ -121,6 +123,7 @@ public class MentorSelectionController {
     }
 
     // 导师提交选中
+    @Log(title = "双选志愿", businessType = BusinessType.UPDATE)
     @RequestMapping("/submitSelection")
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {

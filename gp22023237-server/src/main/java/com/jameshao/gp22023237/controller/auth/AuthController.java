@@ -1,6 +1,8 @@
 package com.jameshao.gp22023237.controller.auth;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.utils.FLAGS;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.UserService;
@@ -25,6 +27,7 @@ public class AuthController {
     private RedisUtils redisUtils;
 
     //登录验证
+    @Log(title = "用户登录", businessType = BusinessType.INSERT)
     @RequestMapping("/login")
     public String login(@RequestBody User user){
         System.out.println(user);

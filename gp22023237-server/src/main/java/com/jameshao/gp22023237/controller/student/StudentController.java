@@ -1,7 +1,9 @@
 package com.jameshao.gp22023237.controller.student;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.StudentService;
@@ -275,6 +277,7 @@ public class StudentController {
      * @param ids 学生ID列表
      * @return 操作结果
      */
+    @Log(title = "学生管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     @Transactional(rollbackFor = Exception.class)
     public String deleteBatch(@RequestBody List<Long> ids) {

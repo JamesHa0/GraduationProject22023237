@@ -8,7 +8,9 @@ import com.jameshao.gp22023237.DTO.ScheduleDTO;
 import com.jameshao.gp22023237.DTO.ScheduleImportDTO;
 import com.jameshao.gp22023237.DTO.ScheduleImportResultDTO;
 import com.jameshao.gp22023237.DTO.ScheduleWithDetailsDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.CourseMapper;
 import com.jameshao.gp22023237.po.Course;
 import com.jameshao.gp22023237.po.DictData;
@@ -124,6 +126,7 @@ public class ScheduleController {
         }
     }
 
+    @Log(title = "排课管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     public String deleteBatch(@RequestBody List<Long> ids) {
         try {

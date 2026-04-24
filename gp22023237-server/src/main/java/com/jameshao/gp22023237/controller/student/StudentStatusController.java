@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.DTO.StudentStatusChangeWithDetailsDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.StudentStatusChangeMapper;
 import com.jameshao.gp22023237.po.GraduationAudit;
 import com.jameshao.gp22023237.po.StudentStatusChange;
@@ -49,6 +51,7 @@ public class StudentStatusController {
     /**
      * 提交学籍异动申请
      */
+    @Log(title = "学籍变更", businessType = BusinessType.INSERT)
     @PostMapping("/change/submit")
     public String submitApplication(@RequestBody StudentStatusChange application) {
         try {
@@ -132,6 +135,7 @@ public class StudentStatusController {
     /**
      * 导师审批
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/change/mentor/approve")
     public String mentorApprove(@RequestParam Long id,
                                     @RequestParam Integer status,
@@ -154,6 +158,7 @@ public class StudentStatusController {
     /**
      * 教学秘书审批
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/change/secretary/approve")
     public String secretaryApprove(@RequestParam Long id,
                                       @RequestParam Integer status,
@@ -176,6 +181,7 @@ public class StudentStatusController {
     /**
      * 自动审核毕业资格
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/graduation/autoAudit")
     public String autoAuditGraduation(@RequestParam Long studentId) {
         try {
@@ -218,6 +224,7 @@ public class StudentStatusController {
     /**
      * 人工审核毕业资格
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/graduation/manualAudit")
     public String manualAudit(@RequestParam Long id,
                                   @RequestParam Integer status,
