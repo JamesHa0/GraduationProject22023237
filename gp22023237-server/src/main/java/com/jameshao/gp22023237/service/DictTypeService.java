@@ -10,4 +10,14 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface DictTypeService extends IService<DictType> {
 
+    /**
+     * 删除字典类型（级联删除该类型下所有字典数据并清理缓存）
+     * @param dictId 字典类型ID
+     */
+    void deleteDictTypeById(Long dictId);
+
+    /**
+     * 刷新所有字典缓存
+     */
+    void refreshCache();
 }

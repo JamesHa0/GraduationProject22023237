@@ -122,4 +122,51 @@
         LIMIT 1
     </select>
 
+    <!-- 获取学生的所有志愿（用于导出） -->
+    <select id="getStudentVolunteers" resultType="java.util.Map">
+        SELECT
+            ms.student_choice_order AS choiceOrder,
+            t.teacher_name AS teacherName,
+            t.title,
+            t.research_field AS researchField,
+            ms.teacher_status AS teacherStatus,
+            ms.student_status AS studentStatus
+        FROM mentor_student ms
+        LEFT JOIN teacher t ON ms.mentor_id = t.id
+        WHERE ms.student_id = #{studentId}
+        AND ms.student_status = 1
+        ORDER BY ms.student_choice_order ASC
+    </select>
+
+    <!-- 获取学生基本信息（用于导出） -->
+    <select id="getStudentInfo" resultType="java.util.Map">
+        SELECT
+            s.student_no AS studentNo,
+            s.student_name AS studentName,
+            s.department,
+            s.major,
+            s.admission_year AS admissionYear
+        FROM student s
+        WHERE s.id = #{studentId}
+    </select>
+
+    <!-- 获取已确认的导师学生关系列表（用于导出汇总表） -->
+    <select id="listConfirmedRelationships" resultType="java.util.Map">
+        SELECT
+            s.student_no AS studentNo,
+            s.student_name AS studentName,
+            s.department AS studentDepartment,
+            s.major,
+            t.teacher_name AS teacherName,
+            t.department AS mentorDepartment,
+            t.research_field AS researchField,
+            ms.confirm_time AS confirmTime
+        FROM mentor_student ms
+        LEFT JOIN student s ON ms.student_id = s.id
+        LEFT JOIN teacher t ON ms.mentor_id = t.id
+        WHERE ms.student_status = 1
+        AND ms.teacher_status = 1
+        ORDER BY s.major, t.teacher_name, s.student_no
+    </select>
+
 </mapper>

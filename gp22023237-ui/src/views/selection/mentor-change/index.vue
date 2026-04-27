@@ -9,6 +9,12 @@
           <el-option label="已拒绝" :value="3" />
         </el-select>
       </el-form-item>
+      <el-form-item label="学号" prop="studentNo">
+        <el-input v-model="queryParams.studentNo" placeholder="请输入学号" clearable style="width: 200px" />
+      </el-form-item>
+      <el-form-item label="学生姓名" prop="studentName">
+        <el-input v-model="queryParams.studentName" placeholder="请输入学生姓名" clearable style="width: 200px" />
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -16,9 +22,6 @@
     </el-form>
 
     <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd">新增申请</el-button>
-      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
@@ -53,16 +56,23 @@
           {{ parseDate(scope.row.applyTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="250" class-name="small-padding fixed-width">
         <template #default="scope">
+          <!-- 原导师审批按钮：仅导师角色 + 是该申请的原导师 + 待审批 -->
+          <el-button v-if="isTeacher && isOriginalMentor(scope.row) && scope.row.originalMentorStatus === 0"
+            link type="primary" icon="Edit" @click="handleApprove(scope.row, 'original')">原导师审批</el-button>
+          <!-- 新导师审批按钮：仅导师角色 + 是该申请的新导师 + 待审批 -->
+          <el-button v-if="isTeacher && isNewMentor(scope.row) && scope.row.originalMentorStatus === 1 && scope.row.newMentorStatus === 0"
+            link type="primary" icon="Edit" @click="handleApprove(scope.row, 'new')">新导师审批</el-button>
+          <el-button link type="primary" icon="Download" @click="handleExport(scope.row)">导出</el-button>
           <el-button link type="primary" icon="View" @click="handleView(scope.row)"></el-button>
-          <el-button link type="primary" icon="Edit" :disabled="scope.row.overallStatus !== 0" @click="handleUpdate(scope.row)"></el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
+    <!-- 查看详情对话框 -->
     <el-dialog :title="title" v-model="open" width="700px" append-to-body>
       <el-form :model="form" :rules="rules" ref="changeRef" label-width="100px">
         <el-row>
@@ -80,25 +90,23 @@
         <el-row>
           <el-col :span="12">
             <el-form-item label="原导师">
-              <el-input v-model="originalMentorName" disabled />
+              <el-input v-model="form.originalMentorName" disabled />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="新导师" prop="newMentorId">
-              <el-select v-model="form.newMentorId" placeholder="请选择新导师" style="width: 100%" :disabled="isViewMode">
-                <el-option v-for="mentor in mentorList" :key="mentor.id" :label="mentor.teacherName" :value="mentor.id" />
-              </el-select>
+            <el-form-item label="新导师">
+              <el-input v-model="form.newMentorName" disabled />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row>
           <el-col :span="24">
-            <el-form-item label="更换原因" prop="changeReason">
-              <el-input v-model="form.changeReason" type="textarea" :rows="4" placeholder="请输入更换原因" :disabled="isViewMode" />
+            <el-form-item label="更换原因">
+              <el-input v-model="form.changeReason" type="textarea" :rows="4" disabled />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row v-if="isViewMode">
+        <el-row>
           <el-col :span="12">
             <el-form-item label="原导师审批">
               <el-tag :type="getStatusType(form.originalMentorStatus)">
@@ -118,48 +126,63 @@
         </el-row>
       </el-form>
       <template #footer>
-        <div class="dialog-footer" v-if="!isViewMode">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-        <div class="dialog-footer" v-else>
+        <div class="dialog-footer">
           <el-button @click="cancel">关 闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 审批对话框 -->
+    <el-dialog title="导师审批" v-model="approveDialogVisible" width="500px" append-to-body>
+      <el-form :model="approveForm" label-width="80px">
+        <el-form-item label="学生姓名">
+          <el-input :model-value="approveRow?.studentName" disabled />
+        </el-form-item>
+        <el-form-item label="审批类型">
+          <el-input :model-value="approveType === 'original' ? '原导师审批' : '新导师审批'" disabled />
+        </el-form-item>
+        <el-form-item label="审批意见">
+          <el-input v-model="approveForm.comment" type="textarea" :rows="3" placeholder="请输入审批意见（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="danger" @click="submitApprove(2)">拒 绝</el-button>
+          <el-button type="primary" @click="submitApprove(1)">通 过</el-button>
+          <el-button @click="approveDialogVisible = false">取 消</el-button>
         </div>
       </template>
     </el-dialog>
   </div>
 </template>
 
-<script setup name="MentorChange">
-import { listMentorChange, getMentorChangeDetail, submitMentorChange, getStudentCurrentMentor } from "@/api/student/mentorChange";
-import { listMentor } from "@/api/student/selection";
+<script setup name="MentorChangeManage">
+import { listMentorChange, getMentorChangeDetail, approveMentorChangeOriginalMentor, approveMentorChangeNewMentor } from "@/api/student/mentorChange";
+import { saveAs } from 'file-saver';
+import axios from 'axios';
+import { getToken } from '@/utils/auth';
 import { getCurrentInstance, ref, reactive, toRefs } from "vue";
 import useUserStore from '@/store/modules/user';
 
 const { proxy } = getCurrentInstance();
+const userStore = useUserStore();
+
+// 判断当前用户角色
+const isTeacher = Number(userStore.roles) === 7;
+const currentTeacherId = isTeacher && userStore.roleInfo && userStore.roleInfo[0] ? userStore.roleInfo[0].id : null;
 
 const changeList = ref([]);
-const mentorList = ref([]);
 const open = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
 const title = ref("");
-const isViewMode = ref(false);
-const originalMentorName = ref('');
 
-// 当前学生信息
-const currentStudent = reactive({
-  id: null,
-  studentNo: '',
-  studentName: ''
-});
-
-// 当前学生的原导师
-const currentMentor = reactive({
-  id: null,
-  teacherName: ''
-});
+// 审批相关
+const approveDialogVisible = ref(false);
+const approveType = ref('');
+const approveRow = ref(null);
+const approveForm = reactive({ comment: '' });
 
 const columns = ref([
   { key: 0, label: `学号`, visible: true },
@@ -177,29 +200,14 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    overallStatus: undefined
+    overallStatus: undefined,
+    studentNo: undefined,
+    studentName: undefined
   },
-  rules: {
-    newMentorId: [{ required: true, message: "请选择新导师", trigger: "change" }],
-    changeReason: [{ required: true, message: "请输入更换原因", trigger: "blur" }]
-  }
+  rules: {}
 });
 
 const { queryParams, form, rules } = toRefs(data);
-
-// 获取当前学生信息
-function getCurrentStudentInfo() {
-  const userStore = useUserStore();
-  if (userStore.roleInfo && userStore.roleInfo[0]) {
-    currentStudent.id = userStore.roleInfo[0].id;
-    currentStudent.studentNo = userStore.roleInfo[0].userName || userStore.roleInfo[0].studentNo || '';
-    currentStudent.studentName = userStore.roleInfo[0].nickName || userStore.roleInfo[0].studentName || '';
-    return true;
-  } else {
-    proxy.$modal.msgError('学生信息尚未加载');
-    return false;
-  }
-}
 
 function getStatusText(status) {
   const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' };
@@ -227,27 +235,23 @@ function parseDate(dateStr) {
   return date.toLocaleString('zh-CN');
 }
 
-function getList() {
-  if (!getCurrentStudentInfo()) {
-    loading.value = false;
-    return;
-  }
+// 判断当前老师是否是该申请的原导师
+function isOriginalMentor(row) {
+  return currentTeacherId && row.originalMentorId === currentTeacherId;
+}
 
+// 判断当前老师是否是该申请的新导师
+function isNewMentor(row) {
+  return currentTeacherId && row.newMentorId === currentTeacherId;
+}
+
+function getList() {
   loading.value = true;
-  const params = {
-    ...queryParams.value,
-    studentId: currentStudent.id
-  };
+  const params = { ...queryParams.value };
   listMentorChange(params).then(res => {
     loading.value = false;
     changeList.value = res.data.records || res.data || [];
     total.value = res.data.total || changeList.value.length;
-  });
-}
-
-function getMentorList() {
-  listMentor({}).then(res => {
-    mentorList.value = res.data || [];
   });
 }
 
@@ -262,43 +266,8 @@ function resetQuery() {
 }
 
 function reset() {
-  form.value = {
-    id: undefined,
-    studentId: currentStudent.id,
-    studentNo: currentStudent.studentNo,
-    studentName: currentStudent.studentName,
-    originalMentorId: currentMentor.id,
-    newMentorId: undefined,
-    changeReason: undefined,
-    originalMentorStatus: 0,
-    newMentorStatus: 0,
-    overallStatus: 0
-  };
-  originalMentorName.value = currentMentor.teacherName || '';
-  isViewMode.value = false;
+  form.value = {};
   proxy.resetForm("changeRef");
-}
-
-// 获取学生当前导师信息
-async function fetchCurrentMentor() {
-  if (!currentStudent.id) {
-    return;
-  }
-  try {
-    const res = await getStudentCurrentMentor(currentStudent.id);
-    if (res.data) {
-      currentMentor.id = res.data.id;
-      currentMentor.teacherName = res.data.teacherName || '';
-    } else {
-      currentMentor.id = null;
-      currentMentor.teacherName = '';
-      proxy.$modal.msgWarning('您当前没有导师，无法申请更换导师');
-    }
-  } catch (e) {
-    console.error('获取当前导师信息失败', e);
-    currentMentor.id = null;
-    currentMentor.teacherName = '';
-  }
 }
 
 function cancel() {
@@ -306,58 +275,60 @@ function cancel() {
   reset();
 }
 
-async function handleAdd() {
-  if (!getCurrentStudentInfo()) {
-    return;
-  }
-  await fetchCurrentMentor();
-  if (!currentMentor.id) {
-    return;
-  }
-  reset();
-  getMentorList();
-  open.value = true;
-  title.value = "新增申请";
-}
-
 function handleView(row) {
   reset();
-  getMentorList();
   getMentorChangeDetail(row.id).then(res => {
     form.value = res.data;
-    originalMentorName.value = res.data.originalMentorName || '';
-    isViewMode.value = true;
     open.value = true;
     title.value = "查看详情";
   });
 }
 
-async function handleUpdate(row) {
-  if (!getCurrentStudentInfo()) {
-    return;
-  }
-  reset();
-  getMentorList();
-  getMentorChangeDetail(row.id).then(res => {
-    form.value = res.data;
-    originalMentorName.value = res.data.originalMentorName || '';
-    isViewMode.value = false;
-    open.value = true;
-    title.value = "修改申请";
+// 打开审批对话框
+function handleApprove(row, type) {
+  approveRow.value = row;
+  approveType.value = type;
+  approveForm.comment = '';
+  approveDialogVisible.value = true;
+}
+
+// 提交审批
+function submitApprove(status) {
+  const id = approveRow.value.id;
+  const comment = approveForm.comment;
+  const apiCall = approveType.value === 'original'
+    ? approveMentorChangeOriginalMentor
+    : approveMentorChangeNewMentor;
+
+  apiCall(id, status, comment).then(() => {
+    proxy.$modal.msgSuccess(status === 1 ? '审批通过' : '已拒绝');
+    approveDialogVisible.value = false;
+    getList();
+  }).catch(error => {
+    console.error('审批失败', error);
+    proxy.$modal.msgError('审批失败');
   });
 }
 
-function submitForm() {
-  proxy.$refs["changeRef"].validate(valid => {
-    if (valid) {
-      submitMentorChange(form.value).then(() => {
-        proxy.$modal.msgSuccess("提交成功");
-        open.value = false;
-        getList();
+const handleExport = (row) => {
+  proxy.$modal.confirm(`确定要导出"${row.studentName}"的导师更换申请表吗？`).then(() => {
+    axios({
+      method: 'get',
+      url: import.meta.env.VITE_APP_BASE_API + '/student/mentor-change/export/' + row.id,
+      responseType: 'blob',
+      headers: { 'Token': getToken() }
+    }).then(response => {
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       });
-    }
-  });
-}
+      saveAs(blob, `导师更换申请表_${row.studentName}.docx`);
+      proxy.$modal.msgSuccess('导出成功');
+    }).catch(error => {
+      console.error('导出失败', error);
+      proxy.$modal.msgError('导出失败');
+    });
+  }).catch(() => {});
+};
 
 getList();
 </script>

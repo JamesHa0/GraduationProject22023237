@@ -76,3 +76,55 @@ export function updateSelectionStatus(id, selectionStatus) {
     params: { id, selectionStatus }
   })
 }
+
+// 根据班级ID查询学生列表（分页）
+export function listStudentByClass(classId, params) {
+  return request({
+    url: `/student/listByClass/${classId}`,
+    method: 'get',
+    params: params
+  })
+}
+
+// 获取归属年级列表
+export function listCohortYears() {
+  return request({
+    url: '/student/cohortYears',
+    method: 'get'
+  })
+}
+
+// 学生批量导入
+export function createStudentImportTask() {
+  return request({
+    url: '/student/importTask/create',
+    method: 'post'
+  })
+}
+
+export function queryStudentImportTask(taskId) {
+  return request({
+    url: `/student/importTask/${taskId}`,
+    method: 'get'
+  })
+}
+
+export function importStudent(data) {
+  return request({
+    url: '/student/import',
+    method: 'post',
+    data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+export function downloadStudentImportTemplate(classId) {
+  return request({
+    url: '/student/importTemplate',
+    method: 'get',
+    params: classId ? { classId } : {},
+    responseType: 'blob'
+  })
+}

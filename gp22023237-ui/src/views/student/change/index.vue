@@ -49,20 +49,20 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="教学秘书审批" align="center" prop="secretaryStatus" width="120">
-        <template #default="scope">
-          <el-tag :type="getStatusType(scope.row.secretaryStatus)">
-            {{ getStatusText(scope.row.secretaryStatus) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="分管院长审批" align="center" prop="deanStatus" width="120">
-        <template #default="scope">
-          <el-tag :type="getStatusType(scope.row.deanStatus)">
-            {{ getStatusText(scope.row.deanStatus) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+        <el-table-column label="教学秘书审批" align="center" prop="secretaryStatus" width="120">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.secretaryStatus)">
+              {{ getStatusText(scope.row.secretaryStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="整体状态" align="center" prop="status" width="140">
+          <template #default="scope">
+            <el-tag :type="getOverallStatusType(scope.row.status)">
+              {{ getOverallStatusText(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
       <el-table-column label="申请时间" align="center" prop="applyTime" width="170">
         <template #default="scope">
           {{ parseDate(scope.row.applyTime) }}
@@ -124,12 +124,23 @@
               <el-tag :type="getStatusType(form.mentorStatus)">
                 {{ getStatusText(form.mentorStatus) }}
               </el-tag>
+              <span v-if="form.mentorComment" style="margin-left: 10px;">{{ form.mentorComment }}</span>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="教学秘书审批">
               <el-tag :type="getStatusType(form.secretaryStatus)">
                 {{ getStatusText(form.secretaryStatus) }}
+              </el-tag>
+              <span v-if="form.secretaryComment" style="margin-left: 10px;">{{ form.secretaryComment }}</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="isViewMode">
+          <el-col :span="12">
+            <el-form-item label="整体状态">
+              <el-tag :type="getOverallStatusType(form.status)">
+                {{ getOverallStatusText(form.status) }}
               </el-tag>
             </el-form-item>
           </el-col>
@@ -172,7 +183,7 @@ const columns = ref([
   { key: 3, label: `生效日期`, visible: true },
   { key: 4, label: `导师审批`, visible: true },
   { key: 5, label: `教学秘书审批`, visible: true },
-  { key: 6, label: `分管院长审批`, visible: true },
+  { key: 6, label: `整体状态`, visible: true },
   { key: 7, label: `申请时间`, visible: true }
 ]);
 
@@ -201,6 +212,7 @@ function getTypeName(type) {
   return map[type] || '-';
 }
 
+// 单级审批状态
 function getStatusText(status) {
   const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' };
   return map[status] || '-';
@@ -208,6 +220,17 @@ function getStatusText(status) {
 
 function getStatusType(status) {
   const map = { 0: 'warning', 1: 'success', 2: 'danger' };
+  return map[status] || 'info';
+}
+
+// 整体状态
+function getOverallStatusText(status) {
+  const map = { 0: '待导师审批', 1: '待秘书审批', 2: '已通过', 3: '已拒绝' };
+  return map[status] || '-';
+}
+
+function getOverallStatusType(status) {
+  const map = { 0: 'warning', 1: 'primary', 2: 'success', 3: 'danger' };
   return map[status] || 'info';
 }
 
@@ -253,8 +276,7 @@ function reset() {
     attachmentPath: undefined,
     effectiveDate: new Date(),
     mentorStatus: 0,
-    secretaryStatus: 0,
-    deanStatus: 0
+    secretaryStatus: 0
   };
   isViewMode.value = false;
   proxy.resetForm("changeRef");

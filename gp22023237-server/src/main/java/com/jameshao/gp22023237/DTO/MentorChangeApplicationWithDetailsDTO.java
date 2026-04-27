@@ -12,12 +12,18 @@ public class MentorChangeApplicationWithDetailsDTO {
     private Long studentId;
     private String studentNo;
     private String studentName;
+    private String studentDepartment;
+    private String major;
     private Long originalMentorId;
     private String originalMentorNo;
     private String originalMentorName;
+    private String originalMentorTitle;
+    private String originalMentorDepartment;
     private Long newMentorId;
     private String newMentorNo;
     private String newMentorName;
+    private String newMentorTitle;
+    private String newMentorDepartment;
     private String changeReason;
     private Integer originalMentorStatus;
     private String originalMentorComment;

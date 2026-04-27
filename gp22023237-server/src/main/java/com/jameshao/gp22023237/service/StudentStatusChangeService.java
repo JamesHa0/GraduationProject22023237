@@ -19,9 +19,4 @@ public interface StudentStatusChangeService extends IService<StudentStatusChange
      * 教学秘书审批
      */
     boolean secretaryApprove(Long id, Integer status, String comment);
-
-    /**
-     * 分管院长审批
-     */
-    boolean deanApprove(Long id, Integer status, String comment);
 }

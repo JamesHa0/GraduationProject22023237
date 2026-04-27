@@ -537,6 +537,18 @@
                     />
                     <span class="form-tip">（范围：1-3）</span>
                 </el-form-item>
+                <el-form-item label="归属年级" prop="cohortYear">
+                    <el-select v-model="resetForm.cohortYear" placeholder="请选择归属年级" style="width: 200px;" clearable>
+                        <el-option label="全部年级" value="" />
+                        <el-option
+                            v-for="year in cohortYears"
+                            :key="year"
+                            :label="year + '级'"
+                            :value="String(year)"
+                        />
+                    </el-select>
+                    <span class="form-tip">（选择后，本次双选仅该年级学生可参与）</span>
+                </el-form-item>
             </el-form>
             <template #footer>
                 <el-button @click="resetDialogVisible = false">取消</el-button>
@@ -584,6 +596,7 @@
 
 <script setup>
 import { getCurrentRound, getRoundConfig, updateRoundConfig, advanceRejected, getRoundStatistics, advanceRound, resetRounds, getCurrentPhase, startSupplementaryRound } from "@/api/selection/round";
+import { listCohortYears } from "@/api/student/info";
 import { useRouter } from 'vue-router';
 import { Timer, Setting, Promotion, Operation, WarningFilled, RefreshLeft, Right, UserFilled, DocumentChecked, Clock, VideoPlay, VideoPause, Warning, DataAnalysis, Check, Sort, Edit } from '@element-plus/icons-vue';
 
@@ -613,8 +626,11 @@ const editDeadlineRules = {
     deadline: [{ required: true, message: '请选择截止时间', trigger: 'change' }]
 };
 
+const cohortYears = ref([]);
+
 const resetForm = ref({
-    maxChoices: 3
+    maxChoices: 3,
+    cohortYear: ''
 });
 
 const resetRules = {
@@ -864,6 +880,7 @@ const loadAllData = () => {
     loadCurrentPhase();
     loadRoundConfig();
     loadStatistics();
+    loadCohortYears();
 };
 
 const showAdvanceDialog = () => {
@@ -936,8 +953,17 @@ const handleStartSupplementary = () => {
     }).catch(() => {});
 };
 
+const loadCohortYears = () => {
+    listCohortYears().then(res => {
+        cohortYears.value = res.data || [];
+    }).catch(() => {
+        console.error('获取归属年级列表失败');
+    });
+};
+
 const showResetConfirm = () => {
     resetForm.value.maxChoices = parseInt(roundConfig.value.student_max_choices) || 3;
+    resetForm.value.cohortYear = roundConfig.value.selection_cohort_year || '';
     resetDialogVisible.value = true;
 };
 
@@ -945,7 +971,10 @@ const handleResetConfirm = () => {
     resetFormRef.value.validate(valid => {
         if (valid) {
             resetLoading.value = true;
-            resetRounds({ maxChoices: resetForm.value.maxChoices }).then(() => {
+            resetRounds({
+                maxChoices: resetForm.value.maxChoices,
+                cohortYear: resetForm.value.cohortYear
+            }).then(() => {
                 proxy.$modal.msgSuccess('重置成功');
                 resetDialogVisible.value = false;
                 loadAllData();

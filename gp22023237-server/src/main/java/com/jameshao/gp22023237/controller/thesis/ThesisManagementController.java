@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.po.*;
+import com.jameshao.gp22023237.annotation.Log;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +42,7 @@ public class ThesisManagementController {
 
     // ==================== 论文进展管理（开题、中期、预答辩统一接口）====================
 
+    @Log(title = "论文管理", businessType = BusinessType.INSERT)
     @PostMapping("/progress/submit")
     public String submitProgress(@RequestBody ThesisProgress progress) {
         try {
@@ -93,6 +96,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/progress/mentor/approve")
     public String progressMentorApprove(@RequestParam Long id,
                                          @RequestParam Integer status,
@@ -108,6 +112,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/progress/secretary/approve")
     public String progressSecretaryApprove(@RequestParam Long id,
                                         @RequestParam Integer status,
@@ -123,6 +128,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/progress/dean/approve")
     public String progressDeanApprove(@RequestParam Long id,
                                      @RequestParam Integer status,
@@ -188,6 +194,7 @@ public class ThesisManagementController {
 
     // ==================== 学位申请管理 ====================
 
+    @Log(title = "论文管理", businessType = BusinessType.INSERT)
     @PostMapping("/degree/submit")
     public String submitDegreeApplication(@RequestBody DegreeApplication application) {
         try {
@@ -225,6 +232,7 @@ public class ThesisManagementController {
     }
 
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/degree/committee/approve")
     public String committeeApprove(@RequestParam Long id,
                                   @RequestParam Integer status,
@@ -238,6 +246,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/degree/grant")
     public String grantDegree(@RequestParam Long id,
                              @RequestParam String certificateNo) {
@@ -252,6 +261,7 @@ public class ThesisManagementController {
 
     // ==================== 论文答辩管理 ====================
 
+    @Log(title = "论文管理", businessType = BusinessType.INSERT)
     @PostMapping("/defense/submit")
     public String submitDefense(@RequestBody ThesisDefense defense) {
         try {
@@ -299,6 +309,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/defense/tutor/approve")
     public String defenseTutorApprove(@RequestParam Long id,
                                       @RequestParam Integer status) {
@@ -311,6 +322,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/defense/dean/approve")
     public String defenseDeanApprove(@RequestParam Long id,
                                      @RequestParam Integer status) {
@@ -323,6 +335,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/defense/record")
     public String recordDefenseResult(@RequestParam Long id,
                                       @RequestParam Integer result,
@@ -340,6 +353,7 @@ public class ThesisManagementController {
 
     // ==================== 论文外审管理 ====================
 
+    @Log(title = "论文管理", businessType = BusinessType.INSERT)
     @PostMapping("/externalReview/submit")
     public String submitExternalReview(@RequestBody ThesisExternalReview review) {
         try {
@@ -387,6 +401,7 @@ public class ThesisManagementController {
         }
     }
 
+    @Log(title = "论文管理", businessType = BusinessType.UPDATE)
     @PostMapping("/externalReview/record")
     public String recordExternalReviewResult(@RequestParam Long id,
                                              @RequestParam Integer result,

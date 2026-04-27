@@ -131,6 +131,30 @@ export const constantRoutes = [
         component: () => import('@/views/course/student-score/index'),
         name: 'StudentScore',
         meta: { title: '学业成绩', icon: 'score' }
+      },
+      {
+        path: 'phase-manage',
+        component: () => import('@/views/course/phase-manage/index'),
+        name: 'CoursePhaseManage',
+        meta: { title: '课程阶段管理', icon: 'build' }
+      },
+      {
+        path: 'teacher-score',
+        component: () => import('@/views/course/teacher-score/index'),
+        name: 'TeacherScore',
+        meta: { title: '成绩录入', icon: 'edit' }
+      },
+      {
+        path: 'evaluation',
+        component: () => import('@/views/course/evaluation/index'),
+        name: 'TeachingEvaluation',
+        meta: { title: '教学评价', icon: 'education' }
+      },
+      {
+        path: 'schedule-manage',
+        component: () => import('@/views/course/schedule-manage/index'),
+        name: 'ScheduleManage',
+        meta: { title: '排课管理', icon: 'date' }
       }
     ]
   },
@@ -150,19 +174,31 @@ export const constantRoutes = [
         path: 'change',
         component: () => import('@/views/student/change/index'),
         name: 'StudentChange',
-        meta: { title: '学籍变更申请', icon: 'edit' }
+        meta: { title: '学籍异动申请', icon: 'edit' }
       },
       {
         path: 'approval',
         component: () => import('@/views/student/approval/index'),
         name: 'StudentApproval',
-        meta: { title: '学籍变更审批', icon: 'check' }
+        meta: { title: '学籍异动审核', icon: 'check' }
       },
       {
         path: 'graduation',
         component: () => import('@/views/student/graduation/index'),
         name: 'GraduationAudit',
         meta: { title: '毕业资格审核', icon: 'finished' }
+      },
+      {
+        path: 'student-change',
+        component: () => import('@/views/student/student-change/index'),
+        name: 'StudentChangeApply',
+        meta: { title: '学籍异动申请', icon: 'edit' }
+      },
+      {
+        path: 'student-profile',
+        component: () => import('@/views/student/student-profile/index'),
+        name: 'StudentProfile',
+        meta: { title: '学籍信息维护', icon: 'user' }
       }
     ]
   },
@@ -301,6 +337,12 @@ export const constantRoutes = [
         component: () => import('@/views/system/permission/index'),
         name: 'PermissionManage',
         meta: { title: '权限管理', icon: 'lock' }
+      },
+      {
+        path: 'oplog',
+        component: () => import('@/views/system/oplog/index'),
+        name: 'Oplog',
+        meta: { title: '操作日志', icon: 'log' }
       }
     ]
   },
@@ -342,9 +384,15 @@ export const constantRoutes = [
       },
       {
         path: 'mentor-change',
-        component: () => import('@/views/selection/mentor-change/index'),
+        component: () => import('@/views/selection/mentor-change-application/index'),
         name: 'MentorChange',
         meta: { title: '导师更换申请', icon: 'people' }
+      },
+      {
+        path: 'mentor-change-manage',
+        component: () => import('@/views/selection/mentor-change/index'),
+        name: 'MentorChangeManage',
+        meta: { title: '导师更换申请管理', icon: 'people' }
       },
       {
         path: 'round-manage',
@@ -383,20 +431,6 @@ export const dynamicRoutes = [
         component: () => import('@/views/system/role/authUser'),
         name: 'AuthUser',
         meta: { title: '分配用户', activeMenu: '/system/role' }
-      }
-    ]
-  },
-  {
-    path: '/system/dict-data',
-    component: Layout,
-    hidden: true,
-    permissions: ['system:dict:list'],
-    children: [
-      {
-        path: 'index/:dictId(\\d+)',
-        component: () => import('@/views/system/dict/data'),
-        name: 'Data',
-        meta: { title: '字典数据', activeMenu: '/system/dict' }
       }
     ]
   },

@@ -14,8 +14,4 @@ public class CourseSelectionDTO {
     private Double credit;
     private Integer hours;
     private String teacherName;
-    private Integer dayOfWeek;
-    private String startTime;
-    private String endTime;
-    private String classroom;
 }

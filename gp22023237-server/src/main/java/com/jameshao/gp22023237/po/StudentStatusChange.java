@@ -49,46 +49,46 @@ public class StudentStatusChange {
     private Date endDate;
 
     /**
-     * 导师审批状态 - 数据库字段名: tutor_approval
+     * 导师审批状态 - 数据库字段名: mentor_approval
      * 0-未审批，1-同意，2-拒绝
      */
-    @TableField("tutor_approval")
+    @TableField("mentor_approval")
     private Integer mentorStatus;
 
     /**
-     * 导师ID - 数据库字段名: tutor_id
+     * 导师ID - 数据库字段名: mentor_id
      */
-    @TableField("tutor_id")
+    @TableField("mentor_id")
     private Long mentorId;
 
     /**
-     * 导师审批时间 - 数据库字段名: tutor_approval_time
+     * 导师审批时间 - 数据库字段名: mentor_approval_time
      */
-    @TableField("tutor_approval_time")
+    @TableField("mentor_approval_time")
     private Date mentorApprovalTime;
 
     /**
-     * 辅导员审批状态 - 数据库字段名: counselor_approval
+     * 教学秘书审批状态 - 数据库字段名: secretary_approval
      * 0-未审批，1-同意，2-拒绝
      */
-    @TableField("counselor_approval")
+    @TableField("secretary_approval")
     private Integer secretaryStatus;
 
     /**
-     * 辅导员ID - 数据库字段名: counselor_id
+     * 审批教学秘书ID - 数据库字段名: secretary_id
      */
-    @TableField("counselor_id")
+    @TableField("secretary_id")
     private Long secretaryId;
 
     /**
-     * 辅导员审批时间 - 数据库字段名: counselor_approval_time
+     * 教学秘书审批时间 - 数据库字段名: secretary_approval_time
      */
-    @TableField("counselor_approval_time")
+    @TableField("secretary_approval_time")
     private Date secretaryApprovalTime;
 
     /**
      * 整体状态 - 数据库字段名: status
-     * 0-待审批，1-审批中，2-已通过，3-已拒绝
+     * 0-待导师审批，1-待教学秘书审批，2-已批准，3-已拒绝
      */
     private Integer status;
 

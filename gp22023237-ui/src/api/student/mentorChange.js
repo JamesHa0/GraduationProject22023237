@@ -47,3 +47,11 @@ export function getStudentCurrentMentor(studentId) {
     method: 'get'
   })
 }
+
+// 获取可选导师列表（学生端接口）
+export function listAvailableMentors() {
+  return request({
+    url: '/student/mentor-change/available-mentors',
+    method: 'get'
+  })
+}

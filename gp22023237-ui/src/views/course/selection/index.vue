@@ -33,8 +33,9 @@
     <el-table v-loading="loading" :data="selectionList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="ID" align="center" prop="id" width="80" />
-      <el-table-column label="学生ID" align="center" prop="studentId" width="100" />
+      <el-table-column label="学生ID" align="center" prop="studentId" width="120" />
       <el-table-column label="课程ID" align="center" prop="courseId" width="100" />
+      <el-table-column label="课程名称" align="center" prop="name" :show-overflow-tooltip="true" />
       <el-table-column label="选课时间" align="center" prop="selectionTime" width="180" />
       <el-table-column label="状态" align="center" prop="status" width="100">
         <template #default="scope">

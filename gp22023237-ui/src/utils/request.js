@@ -82,17 +82,14 @@ service.interceptors.response.use(res => {
     return res.data
   }
 
-  // 兼容两种响应格式
-  // 格式1: { "code": 200, "data": {...}, "msg": "..." }
-  // 格式2: { "result": "success", "data": {...}, "error": "..." }
   const code = res.data.code || (res.data.result === 'success' || res.data.result === 'success' ? 200 : 500);
-  // 获取错误信息
   const msg = errorCode[code] || res.data.msg || res.data.error || errorCode['default']
+  const requestUrl = res.config?.url || ''
+  const isCourseImportApi = requestUrl.includes('/course/import')
 
   if (code === 401) {
     if (!isRelogin.show) {
       isRelogin.show = true;
-      // 先清除状态，再跳转，避免循环
       useUserStore().token = '';
       useUserStore().roles = '';
       useUserStore().permissions = [];
@@ -107,7 +104,7 @@ service.interceptors.response.use(res => {
     }
     return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
   } else if (code === 500) {
-    ElMessage({ message: msg, type: 'error' })
+    ElMessage({ message: isCourseImportApi ? `课程导入失败：${msg}` : msg, type: 'error' })
     return Promise.reject(new Error(msg))
   } else if (code === 601) {
     ElMessage({ message: msg, type: 'warning' })
@@ -116,21 +113,13 @@ service.interceptors.response.use(res => {
     ElNotification.error({ title: msg })
     return Promise.reject('error')
   } else {
-    // 统一返回格式
-    // 如果后端返回 { "result": "success", "data": {...} }
-    // 转换为 { "code": 200, "data": {...}, "msg": "..." }
-
-    // 获取正确的 data 字段，兼容不同的返回格式
     let responseData = res.data.data;
-    // 如果 data 字段不存在，尝试使用 msg 字段（某些旧接口用 msg 返回数据）
     if (responseData === undefined || responseData === null) {
       responseData = res.data.msg;
     }
 
-    // 检查是否是分页对象结构 { current, pages, records, size, total }
     if (responseData && typeof responseData === 'object' &&
         'current' in responseData && 'records' in responseData) {
-      // 分页对象，将records作为data返回
       const result = {
         code: 200,
         data: responseData.records || [],

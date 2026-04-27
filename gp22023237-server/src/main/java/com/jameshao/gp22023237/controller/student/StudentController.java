@@ -1,7 +1,9 @@
 package com.jameshao.gp22023237.controller.student;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.StudentService;
@@ -11,8 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/student")
@@ -271,6 +277,7 @@ public class StudentController {
      * @param ids 学生ID列表
      * @return 操作结果
      */
+    @Log(title = "学生管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/deleteBatch")
     @Transactional(rollbackFor = Exception.class)
     public String deleteBatch(@RequestBody List<Long> ids) {
@@ -383,6 +390,85 @@ public class StudentController {
             } else {
                 return jsonReturn.returnFailed("更新双选状态失败");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 根据班级ID查询学生列表（分页）
+     * @param classId 班级ID
+     * @param studentNo 学号（可选）
+     * @param studentName 学生姓名（可选）
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @return 学生分页列表
+     */
+    @GetMapping("/listByClass/{classId}")
+    public String listByClass(@PathVariable Long classId, String studentNo, String studentName,
+                              Integer pageNum, Integer pageSize) {
+        try {
+            QueryWrapper<Student> wrapper = new QueryWrapper<>();
+            wrapper.eq("class_id", classId);
+            if (studentNo != null && !studentNo.isEmpty()) {
+                wrapper.like("student_no", studentNo);
+            }
+            if (studentName != null && !studentName.isEmpty()) {
+                wrapper.like("student_name", studentName);
+            }
+            wrapper.orderByDesc("create_time");
+
+            if (pageNum != null && pageSize != null) {
+                // 分页查询
+                int offset = (pageNum - 1) * pageSize;
+                wrapper.last("LIMIT " + offset + ", " + pageSize);
+                List<Student> rows = studentService.list(wrapper);
+
+                // 查询总数
+                QueryWrapper<Student> countWrapper = new QueryWrapper<>();
+                countWrapper.eq("class_id", classId);
+                if (studentNo != null && !studentNo.isEmpty()) {
+                    countWrapper.like("student_no", studentNo);
+                }
+                if (studentName != null && !studentName.isEmpty()) {
+                    countWrapper.like("student_name", studentName);
+                }
+                long total = studentService.count(countWrapper);
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<Student> list = studentService.list(wrapper);
+                return jsonReturn.returnSuccess(list);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取所有学生的归属年级列表（去重）
+     * @return 归属年级列表
+     */
+    @GetMapping("/cohortYears")
+    public String getCohortYears() {
+        try {
+            QueryWrapper<Student> wrapper = new QueryWrapper<>();
+            wrapper.select("DISTINCT cohort_year");
+            wrapper.isNotNull("cohort_year");
+            wrapper.orderByDesc("cohort_year");
+            List<Student> students = studentService.list(wrapper);
+
+            List<Integer> cohortYears = students.stream()
+                    .map(Student::getCohortYear)
+                    .filter(year -> year != null)
+                    .collect(Collectors.toList());
+
+            return jsonReturn.returnSuccess(cohortYears);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

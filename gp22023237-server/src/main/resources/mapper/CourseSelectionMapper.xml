@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jameshao.gp22023237.mapper.CourseSelectionMapper">
 
-    <!-- 查询选课记录列表，关联课程和教师信息 -->
+    <!-- 查询选课记录列表，关联课程信息（排课信息从schedule表获取） -->
     <select id="listSelectionWithCourseDetails" resultType="com.jameshao.gp22023237.DTO.CourseSelectionWithDetailsDTO">
         SELECT
             cs.id,
@@ -14,15 +14,8 @@
             c.name,
             c.credit,
             c.hours,
-            c.teacher_id AS teacherId,
-            t.teacher_name AS teacherName,
             c.semester,
             c.year,
-            c.max_students AS maxStudents,
-            c.day_of_week AS dayOfWeek,
-            c.start_time AS startTime,
-            c.end_time AS endTime,
-            c.classroom,
             c.max_credits AS maxCredits,
             c.status AS courseStatus,
             c.description,
@@ -32,7 +25,6 @@
             c.remark
         FROM course_selection cs
         LEFT JOIN course c ON cs.course_id = c.id
-        LEFT JOIN teacher t ON c.teacher_id = t.id
         <where>
             <if test="studentId != null">
                 AND cs.student_id = #{studentId}

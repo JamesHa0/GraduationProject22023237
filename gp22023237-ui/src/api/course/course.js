@@ -44,3 +44,54 @@ export function delCourse(id) {
     method: 'delete'
   })
 }
+
+export function delCourseBatch(ids) {
+  return request({
+    url: '/course/deleteBatch',
+    method: 'delete',
+    data: ids
+  })
+}
+
+export function importCourse(data) {
+  return request({
+    url: '/course/import',
+    method: 'post',
+    data: data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+export function downloadImportTemplate() {
+  return request({
+    url: '/course/importTemplate',
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 长期任务化导入预留接口（当前后端未启用）
+export function createCourseImportTask(data) {
+  return request({
+    url: '/course/importTask/create',
+    method: 'post',
+    data
+  })
+}
+
+export function queryCourseImportTask(taskId) {
+  return request({
+    url: `/course/importTask/${taskId}`,
+    method: 'get'
+  })
+}
+
+export function downloadCourseImportFailFile(taskId) {
+  return request({
+    url: `/course/importTask/${taskId}/failFile`,
+    method: 'get',
+    responseType: 'blob'
+  })
+}

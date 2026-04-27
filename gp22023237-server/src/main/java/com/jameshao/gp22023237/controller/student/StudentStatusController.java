@@ -4,12 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.DTO.StudentStatusChangeWithDetailsDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.StudentStatusChangeMapper;
 import com.jameshao.gp22023237.po.GraduationAudit;
 import com.jameshao.gp22023237.po.StudentStatusChange;
+import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.GraduationAuditService;
 import com.jameshao.gp22023237.service.StudentStatusChangeService;
+import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,11 +43,15 @@ public class StudentStatusController {
     private GraduationAuditService graduationAuditService;
 
     @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
     private JSONReturn jsonReturn;
 
     /**
      * 提交学籍异动申请
      */
+    @Log(title = "学籍变更", businessType = BusinessType.INSERT)
     @PostMapping("/change/submit")
     public String submitApplication(@RequestBody StudentStatusChange application) {
         try {
@@ -52,9 +61,11 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("申请提交失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 
@@ -67,9 +78,22 @@ public class StudentStatusController {
                                       @RequestParam(required = false) Long studentId,
                                       @RequestParam(required = false) Integer changeType,
                                       @RequestParam(required = false) String studentNo,
-                                      @RequestParam(required = false) String studentName) {
+                                      @RequestParam(required = false) String studentName,
+                                      @RequestParam(required = false) Integer status) {
         try {
-            List<StudentStatusChangeWithDetailsDTO> list = studentStatusChangeMapper.listWithDetails(studentId, changeType, studentNo, studentName);
+            // 导师登录时，只能看到自己是导师的记录
+            Long mentorId = null;
+            if (CurrentUserUtil.isMentor()) {
+                Long userId = CurrentUserUtil.getCurrentUserId();
+                LambdaQueryWrapper<Teacher> teacherWrapper = new LambdaQueryWrapper<>();
+                teacherWrapper.eq(Teacher::getUserId, userId);
+                Teacher teacher = teacherService.getOne(teacherWrapper);
+                if (teacher != null) {
+                    mentorId = teacher.getId();
+                }
+            }
+
+            List<StudentStatusChangeWithDetailsDTO> list = studentStatusChangeMapper.listWithDetails(studentId, changeType, studentNo, studentName, status, mentorId);
 
             // 手动分页
             int total = list.size();
@@ -111,6 +135,7 @@ public class StudentStatusController {
     /**
      * 导师审批
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/change/mentor/approve")
     public String mentorApprove(@RequestParam Long id,
                                     @RequestParam Integer status,
@@ -122,15 +147,18 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("审批失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 
     /**
      * 教学秘书审批
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/change/secretary/approve")
     public String secretaryApprove(@RequestParam Long id,
                                       @RequestParam Integer status,
@@ -142,35 +170,18 @@ public class StudentStatusController {
             } else {
                 return jsonReturn.returnFailed("审批失败");
             }
+        } catch (RuntimeException e) {
+            return jsonReturn.returnError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    /**
-     * 分管院长审批
-     */
-    @PostMapping("/change/dean/approve")
-    public String deanApprove(@RequestParam Long id,
-                                  @RequestParam Integer status,
-                                  @RequestParam(required = false) String comment) {
-        try {
-            boolean success = studentStatusChangeService.deanApprove(id, status, comment);
-            if (success) {
-                return jsonReturn.returnSuccess("审批成功");
-            } else {
-                return jsonReturn.returnFailed("审批失败");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+            return jsonReturn.returnError("系统异常，请稍后重试");
         }
     }
 
     /**
      * 自动审核毕业资格
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/graduation/autoAudit")
     public String autoAuditGraduation(@RequestParam Long studentId) {
         try {
@@ -213,6 +224,7 @@ public class StudentStatusController {
     /**
      * 人工审核毕业资格
      */
+    @Log(title = "学籍变更", businessType = BusinessType.UPDATE)
     @PostMapping("/graduation/manualAudit")
     public String manualAudit(@RequestParam Long id,
                                   @RequestParam Integer status,

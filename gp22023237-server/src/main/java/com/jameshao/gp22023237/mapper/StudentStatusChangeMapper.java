@@ -17,7 +17,9 @@ public interface StudentStatusChangeMapper extends BaseMapper<StudentStatusChang
     List<StudentStatusChangeWithDetailsDTO> listWithDetails(@Param("studentId") Long studentId,
                                                               @Param("changeType") Integer changeType,
                                                               @Param("studentNo") String studentNo,
-                                                              @Param("studentName") String studentName);
+                                                              @Param("studentName") String studentName,
+                                                              @Param("status") Integer status,
+                                                              @Param("mentorId") Long mentorId);
 
     /**
      * 查询学籍异动详情，关联学生信息

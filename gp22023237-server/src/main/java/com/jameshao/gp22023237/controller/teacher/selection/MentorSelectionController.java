@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
@@ -37,7 +39,7 @@ public class MentorSelectionController {
     @Autowired
     private JSONReturn jsonReturn;
 
-    // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生
+    // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生，增加归属年级过滤
     @RequestMapping("/listStudents")
     public String listStudents(@RequestBody MentorStudent mentorStudent){
         try{
@@ -46,6 +48,10 @@ public class MentorSelectionController {
             // 获取用于查询的实际轮次
             int currentRound = selectionRoundService.getQueryRound();
             System.out.println("当前轮次: " + currentRound);
+
+            // 获取归属年级配置
+            String cohortYearConfig = selectionRoundService.getSelectionCohortYear();
+            System.out.println("归属年级配置: " + cohortYearConfig);
 
             LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(!ObjectUtils.isEmpty(mentorStudent.getTeacherStatus()), MentorStudent::getTeacherStatus, mentorStudent.getTeacherStatus())
@@ -69,10 +75,24 @@ public class MentorSelectionController {
             System.out.println("已被接受的学生ID列表: " + acceptedStudentIds);
 
             for (MentorStudent ms : list) {
-                // 如果该学生已被某个导师接受，则跳过
-                if (acceptedStudentIds.contains(ms.getStudentId())) {
+                // 如果该学生已被某个导师接受，则跳过（仅当查询非已确认状态时才应用此过滤）
+                // 当 teacherStatus == 1 时（查询已确认学生），不应用此过滤
+                boolean isQueryingConfirmed = (mentorStudent.getTeacherStatus() != null && mentorStudent.getTeacherStatus() == 1);
+                if (!isQueryingConfirmed && acceptedStudentIds.contains(ms.getStudentId())) {
                     System.out.println("学生 " + ms.getStudentId() + " 已被接受，跳过");
                     continue;
+                }
+
+                // 归属年级过滤：如果配置了归属年级，则只显示该年级的学生
+                if (cohortYearConfig != null && !cohortYearConfig.isEmpty()) {
+                    Student student = studentService.getById(ms.getStudentId());
+                    if (student != null && student.getCohortYear() != null) {
+                        String studentCohortYear = String.valueOf(student.getCohortYear());
+                        if (!cohortYearConfig.equals(studentCohortYear)) {
+                            System.out.println("学生 " + ms.getStudentId() + " 归属年级 " + studentCohortYear + " 不匹配配置 " + cohortYearConfig + "，跳过");
+                            continue;
+                        }
+                    }
                 }
 
                 SelectionDTO dto = new SelectionDTO();
@@ -103,6 +123,7 @@ public class MentorSelectionController {
     }
 
     // 导师提交选中
+    @Log(title = "双选志愿", businessType = BusinessType.UPDATE)
     @RequestMapping("/submitSelection")
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
@@ -221,6 +242,14 @@ public class MentorSelectionController {
                         mentorStudentService.update(null, rejectWrapper);
                         System.out.println("已拒绝学生 " + originalRecord.getStudentId() + " 的志愿 " + choice.getStudentChoiceOrder());
                     }
+                }
+
+                // 更新学生selection_status为3（已确定）
+                Student student = studentService.getById(originalRecord.getStudentId());
+                if (student != null) {
+                    student.setSelectionStatus(3);
+                    student.setUpdateTime(new Date());
+                    studentService.updateById(student);
                 }
             }
 

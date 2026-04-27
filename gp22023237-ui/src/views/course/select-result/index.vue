@@ -13,18 +13,6 @@
         <el-table-column label="课程名称" prop="name" />
         <el-table-column label="学分" prop="credit" width="80" align="center" />
         <el-table-column label="学时" prop="hours" width="80" align="center" />
-        <el-table-column label="授课教师" prop="teacherName" width="120" />
-        <el-table-column label="星期" width="80" align="center">
-          <template #default="scope">
-            {{ scope.row.dayOfWeek ? '周' + scope.row.dayOfWeek : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="时间" width="150" align="center">
-          <template #default="scope">
-            {{ scope.row.startTime || '-' }} - {{ scope.row.endTime || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="教室" prop="classroom" width="120" />
         <el-table-column label="选课状态" width="100" align="center">
           <template #default="scope">
             <el-tag type="success">已确认</el-tag>

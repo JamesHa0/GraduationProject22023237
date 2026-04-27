@@ -7,7 +7,9 @@ import com.jameshao.gp22023237.DTO.AcademicActivityWithDetailsDTO;
 import com.jameshao.gp22023237.DTO.AcademicAchievementWithDetailsDTO;
 import com.jameshao.gp22023237.DTO.InnovationProjectWithDetailsDTO;
 import com.jameshao.gp22023237.DTO.ReviewItemDTO;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.mapper.AcademicActivityMapper;
 import com.jameshao.gp22023237.mapper.AcademicAchievementMapper;
 import com.jameshao.gp22023237.mapper.InnovationProjectMapper;
@@ -611,6 +613,7 @@ public class AcademicManagementController {
         }
     }
 
+    @Log(title = "学术管理", businessType = BusinessType.DELETE)
     @PostMapping("/activity/delete")
     public String deleteActivity(@RequestParam Long id) {
         try {

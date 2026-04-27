@@ -41,11 +41,6 @@ public class Course {
     private Integer hours;
 
     /**
-     * 授课教师ID
-     */
-    private Long teacherId;
-
-    /**
      * 学期
      */
     private String semester;
@@ -54,31 +49,6 @@ public class Course {
      * 学年
      */
     private Integer year;
-
-    /**
-     * 最大选课人数
-     */
-    private Integer maxStudents;
-
-    /**
-     * 星期几(1-7)
-     */
-    private Integer dayOfWeek;
-
-    /**
-     * 开始时间
-     */
-    private String startTime;
-
-    /**
-     * 结束时间
-     */
-    private String endTime;
-
-    /**
-     * 教室
-     */
-    private String classroom;
 
     /**
      * 最大学分限制

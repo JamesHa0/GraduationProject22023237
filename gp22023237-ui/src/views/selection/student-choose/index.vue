@@ -15,8 +15,7 @@
 
         <el-alert v-if="!isStudentSelectRound" title="当前不是学生选择轮次，无法进行志愿选择" type="warning" :closable="false" class="alert-warning" show-icon />
         <el-alert v-else-if="!canSubmit" title="当前轮次学生选择已截止，无法提交志愿" type="warning" :closable="false" class="alert-warning" show-icon />
-        <el-alert v-else-if="!hasSubmitted && isSupplementaryRound" title="补选阶段：请选择一名导师，确认无误后点击下方的【提交志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
-        <el-alert v-else-if="!hasSubmitted" title="请为三个志愿依次选择导师，确认无误后点击下方的【提交所有志愿】按钮" type="info" :closable="false" class="alert-info" show-icon />
+        <el-alert v-else-if="!hasSubmitted" :title="choiceAlertText" type="info" :closable="false" class="alert-info" show-icon />
         <el-alert v-else title="您已成功提交志愿，志愿选择已锁定，不可修改" type="success" :closable="false" class="alert-success" show-icon />
 
         <div class="card-container" v-if="isStudentSelectRound">
@@ -148,13 +147,16 @@ const loadCurrentRound = () => {
     getCurrentRound().then(response => {
         currentRound.value = response.data;
         roundName.value = getRoundName(response.data);
-        if (currentRound.value === 9 || currentRound.value === 7) {
-            loadDeadlineTime();
-            checkCanSubmit();
-            getList();
-        } else {
-            canSubmit.value = false;
-        }
+        // 先获取最大志愿数，再执行其他操作
+        getMaxChoiceCount().then(() => {
+            if (currentRound.value === 9 || currentRound.value === 7) {
+                loadDeadlineTime();
+                checkCanSubmit();
+                getList();
+            } else {
+                canSubmit.value = false;
+            }
+        });
     }).catch(() => {
         console.error('获取当前轮次失败');
     });
@@ -181,6 +183,17 @@ const submittedChoices = ref([]);
 // 是否已提交
 const hasSubmitted = computed(() => {
     return submittedChoices.value.length > 0;
+});
+
+// 提示文本
+const choiceAlertText = computed(() => {
+    if (isSupplementaryRound.value) {
+        return '补选阶段：请选择一名导师，确认无误后点击下方的【提交志愿】按钮';
+    }
+    if (maxChoiceCount.value === 1) {
+        return '请选择一名导师，确认无误后点击下方的【提交志愿】按钮';
+    }
+    return `请为${maxChoiceCount.value}个志愿依次选择导师，确认无误后点击下方的【提交所有志愿】按钮`;
 });
 
 // 选择器相关
@@ -344,7 +357,7 @@ function getMaxChoiceCount() {
         return Promise.resolve();
     }
     // 正常阶段从配置获取
-    getConfigKey("student_max_choices").then(response => {
+    return getConfigKey("student_max_choices").then(response => {
         maxChoiceCount.value = Math.max(1, parseInt(response.data) || 1);
         // 初始化choices数组
         currentChoices.value = new Array(maxChoiceCount.value).fill(null);
@@ -460,7 +473,6 @@ function resetQuery() {
 }
 
 loadCurrentRound();
-getMaxChoiceCount();
 </script>
 
 <style scoped>

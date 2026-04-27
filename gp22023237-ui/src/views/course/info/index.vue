@@ -32,6 +32,9 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete">删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Upload" @click="handleImport">批量导入</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
@@ -39,16 +42,10 @@
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="课程编号" align="center" prop="courseNo" width="120" />
       <el-table-column label="课程名称" align="center" prop="name" :show-overflow-tooltip="true" />
-      <el-table-column label="授课教师" align="center" prop="teacherName" width="120">
-        <template #default="scope">
-          {{ scope.row.teacherName === '待定教师' ? '待定' : (scope.row.teacherName || '待定') }}
-        </template>
-      </el-table-column>
       <el-table-column label="学分" align="center" prop="credit" width="80" />
       <el-table-column label="学时" align="center" prop="hours" width="80" />
       <el-table-column label="学期" align="center" prop="semester" width="100" />
       <el-table-column label="学年" align="center" prop="year" width="80" />
-      <el-table-column label="最大选课人数" align="center" prop="maxStudents" width="100" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
           <el-tag :type="getStatusTagType(scope.row.status)">
@@ -107,21 +104,6 @@
         </el-row>
         <el-row>
           <el-col :span="12">
-            <el-form-item label="授课教师" prop="teacherId">
-              <el-select v-model="form.teacherId" placeholder="请选择授课教师" style="width: 100%">
-                <el-option label="授课教师待定" :value="0" />
-                <el-option v-for="teacher in teacherList" :key="teacher.id" :label="teacher.teacherName" :value="teacher.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="最大人数" prop="maxStudents">
-              <el-input-number v-model="form.maxStudents" :min="1" :max="200" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
                 <el-radio :value="0">未开课</el-radio>
@@ -146,16 +128,93 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog title="批量导入课程" v-model="importOpen" width="680px" append-to-body>
+      <el-alert
+        title="导入提示"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px;">
+        <template #default>
+          <div>请先下载模板（当前版本：{{ templateVersion }}），按“课程模板”Sheet填写，参考“填写说明”Sheet中的字段规则与错误码。</div>
+          <el-button link type="primary" @click="downloadTemplate">点击下载导入模板</el-button>
+        </template>
+      </el-alert>
+
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 20px;">
+        <template #default>
+          <div>关键规则：课程编号唯一；学分范围0.5-10；学时范围1-200；时间格式必须是HH:mm:ss；状态仅支持0/1/2。</div>
+        </template>
+      </el-alert>
+
+      <el-upload
+        ref="uploadRef"
+        :auto-upload="false"
+        :limit="1"
+        :on-change="handleFileChange"
+        :on-exceed="handleExceed"
+        accept=".xlsx,.xls"
+        drag>
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          拖拽文件到此处或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            仅支持 .xls/.xlsx，单文件不超过10MB
+          </div>
+        </template>
+      </el-upload>
+
+      <!-- 导入结果展示 -->
+      <div v-if="importResult" style="margin-top: 20px;">
+        <el-divider content-position="left">导入结果</el-divider>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="总记录数">{{ importResult.total }}</el-descriptions-item>
+          <el-descriptions-item label="成功数量">
+            <span style="color: #67C23A;">{{ importResult.successCount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="失败数量">
+            <span style="color: #F56C6C;">{{ importResult.failCount }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div v-if="importResult.failDetails && importResult.failDetails.length > 0" style="margin-top: 15px;">
+          <el-alert title="失败详情（请按建议修复后重试）" type="warning" :closable="false">
+            <ul style="margin: 0; padding-left: 20px; max-height: 220px; overflow-y: auto;">
+              <li v-for="(item, index) in importResult.failDetails" :key="index" style="margin-bottom: 8px;">
+                第{{ item.row }}行（课程编号：{{ item.courseNo || '-' }}）
+                <span> - {{ item.reason }}</span>
+                <span v-if="item.errorCode">（{{ item.errorCode }}）</span>
+                <div v-if="item.field || item.suggestion" style="color: #909399; margin-top: 2px;">
+                  <span v-if="item.field">字段：{{ item.field }}；</span>
+                  <span v-if="item.suggestion">建议：{{ item.suggestion }}</span>
+                </div>
+              </li>
+            </ul>
+          </el-alert>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitImport" :loading="importLoading" :disabled="!uploadFile">确 定</el-button>
+          <el-button @click="cancelImport">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Course">
-import { listCourse, listTeachers, getCourse, addCourse, updateCourse, delCourse } from "@/api/course/course";
+import { listCourse, getCourse, addCourse, updateCourse, delCourse, delCourseBatch, importCourse, downloadImportTemplate } from "@/api/course/course";
+import { UploadFilled } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 
 const courseList = ref([]);
-const teacherList = ref([]);
 const open = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
@@ -165,16 +224,22 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 
+// 导入相关
+const importOpen = ref(false);
+const importLoading = ref(false);
+const uploadFile = ref(null);
+const uploadRef = ref();
+const importResult = ref(null);
+const templateVersion = ref('v2.0');
+
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
   { key: 1, label: `课程名称`, visible: true },
-  { key: 2, label: `授课教师`, visible: true },
-  { key: 3, label: `学分`, visible: true },
-  { key: 4, label: `学时`, visible: true },
-  { key: 5, label: `学期`, visible: true },
-  { key: 6, label: `学年`, visible: true },
-  { key: 7, label: `最大选课人数`, visible: true },
-  { key: 8, label: `状态`, visible: true }
+  { key: 2, label: `学分`, visible: true },
+  { key: 3, label: `学时`, visible: true },
+  { key: 4, label: `学期`, visible: true },
+  { key: 5, label: `学年`, visible: true },
+  { key: 6, label: `状态`, visible: true }
 ]);
 
 const data = reactive({
@@ -206,18 +271,16 @@ function getStatusText(status) {
   return textMap[status] || "未知";
 }
 
-function getTeacherList() {
-  listTeachers().then(res => {
-    teacherList.value = res.data || [];
-  });
-}
-
 function getList() {
   loading.value = true;
   listCourse(queryParams.value).then(res => {
+    courseList.value = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
+  }).catch(() => {
+    courseList.value = [];
+    total.value = 0;
+  }).finally(() => {
     loading.value = false;
-    courseList.value = res.data || [];
-    total.value = courseList.value.length;
   });
 }
 
@@ -233,7 +296,7 @@ function resetQuery() {
 
 function handleSelectionChange(selection) {
   ids.value = selection.map(item => item.id);
-  single.value = selection.length != 1;
+  single.value = selection.length !== 1;
   multiple.value = !selection.length;
 }
 
@@ -244,10 +307,8 @@ function reset() {
     name: undefined,
     credit: 1.0,
     hours: 32,
-    teacherId: 0,
     semester: undefined,
     year: new Date().getFullYear(),
-    maxStudents: 50,
     status: 0,
     description: undefined
   };
@@ -261,21 +322,15 @@ function cancel() {
 
 function handleAdd() {
   reset();
-  getTeacherList();
   open.value = true;
   title.value = "添加课程";
 }
 
 function handleUpdate(row) {
   reset();
-  getTeacherList();
   const id = row.id || ids.value;
   getCourse(id).then(res => {
     form.value = res.data;
-    // 如果teacherId对应的是"待定教师"，设置为0表示待定
-    if (form.value.teacherName === '待定教师') {
-      form.value.teacherId = 0;
-    }
     open.value = true;
     title.value = "修改课程";
   });
@@ -284,21 +339,17 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["courseRef"].validate(valid => {
     if (valid) {
-      if (form.value.id != undefined) {
-        // 更新时删除日期字段，让后端处理
+      if (form.value.id !== undefined) {
         const updateData = { ...form.value };
         delete updateData.createTime;
         delete updateData.updateTime;
-        delete updateData.teacherName; // 这个字段不需要传到后端
         updateCourse(updateData).then(() => {
           proxy.$modal.msgSuccess("修改成功");
           open.value = false;
           getList();
         });
       } else {
-        // 新增时也删除不需要的字段
         const addData = { ...form.value };
-        delete addData.teacherName;
         addCourse(addData).then(() => {
           proxy.$modal.msgSuccess("新增成功");
           open.value = false;
@@ -310,13 +361,105 @@ function submitForm() {
 }
 
 function handleDelete(row) {
-  const courseIds = row.id || ids.value;
+  const isSingle = !!row?.id;
+  const request = isSingle ? delCourse(row.id) : delCourseBatch(ids.value);
+
   proxy.$modal.confirm('是否确认删除？').then(() => {
-    return delCourse(courseIds);
+    return request;
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
   }).catch(() => { });
+}
+
+// 批量导入相关
+function handleImport() {
+  resetImport();
+  importOpen.value = true;
+}
+
+function resetImport() {
+  uploadFile.value = null;
+  importResult.value = null;
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+  }
+}
+
+function cancelImport() {
+  importOpen.value = false;
+  resetImport();
+}
+
+function handleFileChange(file) {
+  const fileName = file?.name || '';
+  const lowerName = fileName.toLowerCase();
+  const isExcel = lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx');
+  if (!isExcel) {
+    proxy.$modal.msgWarning("只能上传 .xls 或 .xlsx 文件");
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
+  const maxSizeMb = 10;
+  const isLt10Mb = (file.size || 0) / 1024 / 1024 <= maxSizeMb;
+  if (!isLt10Mb) {
+    proxy.$modal.msgWarning(`文件大小不能超过 ${maxSizeMb}MB`);
+    uploadRef.value?.clearFiles();
+    uploadFile.value = null;
+    return;
+  }
+  uploadFile.value = file.raw;
+}
+
+function handleExceed() {
+  proxy.$modal.msgWarning("只能上传一个文件");
+}
+
+function downloadTemplate() {
+  downloadImportTemplate().then(res => {
+    const blob = new Blob([res], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '课程导入模板.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    proxy.$modal.msgSuccess("模板下载成功");
+  }).catch(() => {
+    proxy.$modal.msgError("模板下载失败");
+  });
+}
+
+function submitImport() {
+  if (!uploadFile.value) {
+    proxy.$modal.msgWarning("请选择要上传的文件");
+    return;
+  }
+
+  importLoading.value = true;
+  const formData = new FormData();
+  formData.append('file', uploadFile.value);
+
+  importCourse(formData).then(res => {
+    importResult.value = res.data;
+    if (importResult.value.failCount > 0) {
+      proxy.$modal.msgWarning(`导入完成：成功 ${importResult.value.successCount} 条，失败 ${importResult.value.failCount} 条`);
+    } else {
+      proxy.$modal.msgSuccess("导入完成，全部成功");
+    }
+    if (importResult.value.successCount > 0) {
+      getList();
+    }
+  }).catch(() => {
+    proxy.$modal.msgError("导入失败，请检查模板和数据后重试");
+  }).finally(() => {
+    importLoading.value = false;
+  });
 }
 
 getList();

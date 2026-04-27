@@ -14,6 +14,20 @@
       </template>
     </el-alert>
 
+    <!-- 选课时间窗口提示 -->
+    <el-alert
+      v-if="!selectionOpen && !isSubmitted"
+      title="当前不在选课时间窗口内"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="mb20"
+    >
+      <template #default>
+        选课功能暂未开放，请等待教学秘书开启选课阶段。
+      </template>
+    </el-alert>
+
     <!-- 选课资格提示 -->
     <el-alert
       v-if="hasReachedMaxCourses && !isSubmitted"
@@ -47,7 +61,7 @@
         <el-button
           type="primary"
           size="large"
-          :disabled="selectedCourses.length === 0 || isSubmitted"
+          :disabled="selectedCourses.length === 0 || isSubmitted || !selectionOpen"
           @click="handleSave"
         >
           {{ isSubmitted ? '已提交' : '保存选课' }}
@@ -98,27 +112,14 @@
         <el-table-column label="课程名称" prop="name" />
         <el-table-column label="学分" prop="credit" width="80" align="center" />
         <el-table-column label="学时" prop="hours" width="80" align="center" />
-        <el-table-column label="授课教师" prop="teacherName" width="120" />
-        <el-table-column label="星期" width="80" align="center">
+        <el-table-column label="已选人数" width="100" align="center">
           <template #default="scope">
-            {{ scope.row.dayOfWeek ? '周' + scope.row.dayOfWeek : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="时间" width="150" align="center">
-          <template #default="scope">
-            {{ scope.row.startTime || '-' }} - {{ scope.row.endTime || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="教室" prop="classroom" width="120" />
-        <el-table-column label="已选/限选" width="100" align="center">
-          <template #default="scope">
-            {{ scope.row.selectedCount || 0 }} / {{ scope.row.maxStudents || '-' }}
+            {{ scope.row.selectedCount || 0 }}
           </template>
         </el-table-column>
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
             <el-tag v-if="isCourseSelected(scope.row.id)" type="success">已选择</el-tag>
-            <el-tag v-else-if="scope.row.selectedCount >= scope.row.maxStudents" type="danger">已满</el-tag>
             <el-tag v-else type="primary">可选</el-tag>
           </template>
         </el-table-column>
@@ -130,6 +131,7 @@
 <script setup name="StudentCourseSelect">
 import { listCourse } from "@/api/course/course";
 import { listCourseSelection, getStudentCourseChoices, saveCourseSelections, getSubmitStatus } from "@/api/course/selection";
+import { isSelectionOpen } from "@/api/course/phase";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
@@ -161,17 +163,14 @@ const availableCourses = ref([]);
 const selectedCourses = ref([]);
 const hasReachedMaxCourses = ref(false);
 const isSubmitted = ref(false);
+const selectionOpen = ref(false);
 
 const columns = ref([
   { key: 0, label: `课程编号`, visible: true },
   { key: 1, label: `课程名称`, visible: true },
   { key: 2, label: `学分`, visible: true },
   { key: 3, label: `学时`, visible: true },
-  { key: 4, label: `授课教师`, visible: true },
-  { key: 5, label: `星期`, visible: true },
-  { key: 6, label: `时间`, visible: true },
-  { key: 7, label: `教室`, visible: true },
-  { key: 8, label: `已选/限选`, visible: true }
+  { key: 4, label: `已选人数`, visible: true }
 ]);
 
 const isCourseSelected = (courseId) => {
@@ -184,19 +183,16 @@ const checkMaxCoursesReached = () => {
 };
 
 const checkSelectable = (row) => {
+  if (!selectionOpen.value) {
+    return false; // 不在选课时间窗口内
+  }
   if (isSubmitted.value) {
     return false; // 已提交后不可选择
-  }
-  if (row.selectedCount >= row.maxStudents) {
-    return false;
   }
   if (isCourseSelected(row.id)) {
     return true; // 已选择的课程总是可以取消选择
   }
   if (selectedCourses.value.length >= maxCourseCount.value) {
-    return false;
-  }
-  if (hasTimeConflict(row)) {
     return false;
   }
   return true;
@@ -208,14 +204,6 @@ const handleSelectionChange = (selection) => {
     const lastSelected = selection[selection.length - 1];
     toggleCourseSelection(lastSelected, false);
     return;
-  }
-
-  for (const course of selection) {
-    if (!isCourseSelected(course.id) && hasTimeConflict(course, selection)) {
-      proxy.$modal.msgWarning(`课程《${course.name}》与已选课程时间冲突`);
-      toggleCourseSelection(course, false);
-      return;
-    }
   }
 
   selectedCourses.value = selection;
@@ -268,59 +256,19 @@ const checkSubmitStatus = () => {
   });
 };
 
-const hasTimeConflict = (newCourse, currentSelection = null) => {
-  if (!newCourse.dayOfWeek || !newCourse.startTime) {
-    return false;
-  }
-
-  const coursesToCheck = currentSelection || selectedCourses.value;
-  for (const existingCourse of coursesToCheck) {
-    if (existingCourse.id === newCourse.id) {
-      continue;
-    }
-    if (!existingCourse.dayOfWeek || !existingCourse.startTime) {
-      continue;
-    }
-
-    if (newCourse.dayOfWeek !== existingCourse.dayOfWeek) {
-      continue;
-    }
-
-    if (isTimeOverlap(newCourse.startTime, newCourse.endTime,
-                     existingCourse.startTime, existingCourse.endTime)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-const isTimeOverlap = (start1, end1, start2, end2) => {
-  if (!start1 || !end1 || !start2 || !end2) {
-    return false;
-  }
-
-  try {
-    const s1 = timeToMinutes(start1);
-    const e1 = timeToMinutes(end1);
-    const s2 = timeToMinutes(start2);
-    const e2 = timeToMinutes(end2);
-
-    return s1 < e2 && s2 < e1;
-  } catch (e) {
-    return false;
-  }
-};
-
-const timeToMinutes = (time) => {
-  const parts = time.split(':');
-  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-};
-
 const getMaxCourseCount = () => {
   getConfigKey('student_max_courses').then(response => {
     maxCourseCount.value = Math.max(1, parseInt(response.data) || 3);
   }).catch(() => {
     maxCourseCount.value = 3;
+  });
+};
+
+const checkSelectionOpen = () => {
+  isSelectionOpen().then(res => {
+    selectionOpen.value = res.data === true;
+  }).catch(() => {
+    selectionOpen.value = false;
   });
 };
 
@@ -404,6 +352,7 @@ const getList = () => {
 };
 
 getMaxCourseCount();
+checkSelectionOpen();
 getList();
 </script>
 

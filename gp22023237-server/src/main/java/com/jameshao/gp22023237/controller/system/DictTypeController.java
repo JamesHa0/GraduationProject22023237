@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.DictType;
 import com.jameshao.gp22023237.service.DictTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,12 +64,15 @@ public class DictTypeController {
     /**
      * 新增字典类型
      */
+    @Log(title = "字典类型", businessType = BusinessType.INSERT)
     @PostMapping
     public String add(@RequestBody DictType dictType) {
         try {
             dictType.setCreateTime(new Date());
             dictType.setUpdateTime(new Date());
             dictTypeService.save(dictType);
+            // 新增字典类型后刷新Redis缓存
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -78,11 +83,14 @@ public class DictTypeController {
     /**
      * 修改字典类型
      */
+    @Log(title = "字典类型", businessType = BusinessType.UPDATE)
     @PutMapping
     public String edit(@RequestBody DictType dictType) {
         try {
             dictType.setUpdateTime(new Date());
             dictTypeService.updateById(dictType);
+            // 如果dictType字段被修改，需要刷新缓存
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,13 +99,14 @@ public class DictTypeController {
     }
 
     /**
-     * 删除字典类型
+     * 删除字典类型（级联删除该类型下所有字典数据并清理缓存）
      */
+    @Log(title = "字典类型", businessType = BusinessType.DELETE)
     @DeleteMapping("/{dictIds}")
     public String remove(@PathVariable Long[] dictIds) {
         try {
             for (Long dictId : dictIds) {
-                dictTypeService.removeById(dictId);
+                dictTypeService.deleteDictTypeById(dictId);
             }
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
@@ -109,9 +118,11 @@ public class DictTypeController {
     /**
      * 刷新字典缓存
      */
+    @Log(title = "字典类型", businessType = BusinessType.UPDATE)
     @DeleteMapping("/refreshCache")
     public String refreshCache() {
         try {
+            dictTypeService.refreshCache();
             return jsonReturn.returnSuccess();
         } catch (Exception e) {
             e.printStackTrace();

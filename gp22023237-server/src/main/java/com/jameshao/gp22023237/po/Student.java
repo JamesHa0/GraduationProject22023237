@@ -28,6 +28,11 @@ public class Student {
     private Long userId;
 
     /**
+     * 班级ID(关联class表)
+     */
+    private Long classId;
+
+    /**
      * 学号 - 学生唯一标识，如：2023001
      */
     private String studentNo;
@@ -53,6 +58,11 @@ public class Student {
     private Integer admissionYear;
 
     /**
+     * 归属年级 - 行政归属年级，终身不变，如：2022
+     */
+    private Integer cohortYear;
+
+    /**
      * 预计毕业年份 - 整数类型，如：2026
      */
     private Integer graduationYear;
@@ -63,7 +73,7 @@ public class Student {
     private String researchDirection;
 
     /**
-     * 导师双选状态 - 0:未开始 1:第一轮双选 2:第二轮双选 3:已确定导师
+     * 导师双选状态 - 0:未开始 1:双选中 2:补选中 3:已确定
      */
     private Integer selectionStatus;
 
@@ -71,11 +81,6 @@ public class Student {
      * 学籍状态 - 1:在读 2:休学 3:毕业 4:退学
      */
     private Integer status;
-
-    /**
-     * 是否需要补选 - 1:是, 0:否
-     */
-    private Integer needSupplementary;
 
     /**
      * 创建时间 - 记录学生信息创建的时间
@@ -106,6 +111,7 @@ public class Student {
             && (this.getDepartment() == null ? other.getDepartment() == null : this.getDepartment().equals(other.getDepartment()))
             && (this.getMajor() == null ? other.getMajor() == null : this.getMajor().equals(other.getMajor()))
             && (this.getAdmissionYear() == null ? other.getAdmissionYear() == null : this.getAdmissionYear().equals(other.getAdmissionYear()))
+            && (this.getCohortYear() == null ? other.getCohortYear() == null : this.getCohortYear().equals(other.getCohortYear()))
             && (this.getGraduationYear() == null ? other.getGraduationYear() == null : this.getGraduationYear().equals(other.getGraduationYear()))
             && (this.getResearchDirection() == null ? other.getResearchDirection() == null : this.getResearchDirection().equals(other.getResearchDirection()))
             && (this.getSelectionStatus() == null ? other.getSelectionStatus() == null : this.getSelectionStatus().equals(other.getSelectionStatus()))
@@ -125,6 +131,7 @@ public class Student {
         result = prime * result + ((getDepartment() == null) ? 0 : getDepartment().hashCode());
         result = prime * result + ((getMajor() == null) ? 0 : getMajor().hashCode());
         result = prime * result + ((getAdmissionYear() == null) ? 0 : getAdmissionYear().hashCode());
+        result = prime * result + ((getCohortYear() == null) ? 0 : getCohortYear().hashCode());
         result = prime * result + ((getGraduationYear() == null) ? 0 : getGraduationYear().hashCode());
         result = prime * result + ((getResearchDirection() == null) ? 0 : getResearchDirection().hashCode());
         result = prime * result + ((getSelectionStatus() == null) ? 0 : getSelectionStatus().hashCode());
@@ -147,6 +154,7 @@ public class Student {
         sb.append(", department=").append(department);
         sb.append(", major=").append(major);
         sb.append(", admissionYear=").append(admissionYear);
+        sb.append(", cohortYear=").append(cohortYear);
         sb.append(", graduationYear=").append(graduationYear);
         sb.append(", researchDirection=").append(researchDirection);
         sb.append(", selectionStatus=").append(selectionStatus);

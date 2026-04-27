@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.ScheduleMapper">
+
+    <!-- 公共SELECT列：排课+教师+课程+班级+开始节次+结束节次 -->
+    <sql id="scheduleDetailColumns">
+        s.id,
+        s.teacher_id AS teacherId,
+        t.teacher_name AS teacherName,
+        s.course_id AS courseId,
+        c.name AS courseName,
+        s.class_id AS classId,
+        cl.class_name AS className,
+        s.start_section AS startSection,
+        s.end_section AS endSection,
+        ss.dict_label AS startSectionName,
+        ss.dict_value AS startSectionValue,
+        es.dict_label AS endSectionName,
+        es.dict_value AS endSectionValue,
+        CONCAT(ss.dict_label, '-', es.dict_label) AS sectionDisplay,
+        s.day_of_week AS dayOfWeek,
+        s.classroom,
+        s.semester,
+        s.year,
+        DATE_FORMAT(s.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+        DATE_FORMAT(s.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+    </sql>
+
+    <!-- 公共JOIN：教师+课程+班级+开始节次+结束节次 -->
+    <sql id="scheduleDetailJoins">
+        FROM schedule s
+        LEFT JOIN teacher t ON s.teacher_id = t.id
+        LEFT JOIN course c ON s.course_id = c.id
+        LEFT JOIN class cl ON s.class_id = cl.id
+        LEFT JOIN sys_dict_data ss ON s.start_section = ss.dict_code AND ss.dict_type = 'sys_time_slot'
+        LEFT JOIN sys_dict_data es ON s.end_section = es.dict_code AND es.dict_type = 'sys_time_slot'
+    </sql>
+
+    <!-- 公共WHERE条件 -->
+    <sql id="scheduleConditions">
+        <if test="teacherId != null">
+            AND s.teacher_id = #{teacherId}
+        </if>
+        <if test="classId != null">
+            AND s.class_id = #{classId}
+        </if>
+        <if test="semester != null and semester != ''">
+            AND s.semester = #{semester}
+        </if>
+        <if test="year != null">
+            AND s.year = #{year}
+        </if>
+    </sql>
+
+    <!-- 查询排课列表，关联教师/课程/班级/节次信息 -->
+    <select id="listScheduleWithDetails" resultType="com.jameshao.gp22023237.DTO.ScheduleWithDetailsDTO">
+        SELECT
+            <include refid="scheduleDetailColumns"/>
+        <include refid="scheduleDetailJoins"/>
+        <where>
+            <include refid="scheduleConditions"/>
+        </where>
+        ORDER BY s.day_of_week, s.start_section
+    </select>
+
+    <!-- 查询排课列表，关联教师/课程/班级/节次信息（分页） -->
+    <select id="listScheduleWithDetailsPage" resultType="com.jameshao.gp22023237.DTO.ScheduleWithDetailsDTO">
+        SELECT
+            <include refid="scheduleDetailColumns"/>
+        <include refid="scheduleDetailJoins"/>
+        <where>
+            <include refid="scheduleConditions"/>
+        </where>
+        ORDER BY s.day_of_week, s.start_section
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计排课记录总数 -->
+    <select id="countScheduleWithDetails" resultType="int">
+        SELECT COUNT(*)
+        FROM schedule s
+        <where>
+            <include refid="scheduleConditions"/>
+        </where>
+    </select>
+
+    <!-- 根据ID查询排课详情 -->
+    <select id="getScheduleWithDetailsById" resultType="com.jameshao.gp22023237.DTO.ScheduleWithDetailsDTO">
+        SELECT
+            <include refid="scheduleDetailColumns"/>
+        <include refid="scheduleDetailJoins"/>
+        WHERE s.id = #{id}
+    </select>
+
+    <!-- 检查教师时间冲突（范围重叠判断） -->
+    <select id="checkTeacherConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM schedule
+        WHERE teacher_id = #{teacherId}
+          AND day_of_week = #{dayOfWeek}
+          AND start_section &lt;= #{endSection}
+          AND end_section &gt;= #{startSection}
+          AND semester = #{semester}
+          AND year = #{year}
+          <if test="excludeId != null">
+              AND id != #{excludeId}
+          </if>
+    </select>
+
+    <!-- 检查班级时间冲突（范围重叠判断） -->
+    <select id="checkClassConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM schedule
+        WHERE class_id = #{classId}
+          AND day_of_week = #{dayOfWeek}
+          AND start_section &lt;= #{endSection}
+          AND end_section &gt;= #{startSection}
+          AND semester = #{semester}
+          AND year = #{year}
+          <if test="excludeId != null">
+              AND id != #{excludeId}
+          </if>
+    </select>
+
+    <!-- 检查教室时间冲突（范围重叠判断） -->
+    <select id="checkClassroomConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM schedule
+        WHERE classroom = #{classroom}
+          AND day_of_week = #{dayOfWeek}
+          AND start_section &lt;= #{endSection}
+          AND end_section &gt;= #{startSection}
+          AND semester = #{semester}
+          AND year = #{year}
+          <if test="excludeId != null">
+              AND id != #{excludeId}
+          </if>
+    </select>
+
+    <!-- 查询班级学生人数 -->
+    <select id="countStudentsByClassId" resultType="int">
+        SELECT COUNT(*)
+        FROM student
+        WHERE class_id = #{classId}
+    </select>
+
+</mapper>

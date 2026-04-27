@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Post;
 import com.jameshao.gp22023237.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,6 +95,7 @@ public class PostController {
     /**
      * 删除岗位
      */
+    @Log(title = "岗位管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{postIds}")
     public String remove(@PathVariable Long[] postIds) {
         try {
