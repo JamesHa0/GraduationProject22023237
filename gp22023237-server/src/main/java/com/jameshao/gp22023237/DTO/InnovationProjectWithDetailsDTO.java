@@ -58,7 +58,7 @@ public class InnovationProjectWithDetailsDTO {
         return advisor;
     }
 
-    public Integer getTutorApproval() {
+    public Integer getApproverStatus() {
         return mentorStatus;
     }
 }

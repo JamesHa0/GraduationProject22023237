@@ -3,6 +3,7 @@ package com.jameshao.gp22023237.utils;
 import com.qiniu.http.Response;
 import com.qiniu.storage.BucketManager;
 import com.qiniu.storage.Configuration;
+
 import com.qiniu.storage.Region;
 import com.qiniu.storage.UploadManager;
 import com.qiniu.util.Auth;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 import java.util.Base64;
-import java.util.UUID;
 
 @Component
 public class QiniuUploadUtil {
@@ -33,6 +33,9 @@ public class QiniuUploadUtil {
 
     @Value("${qiniu.avatar-prefix:asset/avatar/}")
     private String avatarPrefix;
+
+    @Value("${qiniu.academic-prefix:resource/academic/}")
+    private String academicPrefix;
 
     private Auth auth;
     private UploadManager uploadManager;
@@ -102,6 +105,24 @@ public class QiniuUploadUtil {
         return uploadFile(fileData, fileName);
     }
 
+    /**
+     * 上传学术相关附件到七牛云
+     * @param fileData 文件字节数据
+     * @param originalFilename 原始文件名
+     * @param userId 上传用户ID
+     * @return 文件访问URL
+     */
+    public String uploadAcademicFile(byte[] fileData, String originalFilename, Long userId) throws Exception {
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+
+        String fileName = academicPrefix + "academic_" + userId + "_" + System.currentTimeMillis() + extension;
+
+        return uploadFile(fileData, fileName);
+    }
+
     public void deleteFile(String fileUrl) throws Exception {
         if (fileUrl == null || fileUrl.isEmpty()) {
             return;
@@ -130,6 +151,19 @@ public class QiniuUploadUtil {
             return null;
         }
         return auth.privateDownloadUrl(publicUrl, expires);
+    }
+
+    /**
+     * 生成私有签名URL（带自定义下载文件名）
+     * 注意：attname参数在七牛CDN对中文文件名支持不佳，已改用后端代理下载方式指定文件名
+     * @param publicUrl 公开访问URL
+     * @param expires 过期时间（秒）
+     * @param attname 下载时显示的文件名（已弃用，仅保留接口兼容）
+     * @return 带签名的私有URL
+     */
+    public String getPrivateUrl(String publicUrl, long expires, String attname) {
+        // attname参数已弃用，直接使用基础签名方式
+        return getPrivateUrl(publicUrl, expires);
     }
 
     /**

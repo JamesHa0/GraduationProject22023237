@@ -42,7 +42,6 @@
                plain
                icon="Plus"
                @click="handleAdd"
-               v-hasPermi="['system:notice:add']"
             >新增</el-button>
          </el-col>
          <el-col :span="1.5">
@@ -52,7 +51,6 @@
                icon="Edit"
                :disabled="single"
                @click="handleUpdate"
-               v-hasPermi="['system:notice:edit']"
             >修改</el-button>
          </el-col>
          <el-col :span="1.5">
@@ -62,7 +60,6 @@
                icon="Delete"
                :disabled="multiple"
                @click="handleDelete"
-               v-hasPermi="['system:notice:remove']"
             >删除</el-button>
          </el-col>
          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
@@ -87,6 +84,12 @@
                <dict-tag :options="sys_notice_status" :value="scope.row.status" />
             </template>
          </el-table-column>
+         <el-table-column label="目标角色" align="center" prop="targetRoles" width="120">
+            <template #default="scope">
+               <span v-if="!scope.row.targetRoles">全体</span>
+               <span v-else>{{ formatTargetRoles(scope.row.targetRoles) }}</span>
+            </template>
+         </el-table-column>
          <el-table-column label="创建者" align="center" prop="createBy" width="100" />
          <el-table-column label="创建时间" align="center" prop="createTime" width="100">
             <template #default="scope">
@@ -95,8 +98,8 @@
          </el-table-column>
          <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
             <template #default="scope">
-               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:notice:edit']">修改</el-button>
-               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['system:notice:remove']" >删除</el-button>
+               <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" >修改</el-button>
+               <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" >删除</el-button>
             </template>
          </el-table-column>
       </el-table>
@@ -142,8 +145,22 @@
                   </el-form-item>
                </el-col>
                <el-col :span="24">
+                  <el-form-item label="目标角色">
+                     <el-select v-model="form.targetRolesList" multiple placeholder="不选则全体可见" style="width: 100%">
+                        <el-option label="超级管理员" :value="1" />
+                        <el-option label="分管院长" :value="2" />
+                        <el-option label="学位分委员会主席" :value="3" />
+                        <el-option label="综合管理员" :value="4" />
+                        <el-option label="教学秘书" :value="5" />
+                        <el-option label="学生" :value="6" />
+                        <el-option label="导师" :value="7" />
+                        <el-option label="授课教师" :value="8" />
+                     </el-select>
+                  </el-form-item>
+               </el-col>
+               <el-col :span="24">
                   <el-form-item label="内容">
-                    <editor v-model="form.noticeContent" :min-height="192"/>
+                    <editor v-model="form.noticeContent" :min-height="192" :height="400" />
                   </el-form-item>
                </el-col>
             </el-row>
@@ -184,19 +201,34 @@ const data = reactive({
     status: undefined
   },
   rules: {
-    noticeTitle: [{ required: true, message: "公告标题不能为空", trigger: "blur" }],
+    noticeTitle: [
+      { required: true, message: "公告标题不能为空", trigger: "blur" },
+      { max: 50, message: "公告标题不能超过50个字符", trigger: "blur" }
+    ],
     noticeType: [{ required: true, message: "公告类型不能为空", trigger: "change" }]
   },
 });
 
 const { queryParams, form, rules } = toRefs(data);
 
+/** 角色ID映射 */
+const roleMap = {
+  1: '超管', 2: '院长', 3: '主席', 4: '综合管理',
+  5: '教学秘书', 6: '学生', 7: '导师', 8: '授课教师'
+};
+
+/** 格式化目标角色显示 */
+function formatTargetRoles(targetRoles) {
+  if (!targetRoles) return '全体';
+  return targetRoles.split(',').map(id => roleMap[Number(id)] || id).join('、');
+}
+
 /** 查询公告列表 */
 function getList() {
   loading.value = true;
   listNotice(queryParams.value).then(response => {
-    noticeList.value = response.rows;
-    total.value = response.total;
+    noticeList.value = response.data.rows;
+    total.value = response.data.total;
     loading.value = false;
   });
 }
@@ -214,7 +246,9 @@ function reset() {
     noticeTitle: undefined,
     noticeType: undefined,
     noticeContent: undefined,
-    status: "0"
+    status: "0",
+    targetRoles: undefined,
+    targetRolesList: []
   };
   proxy.resetForm("noticeRef");
 }
@@ -251,6 +285,12 @@ function handleUpdate(row) {
   const noticeId = row.noticeId || ids.value;
   getNotice(noticeId).then(response => {
     form.value = response.data;
+    // 将targetRoles字符串转为数组供多选组件使用
+    if (form.value.targetRoles) {
+      form.value.targetRolesList = form.value.targetRoles.split(',').map(Number);
+    } else {
+      form.value.targetRolesList = [];
+    }
     open.value = true;
     title.value = "修改公告";
   });
@@ -260,6 +300,24 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["noticeRef"].validate(valid => {
     if (valid) {
+      // 校验内容纯文本长度，防止超出数据库存储限制
+      const contentText = form.value.noticeContent
+        ? form.value.noticeContent.replace(/<[^>]*>/g, '').replace(/&\w+;/g, ' ').trim()
+        : '';
+      if (!contentText) {
+        proxy.$modal.msgWarning("公告内容不能为空");
+        return;
+      }
+      if (contentText.length > 30000) {
+        proxy.$modal.msgWarning("公告内容过长，请精简后重试");
+        return;
+      }
+      // 将targetRolesList数组转为逗号分隔字符串
+      if (form.value.targetRolesList && form.value.targetRolesList.length > 0) {
+        form.value.targetRoles = form.value.targetRolesList.join(',');
+      } else {
+        form.value.targetRoles = null;
+      }
       if (form.value.noticeId != undefined) {
         updateNotice(form.value).then(response => {
           proxy.$modal.msgSuccess("修改成功");
@@ -290,3 +348,16 @@ function handleDelete(row) {
 
 getList();
 </script>
+
+<style scoped>
+:deep(.editor) {
+  width: 100%;
+  overflow: hidden;
+}
+:deep(.ql-toolbar) {
+  flex-wrap: wrap;
+}
+:deep(.ql-container) {
+  overflow-y: auto;
+}
+</style>

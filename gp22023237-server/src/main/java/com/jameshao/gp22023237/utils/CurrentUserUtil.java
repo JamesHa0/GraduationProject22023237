@@ -42,6 +42,10 @@ public class CurrentUserUtil {
                 // 如果请求头中没有，尝试从参数中获取
                 token = request.getHeader("Token");
             }
+            if (token == null || token.isEmpty()) {
+                // SSE兼容：从URL参数获取token（EventSource不支持自定义请求头）
+                token = request.getParameter("token");
+            }
 
             if (token == null || token.isEmpty()) {
                 return null;

@@ -1,250 +1,121 @@
 <template>
   <div class="app-container">
-    <el-card>
+    <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>论文开题</span>
-          <el-button type="primary" size="small" @click="handleAdd">新增开题</el-button>
+          <span>开题报告</span>
+          <el-button v-if="canSubmit" type="primary" size="small" @click="handleSubmit">提交开题报告</el-button>
         </div>
       </template>
 
-      <!-- 查询表单 -->
-      <el-form :model="queryParams" :inline="true">
-        <el-form-item label="学号" prop="studentNo">
-          <el-input v-model="queryParams.studentNo" placeholder="请输入学号" clearable />
-        </el-form-item>
-        <el-form-item label="审核状态" prop="status">
-          <el-select v-model="queryParams.status" placeholder="请选择" clearable>
-            <el-option label="待审核" :value="1" />
-            <el-option label="导师已通过" :value="2" />
-            <el-option label="秘书已通过" :value="3" />
-            <el-option label="院长已通过" :value="4" />
-            <el-option label="审核不通过" :value="5" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
+      <div v-if="currentRecord">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="研究背景" :span="2">{{ extendData.background || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="研究现状" :span="2">{{ extendData.researchStatus || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="研究内容" :span="2">{{ extendData.researchContent || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="研究方法" :span="2">{{ extendData.researchMethod || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="审核状态">
+            <el-tag :type="statusType">{{ statusText }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ parseDate(currentRecord.submitTime) }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentRecord.supervisorComment" label="导师意见" :span="2">
+            {{ currentRecord.supervisorComment }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
 
-      <!-- 数据表格 -->
-      <el-table v-loading="loading" :data="dataList" border>
-        <el-table-column type="index" label="序号" width="55" align="center" />
-        <el-table-column label="学号" prop="studentNo" align="center" />
-        <el-table-column label="姓名" prop="studentName" align="center" />
-        <el-table-column label="论文题目" prop="title" align="center" show-overflow-tooltip />
-        <el-table-column label="研究方向" prop="direction" align="center" show-overflow-tooltip />
-        <el-table-column label="导师审批" prop="mentorStatus" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.mentorStatus)">
-              {{ getStatusText(row.mentorStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="秘书审批" prop="secretaryStatus" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.secretaryStatus)">
-              {{ getStatusText(row.secretaryStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="院长审批" prop="deanStatus" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.deanStatus)">
-              {{ getStatusText(row.deanStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" align="center">
-          <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="handleView(row)">详情</el-button>
-            <el-button link size="small" type="primary" @click="handleApprove(row)">审批</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-empty v-else description="暂未提交开题报告" />
 
-      <!-- 分页 -->
-      <el-pagination
-        v-model:current-page="queryParams.pageNum"
-        v-model:page-size="queryParams.pageSize"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+      <el-dialog v-model="dialogVisible" title="提交开题报告" width="700px">
+        <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+          <el-form-item label="研究背景" prop="background">
+            <el-input v-model="form.background" type="textarea" :rows="4" placeholder="请输入研究背景" />
+          </el-form-item>
+          <el-form-item label="研究现状" prop="researchStatus">
+            <el-input v-model="form.researchStatus" type="textarea" :rows="4" placeholder="请输入研究现状" />
+          </el-form-item>
+          <el-form-item label="研究内容" prop="researchContent">
+            <el-input v-model="form.researchContent" type="textarea" :rows="4" placeholder="请输入研究内容" />
+          </el-form-item>
+          <el-form-item label="研究方法" prop="researchMethod">
+            <el-input v-model="form.researchMethod" type="textarea" :rows="3" placeholder="请输入研究方法" />
+          </el-form-item>
+          <el-form-item label="附件">
+            <el-input v-model="form.attachmentUrl" placeholder="附件地址" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="doSubmit">提交</el-button>
+        </template>
+      </el-dialog>
     </el-card>
-
-    <!-- 审批对话框 -->
-    <el-dialog v-model="dialogVisible" title="开题审批" width="700px">
-      <el-form :model="form" ref="formRef" label-width="100px">
-        <el-form-item label="论文题目">
-          <el-input v-model="form.title" disabled />
-        </el-form-item>
-        <el-form-item label="研究方向">
-          <el-input v-model="form.direction" disabled />
-        </el-form-item>
-        <el-form-item label="研究内容">
-          <el-input v-model="form.content" type="textarea" :rows="3" disabled />
-        </el-form-item>
-        <el-form-item label="审批结果" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :label="1">同意</el-radio>
-            <el-radio :label="2">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审批意见" prop="comment">
-          <el-input v-model="form.comment" type="textarea" :rows="4" placeholder="请输入审批意见" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
-import { listProposal, getProposalDetail, submitProposal, approveProposalMentor, approveProposalSecretary, approveProposalDean } from '@/api/degree'
+import { ref, computed, onMounted } from 'vue'
+import { getCurrentInstance } from 'vue'
+import { getThesisMainByStudent, listProcess, submitProcess } from '@/api/degree'
+import { PROCESS_CONFIG, buildSubmitData, parseContentExtend } from '@/views/degree/processConfig'
+import { getProcessStatusText, getProcessStatusType, parseDate } from '@/composables/useDegreeStatus'
 
-const loading = ref(false)
-const dataList = ref([])
-const total = ref(0)
+const { proxy } = getCurrentInstance()
+const userStore = proxy.$pinia._s.get('user')
+
 const dialogVisible = ref(false)
-const isView = ref(false)
+const formRef = ref(null)
+const currentRecord = ref(null)
+const thesisId = ref(null)
 
-const queryParams = reactive({
-  pageNum:1,
-  pageSize: 10,
-  studentId: undefined,
-  overallStatus: undefined
-})
+const config = PROCESS_CONFIG[3]
+const form = ref({ ...config.defaultForm })
+const rules = config.rules
 
-const form = reactive({
-  id: '',
-  studentId: undefined,
-  title: '',
-  direction: '',
-  content: '',
-  background: '',
-  status: '',
-  methods: '',
-  expectedResults: '',
-  plan: '',
-  references: '',
-  status: 1,
-  comment: ''
-})
-
-function getStatusText(status) {
-  const map = { 0: '待审批', 1: '已通过', 2: '已拒绝' }
-  return map[status] || '-'
-}
-
-function getStatusType(status) {
-  const map = { 0: 'warning', 1: 'success', 2: 'danger' }
-  return map[status] || ''
-}
-
-function handleQuery() {
-  loading.value = true
-  getList()
-}
-
-function resetQuery() {
-  queryParams.studentNo = ''
-  queryParams.status = ''
-  handleQuery()
-}
-
-function handleView(row) {
-  isView.value = true
-  getProposalDetail(row.id).then(res => {
-    if (res.code === 200) {
-      Object.assign(form, res.data)
-      dialogVisible.value = true
-    } else {
-      ElMessage.error(res.msg || '获取详情失败')
-    }
-  })
-}
-
-function handleApprove(row) {
-  isView.value = false
-  getProposalDetail(row.id).then(res => {
-    if (res.code === 200) {
-      Object.assign(form, res.data)
-      form.status = 1
-      form.comment = ''
-      dialogVisible.value = true
-    } else {
-      ElMessage.error(res.msg || '获取详情失败')
-    }
-  })
-}
+const extendData = computed(() => parseContentExtend(currentRecord.value))
+const statusText = computed(() => getProcessStatusText(currentRecord.value?.processStatus))
+const statusType = computed(() => getProcessStatusType(currentRecord.value?.processStatus))
+const canSubmit = computed(() => !currentRecord.value || currentRecord.value.processStatus === 4)
 
 function handleSubmit() {
-  if (isView.value) {
-    dialogVisible.value = false
-    return
-  }
+  form.value = { ...config.defaultForm }
+  dialogVisible.value = true
+}
 
-  // 提交审批
-  const { id, status, comment } = form
-  // TODO: 根据当前用户角色选择不同的审批方法
-  approveProposalMentor(id, status, comment).then(res => {
-    if (res.code === 200) {
-      ElMessage.success('审批成功')
+function doSubmit() {
+  formRef.value?.validate(valid => {
+    if (!valid) return
+    const data = buildSubmitData({ ...form.value, thesisId: thesisId.value }, 3)
+    submitProcess(data).then(() => {
+      proxy.$modal.msgSuccess('提交成功')
       dialogVisible.value = false
-      getList()
-    } else {
-      ElMessage.error(res.msg || '审批失败')
-    }
-  }).catch(err => {
-    ElMessage.error('审批失败')
-    console.error(err)
+      loadData()
+    })
   })
 }
 
-function getList() {
-  loading.value = true
-  listProposal(queryParams).then(res => {
-    loading.value = false
-    if (res.code === 200) {
-      const result = res.data
-      dataList.value = result.records || []
-      total.value = result.total || 0
-    } else {
-      ElMessage.error(res.msg || '获取数据失败')
+async function loadData() {
+  try {
+    const studentId = userStore?.id
+    if (!studentId) return
+    const res = await getThesisMainByStudent(studentId)
+    const thesis = res.data || res
+    if (thesis && thesis.id) {
+      thesisId.value = thesis.id
+      const processRes = await listProcess({ thesisId: thesis.id, processType: 3, pageSize: 1 })
+      const records = processRes.data?.records || processRes.rows || []
+      if (records.length > 0) {
+        currentRecord.value = records.reduce((a, b) => a.version > b.version ? a : b)
+      }
     }
-  }).catch(err => {
-    loading.value = false
-    ElMessage.error('获取数据失败')
-    console.error(err)
-  })
+  } catch (e) {
+    console.error(e)
+  }
 }
 
-function handleSizeChange(val) {
-  queryParams.pageSize = val
-  handleQuery()
-}
-
-function handleCurrentChange(val) {
-  queryParams.pageNum = val
-  handleQuery()
-}
-
-// 初始化加载数据
-getList()
+onMounted(() => loadData())
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.card-header { display: flex; justify-content: space-between; align-items: center; }
 </style>

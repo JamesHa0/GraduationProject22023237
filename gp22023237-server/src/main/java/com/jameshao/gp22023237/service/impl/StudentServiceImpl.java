@@ -186,7 +186,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
                 user.setUsername(dto.getStudentNo());
                 user.setPassword(dto.getStudentNo());
                 user.setName(dto.getStudentName());
-                user.setRoleId(1);
+                user.setRoleId(6); // 6-学生角色
                 user.setStatus(1);
                 user.setCreateTime(now);
                 user.setUpdateTime(now);

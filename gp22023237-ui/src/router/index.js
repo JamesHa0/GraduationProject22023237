@@ -206,25 +206,25 @@ export const constantRoutes = [
     path: '/academic',
     component: Layout,
     hidden: true,
-    redirect: 'noredirect',
+    redirect: '/academic/submit',
     children: [
       {
+        path: 'submit',
+        component: () => import('@/views/academic/submit/index'),
+        name: 'AcademicManagement',
+        meta: { title: '学术内容管理', icon: 'star' }
+      },
+      {
         path: 'activity',
-        component: () => import('@/views/academic/activity/index'),
-        name: 'AcademicActivity',
-        meta: { title: '学术活动管理', icon: 'star' }
+        redirect: { path: '/academic/submit', query: { type: 'activity' } }
       },
       {
         path: 'innovation',
-        component: () => import('@/views/academic/innovation/index'),
-        name: 'InnovationProject',
-        meta: { title: '创新实践项目', icon: 'trophy' }
+        redirect: { path: '/academic/submit', query: { type: 'innovation' } }
       },
       {
         path: 'achievement',
-        component: () => import('@/views/academic/achievement/index'),
-        name: 'AcademicAchievement',
-        meta: { title: '学术成果管理', icon: 'medal' }
+        redirect: { path: '/academic/submit', query: { type: 'achievement' } }
       },
       {
         path: 'review',
@@ -240,35 +240,122 @@ export const constantRoutes = [
     hidden: true,
     redirect: 'noredirect',
     children: [
+      // ==================== 学生流程区（501-507）====================
+      {
+        path: 'topic',
+        component: () => import('@/views/degree/topic/index'),
+        name: 'ThesisTopic',
+        meta: { title: '选题', icon: 'edit' }
+      },
+      {
+        path: 'task',
+        component: () => import('@/views/degree/task/index'),
+        name: 'ThesisTask',
+        meta: { title: '任务书', icon: 'document' }
+      },
       {
         path: 'proposal',
-        component: () => import('@/views/degree/progress/index'),
+        component: () => import('@/views/degree/proposal/index'),
         name: 'ThesisProposal',
-        meta: { title: '论文开题', icon: 'document' }
+        meta: { title: '开题报告', icon: 'date' }
       },
       {
         path: 'midterm',
-        component: () => import('@/views/degree/progress/index'),
+        component: () => import('@/views/degree/midterm/index'),
         name: 'ThesisMidterm',
-        meta: { title: '论文中期检查', icon: 'date' }
+        meta: { title: '中期检查', icon: 'checked' }
       },
       {
-        path: 'predefense',
+        path: 'draft',
+        component: () => import('@/views/degree/draft/index'),
+        name: 'ThesisDraft',
+        meta: { title: '过程稿', icon: 'files' }
+      },
+      {
+        path: 'defense-draft',
+        component: () => import('@/views/degree/defense-draft/index'),
+        name: 'ThesisDefenseDraft',
+        meta: { title: '论文答辩稿', icon: 'files' }
+      },
+      {
+        path: 'thesis-final',
+        component: () => import('@/views/degree/thesis-final/index'),
+        name: 'ThesisFinal',
+        meta: { title: '毕业论文', icon: 'document-checked' }
+      },
+      // ==================== 导师管理区（510-516）====================
+      {
+        path: 'supervisor/topic',
+        component: () => import('@/views/degree/supervisor/topic/index'),
+        name: 'SupervisorTopic',
+        meta: { title: '学生选题', icon: 'edit' }
+      },
+      {
+        path: 'supervisor/topic-modification',
+        component: () => import('@/views/degree/supervisor/topic-modification/index'),
+        name: 'SupervisorTopicModification',
+        meta: { title: '选题修改申请', icon: 'edit' }
+      },
+      {
+        path: 'supervisor/task',
+        component: () => import('@/views/degree/supervisor/task/index'),
+        name: 'SupervisorTask',
+        meta: { title: '任务书管理', icon: 'document' }
+      },
+      {
+        path: 'supervisor/proposal',
+        component: () => import('@/views/degree/supervisor/proposal/index'),
+        name: 'SupervisorProposal',
+        meta: { title: '学生开题报告', icon: 'date' }
+      },
+      {
+        path: 'supervisor/midterm',
+        component: () => import('@/views/degree/supervisor/midterm/index'),
+        name: 'SupervisorMidterm',
+        meta: { title: '学生中期检查', icon: 'checked' }
+      },
+      {
+        path: 'supervisor/defense-draft',
+        component: () => import('@/views/degree/supervisor/defense-draft/index'),
+        name: 'SupervisorDefenseDraft',
+        meta: { title: '论文答辩稿管理', icon: 'files' }
+      },
+      {
+        path: 'supervisor/thesis-final',
+        component: () => import('@/views/degree/supervisor/thesis-final/index'),
+        name: 'SupervisorThesisFinal',
+        meta: { title: '论文最终稿管理', icon: 'document-checked' }
+      },
+      // ==================== 行政管理区（520-524）====================
+      {
+        path: 'progress',
         component: () => import('@/views/degree/progress/index'),
-        name: 'ThesisPreDefense',
-        meta: { title: '论文预答辩', icon: 'chat-dot-round' }
-      },
-      {
-        path: 'application',
-        component: () => import('@/views/degree/application/index'),
-        name: 'DegreeApplication',
-        meta: { title: '学位申请', icon: 's-promotion' }
+        name: 'ThesisProgress',
+        meta: { title: '进度查询', icon: 'search' }
       },
       {
         path: 'approval',
         component: () => import('@/views/degree/approval/index'),
         name: 'DegreeApproval',
         meta: { title: '学位审批', icon: 's-check' }
+      },
+      {
+        path: 'process-config',
+        component: () => import('@/views/degree/process-config/index'),
+        name: 'ProcessConfig',
+        meta: { title: '流程配置', icon: 'setup' }
+      },
+      {
+        path: 'statistics',
+        component: () => import('@/views/degree/statistics/index'),
+        name: 'ThesisStatistics',
+        meta: { title: '统计归档', icon: 'chart' }
+      },
+      {
+        path: 'evaluation',
+        component: () => import('@/views/degree/evaluation/index'),
+        name: 'ThesisEvaluation',
+        meta: { title: '成绩评定', icon: 'score' }
       }
     ]
   },

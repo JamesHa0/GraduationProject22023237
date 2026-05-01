@@ -3,9 +3,14 @@ package com.jameshao.gp22023237.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jameshao.gp22023237.common.enums.ApprovalStatus;
+import com.jameshao.gp22023237.common.enums.ProcessType;
 import com.jameshao.gp22023237.mapper.DegreeApplicationMapper;
 import com.jameshao.gp22023237.po.DegreeApplication;
+import com.jameshao.gp22023237.po.ThesisMain;
 import com.jameshao.gp22023237.service.DegreeApplicationService;
+import com.jameshao.gp22023237.service.ThesisMainService;
+import com.jameshao.gp22023237.service.ThesisProcessRecordService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +19,12 @@ import java.util.Date;
 @Service
 public class DegreeApplicationServiceImpl extends ServiceImpl<DegreeApplicationMapper, DegreeApplication>
         implements DegreeApplicationService {
+
+    @Autowired
+    private ThesisMainService thesisMainService;
+
+    @Autowired
+    private ThesisProcessRecordService thesisProcessRecordService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -73,9 +84,16 @@ public class DegreeApplicationServiceImpl extends ServiceImpl<DegreeApplicationM
             throw new IllegalStateException("分委会尚未审批通过，不能授予学位");
         }
 
-        // 检查答辩结果是否通过（defenseResult: 1=通过）
-        if (application.getDefenseResult() == null || application.getDefenseResult() != 1) {
-            throw new IllegalStateException("答辩未通过，不能授予学位");
+        // 检查答辩结果：从thesis_process_record读取（统一数据源）
+        // 查找学生的论文主记录
+        ThesisMain thesisMain = thesisMainService.getByStudentId(application.getStudentId());
+        if (thesisMain == null) {
+            throw new IllegalStateException("未找到论文记录，不能授予学位");
+        }
+        // 检查毕业论文环节(processType=7)是否已通过
+        boolean thesisPassed = thesisProcessRecordService.isProcessPassed(thesisMain.getId(), ProcessType.FINAL_THESIS.getCode());
+        if (!thesisPassed) {
+            throw new IllegalStateException("毕业论文未通过，不能授予学位");
         }
 
         // 检查证书编号唯一性

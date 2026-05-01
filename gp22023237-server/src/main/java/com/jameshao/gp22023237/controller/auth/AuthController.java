@@ -27,7 +27,7 @@ public class AuthController {
     private RedisUtils redisUtils;
 
     //登录验证
-    @Log(title = "用户登录", businessType = BusinessType.INSERT)
+    @Log(title = "用户登录", businessType = BusinessType.LOGIN)
     @RequestMapping("/login")
     public String login(@RequestBody User user){
         System.out.println(user);

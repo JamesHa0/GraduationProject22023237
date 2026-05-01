@@ -49,6 +49,7 @@ public class MenuController {
         try {
             LambdaQueryWrapper<Menu> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.like(!ObjectUtils.isEmpty(menuName), Menu::getTitle, menuName)
+                    .orderByAsc(Menu::getSort)
                     .orderByAsc(Menu::getMenusIndex);
             List<Menu> list = menuService.list(queryWrapper);
             return jsonReturn.returnSuccess(list);
@@ -65,7 +66,7 @@ public class MenuController {
     public String treeselect() {
         try {
             LambdaQueryWrapper<Menu> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.orderByAsc(Menu::getMenusIndex);
+            queryWrapper.orderByAsc(Menu::getSort).orderByAsc(Menu::getMenusIndex);
             List<Menu> list = menuService.list(queryWrapper);
             return jsonReturn.returnSuccess(buildMenuTree(list));
         } catch (Exception e) {
@@ -81,7 +82,7 @@ public class MenuController {
     public String roleMenuTreeselect(@PathVariable Integer roleId) {
         try {
             LambdaQueryWrapper<Menu> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.orderByAsc(Menu::getMenusIndex);
+            queryWrapper.orderByAsc(Menu::getSort).orderByAsc(Menu::getMenusIndex);
             List<Menu> list = menuService.list(queryWrapper);
             return jsonReturn.returnSuccess(buildMenuTree(list));
         } catch (Exception e) {
@@ -148,6 +149,21 @@ public class MenuController {
     }
 
     /**
+     * 批量更新菜单排序
+     */
+    @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/sort")
+    public String updateSort(@RequestBody List<Menu> menuList) {
+        try {
+            menuService.updateBatchById(menuList);
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
      * 构建菜单树
      * 注意：parent_id关联的是menus_index，不是id
      */
@@ -185,7 +201,7 @@ public class MenuController {
         try {
             // 1. 获取所有菜单并构建树
             LambdaQueryWrapper<Menu> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.orderByAsc(Menu::getMenusIndex);
+            queryWrapper.orderByAsc(Menu::getSort).orderByAsc(Menu::getMenusIndex);
             List<Menu> allMenus = menuService.list(queryWrapper);
             List<Menu> menuTree = buildMenuTree(allMenus);
 

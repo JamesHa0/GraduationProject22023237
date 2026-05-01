@@ -1,42 +1,34 @@
 package com.jameshao.gp22023237.controller.academic;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.jameshao.gp22023237.DTO.AcademicActivityWithDetailsDTO;
-import com.jameshao.gp22023237.DTO.AcademicAchievementWithDetailsDTO;
-import com.jameshao.gp22023237.DTO.InnovationProjectWithDetailsDTO;
-import com.jameshao.gp22023237.DTO.ReviewItemDTO;
+import com.jameshao.gp22023237.DTO.ApprovalRecordDTO;
+import com.jameshao.gp22023237.DTO.SubmissionWithDetailsDTO;
 import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
+import com.jameshao.gp22023237.common.enums.ApprovalAction;
 import com.jameshao.gp22023237.common.enums.BusinessType;
-import com.jameshao.gp22023237.mapper.AcademicActivityMapper;
-import com.jameshao.gp22023237.mapper.AcademicAchievementMapper;
-import com.jameshao.gp22023237.mapper.InnovationProjectMapper;
-import com.jameshao.gp22023237.utils.CurrentUserUtil;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import com.jameshao.gp22023237.po.AcademicAchievement;
-import com.jameshao.gp22023237.po.AcademicActivity;
-import com.jameshao.gp22023237.po.InnovationProject;
+import com.jameshao.gp22023237.common.enums.ContentType;
+
+import com.jameshao.gp22023237.common.enums.SubmitterType;
+import com.jameshao.gp22023237.po.AcademicSubmission;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
-import com.jameshao.gp22023237.service.AcademicActivityService;
-import com.jameshao.gp22023237.service.AcademicAchievementService;
-import com.jameshao.gp22023237.service.InnovationProjectService;
+import com.jameshao.gp22023237.service.AcademicSubmissionService;
 import com.jameshao.gp22023237.service.MentorStudentService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.*;
+
 /**
- * 学术管理控制器
- * 负责处理学术活动、创新项目、学术成果的提交和审批流程
- * 支持导师、教学秘书、分管院长三级审批体系
+ * 学术管理控制器（重构版）
+ * 基于 academic_submission 主表 + 详情子表 + 审批记录子表
+ * 保留旧API路径兼容前端，内部切换到新表结构
  * 路径前缀: /academic
  */
 @RestController
@@ -47,22 +39,7 @@ public class AcademicManagementController {
     private JSONReturn jsonReturn;
 
     @Autowired
-    private AcademicActivityService academicActivityService;
-
-    @Autowired
-    private AcademicActivityMapper academicActivityMapper;
-
-    @Autowired
-    private InnovationProjectService innovationProjectService;
-
-    @Autowired
-    private InnovationProjectMapper innovationProjectMapper;
-
-    @Autowired
-    private AcademicAchievementService academicAchievementService;
-
-    @Autowired
-    private AcademicAchievementMapper academicAchievementMapper;
+    private AcademicSubmissionService submissionService;
 
     @Autowired
     private StudentService studentService;
@@ -73,271 +50,170 @@ public class AcademicManagementController {
     @Autowired
     private MentorStudentService mentorStudentService;
 
-    /**
-     * 权限过滤结果类
-     */
-    private static class FilterResult {
-        Long studentId;
-        List<Long> studentIds;
-
-        FilterResult(Long studentId, List<Long> studentIds) {
-            this.studentId = studentId;
-            this.studentIds = studentIds;
-        }
-    }
-
     // ==================== 权限辅助方法 ====================
 
-    /**
-     * 获取当前登录学生的ID
-     * 如果当前用户是学生角色，则返回对应的studentId
-     * 否则返回null
-     * @return 学生ID或null
-     */
     private Long getCurrentStudentId() {
         Integer roleId = CurrentUserUtil.getCurrentRoleId();
-        // 角色ID: 1-学生
-        if (roleId != null && roleId == 1) {
+        if (roleId != null && roleId == 6) {
             Long userId = CurrentUserUtil.getCurrentUserId();
             if (userId != null) {
-                // 根据userId查询对应的student记录
-                LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(Student::getUserId, userId);
-                Student student = studentService.getOne(queryWrapper);
-                if (student != null) {
-                    return student.getId();
-                }
+                LambdaQueryWrapper<Student> qw = new LambdaQueryWrapper<>();
+                qw.eq(Student::getUserId, userId);
+                Student student = studentService.getOne(qw);
+                return student != null ? student.getId() : null;
             }
         }
         return null;
     }
 
-    /**
-     * 获取当前登录导师的教师ID
-     * @return 教师ID或null
-     */
     private Long getCurrentMentorTeacherId() {
         Integer roleId = CurrentUserUtil.getCurrentRoleId();
-        // 角色ID: 3-指导教师
-        if (roleId != null && roleId == 3) {
+        if (roleId != null && (roleId == 7 || roleId == 8)) {
             Long userId = CurrentUserUtil.getCurrentUserId();
             if (userId != null) {
-                // 根据userId查询对应的teacher记录
-                LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(Teacher::getUserId, userId);
-                Teacher teacher = teacherService.getOne(queryWrapper);
-                if (teacher != null) {
-                    return teacher.getId();
-                }
+                LambdaQueryWrapper<Teacher> qw = new LambdaQueryWrapper<>();
+                qw.eq(Teacher::getUserId, userId);
+                Teacher teacher = teacherService.getOne(qw);
+                return teacher != null ? teacher.getId() : null;
             }
         }
         return null;
     }
 
-    /**
-     * 获取导师的学生ID列表
-     * @param mentorId 导师ID
-     * @return 学生ID列表
-     */
     private List<Long> getMentorStudentIds(Long mentorId) {
         List<Long> studentIds = new ArrayList<>();
-        if (mentorId == null) {
-            return studentIds;
-        }
-        // 查询导师确认的学生关系（teacherStatus = 1 表示已确认）
-        LambdaQueryWrapper<MentorStudent> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(MentorStudent::getMentorId, mentorId)
-                .eq(MentorStudent::getTeacherStatus, 1);
-        List<MentorStudent> relations = mentorStudentService.list(queryWrapper);
-        for (MentorStudent relation : relations) {
-            if (relation.getStudentId() != null) {
-                studentIds.add(relation.getStudentId());
-            }
+        if (mentorId == null) return studentIds;
+        LambdaQueryWrapper<MentorStudent> qw = new LambdaQueryWrapper<>();
+        qw.eq(MentorStudent::getMentorId, mentorId)
+          .eq(MentorStudent::getTeacherStatus, 1)
+          .eq(MentorStudent::getStudentStatus, 1);
+        List<MentorStudent> relations = mentorStudentService.list(qw);
+        for (MentorStudent r : relations) {
+            if (r.getStudentId() != null) studentIds.add(r.getStudentId());
         }
         return studentIds;
     }
 
     /**
-     * 智能过滤学生ID参数
-     * - 学生角色：只能看到自己的数据
-     * - 导师角色：只能看到自己学生的数据
-     * - 其他角色：可以看到所有数据
-     * @param requestedStudentId 请求传入的studentId
-     * @return 过滤结果（包含单个studentId和studentIds列表）
+     * 判断当前用户是否为该提交记录的提交人
      */
-    private FilterResult filterStudentIds(Long requestedStudentId) {
-        // 首先检查是否是学生
+    private boolean isOwnerOfSubmission(SubmissionWithDetailsDTO detail) {
         Long currentStudentId = getCurrentStudentId();
         if (currentStudentId != null) {
-            // 学生角色，只能看到自己的数据
-            return new FilterResult(currentStudentId, null);
+            // 学生：检查studentId匹配
+            return currentStudentId.equals(detail.getStudentId());
         }
-
-        // 然后检查是否是导师
         Long mentorTeacherId = getCurrentMentorTeacherId();
         if (mentorTeacherId != null) {
-            // 导师角色，获取自己的学生列表
-            List<Long> studentIds = getMentorStudentIds(mentorTeacherId);
-            return new FilterResult(null, studentIds);
+            // 导师：检查submitterId+submitterType匹配
+            return mentorTeacherId.equals(detail.getSubmitterId())
+                    && detail.getSubmitterType() != null
+                    && detail.getSubmitterType() == SubmitterType.MENTOR.getCode();
         }
-
-        // 其他角色，使用请求传入的参数（可以为null表示查看所有）
-        return new FilterResult(requestedStudentId, null);
+        Long userId = CurrentUserUtil.getCurrentUserId();
+        if (userId != null) {
+            // 管理员等其他角色：检查submitterId+submitterType匹配
+            return userId.equals(detail.getSubmitterId())
+                    && detail.getSubmitterType() != null
+                    && detail.getSubmitterType() == SubmitterType.ADMIN.getCode();
+        }
+        return false;
     }
 
-    // ==================== 学术活动管理 ====================
-
     /**
-     * 学生提交学术活动申请
-     * @param activity 学术活动实体对象，包含活动类型、时间、地点、内容等信息
-     * @return 提交结果JSON
+     * 判断当前用户是否为该提交记录的审批人
      */
-    @PostMapping("/activity/submit")
-    public String submitActivity(@RequestBody AcademicActivity activity) {
-        try {
-            // 学生提交时自动设置studentId
-            Long currentStudentId = getCurrentStudentId();
-            if (currentStudentId != null) {
-                activity.setStudentId(currentStudentId);
+    private boolean isApproverOfSubmission(SubmissionWithDetailsDTO detail) {
+        Long[] approverInfo = getCurrentApproverInfo();
+        if (approverInfo == null) return false;
+
+        // 管理员/秘书/院长可以查看所有待审批记录
+        if (CurrentUserUtil.isRoundAdmin() || CurrentUserUtil.isDean() || CurrentUserUtil.isSecretary()) {
+            return true;
+        }
+
+        // 导师：只能查看自己学生的提交
+        if (approverInfo[1] == 2L) {
+            Long mentorId = getCurrentMentorTeacherId();
+            if (mentorId != null) {
+                List<Long> studentIds = getMentorStudentIds(mentorId);
+                return studentIds.contains(detail.getStudentId());
             }
-            boolean success = academicActivityService.submitActivity(activity);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
         }
+        return false;
     }
 
     /**
-     * 获取学术活动列表（支持分页和条件查询）
-     * @param pageNum 页码（默认1）
-     * @param pageSize 每页大小（默认10）
-     * @param studentId 学生ID（可选，用于查询特定学生的活动）
-     * @param activityType 活动类型（可选）
-     * @param status 审批状态过滤器（可选）：1-待导师审批，2-待秘书审批，3-待院长审批
-     * @return 分页活动列表
+     * 获取当前审批人ID和类型
+     * @return [approverId, approverType] 或 null
      */
-    @GetMapping("/activity/list")
-    public String getActivityList(@RequestParam(defaultValue = "1") Integer pageNum,
-                                 @RequestParam(defaultValue = "10") Integer pageSize,
-                                 @RequestParam(required = false) Long studentId,
-                                 @RequestParam(required = false) Integer activityType,
-                                 @RequestParam(required = false) Integer status) {
-        try {
-            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
-            FilterResult filterResult = filterStudentIds(studentId);
-            List<AcademicActivityWithDetailsDTO> list = academicActivityMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, activityType, status);
+    private Long[] getCurrentApproverInfo() {
+        Long approverId = null;
+        Integer approverType = null;
 
-            // 手动分页
-            int total = list.size();
-            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<AcademicActivityWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("records", pageList);
-            result.put("total", total);
-            result.put("size", pageSize);
-            result.put("current", pageNum);
-
-            return jsonReturn.returnSuccess(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
+        Long mentorTeacherId = getCurrentMentorTeacherId();
+        if (mentorTeacherId != null) {
+            // 导师(roleId=7)或任课教师(roleId=8)均可作为导师审批人
+            approverId = mentorTeacherId;
+            approverType = 2; // 导师
+        } else if (CurrentUserUtil.isSecretary()) {
+            approverId = CurrentUserUtil.getCurrentUserId();
+            approverType = 5; // 教学秘书
+        } else if (CurrentUserUtil.isDean()) {
+            approverId = CurrentUserUtil.getCurrentUserId();
+            approverType = 1; // 分管院长
         }
+
+        return (approverId != null && approverType != null) ? new Long[]{approverId, Long.valueOf(approverType)} : null;
     }
 
-    @GetMapping("/activity/{id}")
-    public String getActivityDetail(@PathVariable Long id) {
-        try {
-            AcademicActivityWithDetailsDTO activity = academicActivityMapper.getDetailWithDetails(id);
-            return activity != null ? jsonReturn.returnSuccess(activity) : jsonReturn.returnFailed("未找到记录");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+    // ==================== 统一提交接口 ====================
 
-    @PostMapping("/activity/mentor/approve")
-    public String activityMentorApprove(@RequestParam Long id,
-                                        @RequestParam Integer status,
-                                        @RequestParam(required = false) String comment) {
+    /**
+     * 统一提交接口（支持学术活动、学术成果、创新创业）
+     */
+    @PostMapping("/submit")
+    public String submitContent(@RequestBody Map<String, Object> params) {
         try {
-            boolean success = academicActivityService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+            AcademicSubmission submission = new AcademicSubmission();
+            submission.setContentType(getIntParam(params, "contentType"));
+            submission.setTitle(getStringParam(params, "title"));
+            submission.setAbstractContent(getStringParam(params, "abstractContent"));
 
-    @PostMapping("/activity/secretary/approve")
-    public String activitySecretaryApprove(@RequestParam Long id,
-                                         @RequestParam Integer status,
-                                         @RequestParam(required = false) String comment) {
-        try {
-            boolean success = academicActivityService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+            // 仅允许学生提交
+            Long currentStudentId = getCurrentStudentId();
+            if (currentStudentId == null) {
+                return jsonReturn.returnFailed("仅学生可提交学术内容");
+            }
+            submission.setStudentId(currentStudentId);
+            submission.setSubmitterId(currentStudentId);
+            submission.setSubmitterType(SubmitterType.STUDENT.getCode());
 
-    @PostMapping("/activity/dean/approve")
-    public String activityDeanApprove(@RequestParam Long id,
-                                     @RequestParam Integer status,
-                                     @RequestParam(required = false) String comment) {
-        try {
-            boolean success = academicActivityService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    // 统一的学术活动审批接口（根据用户角色自动调用对应的审批方法）
-    @PostMapping("/activity/approve")
-    public String approveActivity(@RequestBody Map<String, Object> params) {
-        try {
-            Long id = Long.valueOf(params.get("id").toString());
-            Integer status = Integer.valueOf(params.get("status").toString());
-            String comment = params.get("comment") != null ? params.get("comment").toString() : null;
-
-            boolean success;
-            if (CurrentUserUtil.isMentor()) {
-                // 导师审批
-                success = academicActivityService.mentorApprove(id, status, comment);
-            } else if (CurrentUserUtil.isSecretary()) {
-                // 教学秘书审批
-                success = academicActivityService.secretaryApprove(id, status, comment);
-            } else if (CurrentUserUtil.isDean()) {
-                // 分管院长审批
-                success = academicActivityService.deanApprove(id, status, comment);
+            // 附件：前端传 fileUrls 为 JSON 字符串或逗号分隔
+            Object fileUrlsObj = params.get("fileUrls");
+            if (fileUrlsObj != null) {
+                submission.setFileUrls(fileUrlsObj.toString());
             } else {
-                // 其他角色不允许审批
-                return jsonReturn.returnFailed("无审批权限");
+                // 兼容旧字段 attachmentPath
+                String attachmentPath = getStringParam(params, "attachmentPath");
+                if (attachmentPath != null && !attachmentPath.isEmpty()) {
+                    submission.setFileUrls("[\"" + attachmentPath + "\"]");
+                }
             }
 
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+            // 设置提交时间
+            submission.setSubmitTime(new Date());
 
-    // ==================== 创新创业项目管理 ====================
-
-    @PostMapping("/innovation/submit")
-    public String submitProject(@RequestBody InnovationProject project) {
-        try {
-            // 学生提交时自动设置studentId
-            Long currentStudentId = getCurrentStudentId();
-            if (currentStudentId != null) {
-                project.setStudentId(currentStudentId);
+            // 子表数据直接传整个 detail 对象
+            @SuppressWarnings("unchecked")
+            Map<String, Object> detailData = (Map<String, Object>) params.get("detail");
+            if (detailData == null) {
+                detailData = new HashMap<>();
+                // 兼容旧格式：字段直接平铺在 params 中
+                copyDetailFields(params, detailData, submission.getContentType());
             }
-            boolean success = innovationProjectService.submitProject(project);
+
+            boolean success = submissionService.submitContent(submission, detailData);
             return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -345,102 +221,102 @@ public class AcademicManagementController {
         }
     }
 
-    @GetMapping("/innovation/list")
-    public String getProjectList(@RequestParam(defaultValue = "1") Integer pageNum,
-                                  @RequestParam(defaultValue = "10") Integer pageSize,
-                                  @RequestParam(required = false) Long studentId,
-                                  @RequestParam(required = false) Integer projectType,
-                                  @RequestParam(required = false) Integer status) {
-        try {
-            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
-            FilterResult filterResult = filterStudentIds(studentId);
-            List<InnovationProjectWithDetailsDTO> list = innovationProjectMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, projectType, status);
+    // ==================== 兼容旧API路径的提交接口 ====================
 
-            // 手动分页
-            int total = list.size();
-            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<InnovationProjectWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("records", pageList);
-            result.put("total", total);
-            result.put("size", pageSize);
-            result.put("current", pageNum);
-
-            return jsonReturn.returnSuccess(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
+    @PostMapping("/activity/submit")
+    public String submitActivity(@RequestBody Map<String, Object> params) {
+        params.put("contentType", ContentType.ACTIVITY.getCode());
+        if (!params.containsKey("title")) params.put("title", params.get("activityName"));
+        return submitContent(params);
     }
-
-    @GetMapping("/innovation/{id}")
-    public String getProjectDetail(@PathVariable Long id) {
-        try {
-            InnovationProjectWithDetailsDTO project = innovationProjectMapper.getDetailWithDetails(id);
-            return project != null ? jsonReturn.returnSuccess(project) : jsonReturn.returnFailed("未找到记录");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/innovation/mentor/approve")
-    public String projectMentorApprove(@RequestParam Long id,
-                                         @RequestParam Integer status,
-                                         @RequestParam(required = false) String comment) {
-        try {
-            boolean success = innovationProjectService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/innovation/secretary/approve")
-    public String projectSecretaryApprove(@RequestParam Long id,
-                                        @RequestParam Integer status,
-                                        @RequestParam(required = false) String comment) {
-        try {
-            boolean success = innovationProjectService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    @PostMapping("/innovation/dean/approve")
-    public String projectDeanApprove(@RequestParam Long id,
-                                     @RequestParam Integer status,
-                                     @RequestParam(required = false) String comment) {
-        try {
-            boolean success = innovationProjectService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    // ==================== 学术成果管理 ====================
 
     @PostMapping("/achievement/submit")
-    public String submitAchievement(@RequestBody AcademicAchievement achievement) {
+    public String submitAchievement(@RequestBody Map<String, Object> params) {
+        params.put("contentType", ContentType.ACHIEVEMENT.getCode());
+        return submitContent(params);
+    }
+
+    @PostMapping("/innovation/submit")
+    public String submitProject(@RequestBody Map<String, Object> params) {
+        params.put("contentType", ContentType.INNOVATION.getCode());
+        if (!params.containsKey("title")) params.put("title", params.get("projectName"));
+        return submitContent(params);
+    }
+
+    // ==================== 统一列表接口 ====================
+
+    /**
+     * 统一列表接口
+     */
+    @GetMapping("/list")
+    public String getSubmissionList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                     @RequestParam(defaultValue = "10") Integer pageSize,
+                                     @RequestParam(required = false) Long studentId,
+                                     @RequestParam(required = false) Integer contentType,
+                                     @RequestParam(required = false) Integer approvalStatus,
+                                     @RequestParam(required = false) Integer subType) {
         try {
-            // 学生提交时自动设置studentId
+            // 根据当前用户角色确定过滤方式
+            Long filterStudentId = null;
+            List<Long> filterStudentIds = null;
+            Long filterSubmitterId = null;
+            Integer filterSubmitterType = null;
+
             Long currentStudentId = getCurrentStudentId();
             if (currentStudentId != null) {
-                achievement.setStudentId(currentStudentId);
+                // 学生：按student_id过滤
+                filterStudentId = currentStudentId;
+            } else {
+                Long mentorTeacherId = getCurrentMentorTeacherId();
+                if (mentorTeacherId != null) {
+                    // 导师：按submitter_id+type过滤
+                    filterSubmitterId = mentorTeacherId;
+                    filterSubmitterType = SubmitterType.MENTOR.getCode();
+                } else {
+                    Long userId = CurrentUserUtil.getCurrentUserId();
+                    if (userId != null) {
+                        // 管理员等其他角色：按submitter_id+type过滤
+                        filterSubmitterId = userId;
+                        filterSubmitterType = SubmitterType.ADMIN.getCode();
+                    } else {
+                        // 无法识别身份：返回空
+                        filterStudentIds = new ArrayList<>();
+                    }
+                }
             }
-            boolean success = academicAchievementService.submitAchievement(achievement);
-            return success ? jsonReturn.returnSuccess("提交成功") : jsonReturn.returnFailed("提交失败");
+
+            List<SubmissionWithDetailsDTO> list = submissionService.listWithDetails(
+                    filterStudentId, filterStudentIds, contentType, approvalStatus, subType,
+                    filterSubmitterId, filterSubmitterType);
+
+            // 手动分页
+            int total = list.size();
+            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<SubmissionWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", pageList);
+            result.put("total", total);
+            result.put("size", pageSize);
+            result.put("current", pageNum);
+            return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
+    }
+
+    // 兼容旧API路径
+    @GetMapping("/activity/list")
+    public String getActivityList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                   @RequestParam(defaultValue = "10") Integer pageSize,
+                                   @RequestParam(required = false) Long studentId,
+                                   @RequestParam(required = false) Integer activityType,
+                                   @RequestParam(required = false) Integer status) {
+        // 旧 status 映射: 1=待导师审批, 2=待秘书审批, 3=待院长审批
+        Integer approvalStatus = mapOldStatusToNew(status);
+        return getSubmissionList(pageNum, pageSize, studentId, ContentType.ACTIVITY.getCode(), approvalStatus, activityType);
     }
 
     @GetMapping("/achievement/list")
@@ -449,99 +325,84 @@ public class AcademicManagementController {
                                       @RequestParam(required = false) Long studentId,
                                       @RequestParam(required = false) Integer achievementType,
                                       @RequestParam(required = false) Integer status) {
+        Integer approvalStatus = mapOldStatusToNew(status);
+        return getSubmissionList(pageNum, pageSize, studentId, ContentType.ACHIEVEMENT.getCode(), approvalStatus, achievementType);
+    }
+
+    @GetMapping("/innovation/list")
+    public String getProjectList(@RequestParam(defaultValue = "1") Integer pageNum,
+                                  @RequestParam(defaultValue = "10") Integer pageSize,
+                                  @RequestParam(required = false) Long studentId,
+                                  @RequestParam(required = false) Integer projectType,
+                                  @RequestParam(required = false) Integer status) {
+        Integer approvalStatus = mapOldStatusToNew(status);
+        return getSubmissionList(pageNum, pageSize, studentId, ContentType.INNOVATION.getCode(), approvalStatus, projectType);
+    }
+
+    // ==================== 统一详情接口 ====================
+
+    @GetMapping("/detail/{id}")
+    public String getDetail(@PathVariable Long id) {
         try {
-            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
-            FilterResult filterResult = filterStudentIds(studentId);
-            List<AcademicAchievementWithDetailsDTO> list = academicAchievementMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, achievementType, status);
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) return jsonReturn.returnFailed("未找到记录");
 
-            // 手动分页
-            int total = list.size();
-            int fromIndex = Math.min((pageNum - 1) * pageSize, total);
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<AcademicAchievementWithDetailsDTO> pageList = list.subList(fromIndex, toIndex);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("records", pageList);
-            result.put("total", total);
-            result.put("size", pageSize);
-            result.put("current", pageNum);
-
-            return jsonReturn.returnSuccess(result);
+            // 权限校验：提交人本人 或 审批人可查看
+            if (isOwnerOfSubmission(detail) || isApproverOfSubmission(detail)) {
+                return jsonReturn.returnSuccess(detail);
+            }
+            return jsonReturn.returnFailed("无权查看该记录");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
+    }
+
+    @GetMapping("/activity/{id}")
+    public String getActivityDetail(@PathVariable Long id) {
+        return getDetail(id);
     }
 
     @GetMapping("/achievement/{id}")
     public String getAchievementDetail(@PathVariable Long id) {
-        try {
-            AcademicAchievementWithDetailsDTO achievement = academicAchievementMapper.getDetailWithDetails(id);
-            return achievement != null ? jsonReturn.returnSuccess(achievement) : jsonReturn.returnFailed("未找到记录");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
+        return getDetail(id);
     }
 
-    @PostMapping("/achievement/mentor/approve")
-    public String achievementMentorApprove(@RequestParam Long id,
-                                            @RequestParam Integer status,
-                                            @RequestParam(required = false) String comment) {
-        try {
-            boolean success = academicAchievementService.mentorApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
+    @GetMapping("/innovation/{id}")
+    public String getProjectDetail(@PathVariable Long id) {
+        return getDetail(id);
     }
 
-    @PostMapping("/achievement/secretary/approve")
-    public String achievementSecretaryApprove(@RequestParam Long id,
-                                             @RequestParam Integer status,
-                                             @RequestParam(required = false) String comment) {
-        try {
-            boolean success = academicAchievementService.secretaryApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+    // ==================== 统一审批接口 ====================
 
-    @PostMapping("/achievement/dean/approve")
-    public String achievementDeanApprove(@RequestParam Long id,
-                                       @RequestParam Integer status,
-            @RequestParam(required = false) String comment) {
-        try {
-            boolean success = academicAchievementService.deanApprove(id, status, comment);
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
-
-    // 统一的创新项目审批接口（根据用户角色自动调用对应的审批方法）
-    @PostMapping("/innovation/approve")
-    public String approveProject(@RequestBody Map<String, Object> params) {
+    /**
+     * 统一审批接口（新）
+     * @param params 包含: id(提交记录ID), action(2=通过,3=驳回), comment(审批意见), reviewerFileUrls(审批人附件URL)
+     */
+    @PostMapping("/approve")
+    public String approve(@RequestBody Map<String, Object> params) {
         try {
             Long id = Long.valueOf(params.get("id").toString());
-            Integer status = Integer.valueOf(params.get("status").toString());
+            Integer action = Integer.valueOf(params.get("action").toString());
             String comment = params.get("comment") != null ? params.get("comment").toString() : null;
+            String reviewerFileUrls = params.get("reviewerFileUrls") != null ? params.get("reviewerFileUrls").toString() : null;
 
-            boolean success;
-            if (CurrentUserUtil.isMentor()) {
-                success = innovationProjectService.mentorApprove(id, status, comment);
-            } else if (CurrentUserUtil.isSecretary()) {
-                success = innovationProjectService.secretaryApprove(id, status, comment);
-            } else if (CurrentUserUtil.isDean()) {
-                success = innovationProjectService.deanApprove(id, status, comment);
-            } else {
+            // 获取当前审批人信息
+            Long[] approverInfo = getCurrentApproverInfo();
+            if (approverInfo == null) {
                 return jsonReturn.returnFailed("无审批权限");
             }
 
+            // 校验审批人是否有权审批该提交
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) {
+                return jsonReturn.returnFailed("未找到记录");
+            }
+            if (!isApproverOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权审批该记录");
+            }
+
+            boolean success = submissionService.approve(id, approverInfo[0], approverInfo[1].intValue(), action, comment, reviewerFileUrls);
             return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
@@ -550,130 +411,181 @@ public class AcademicManagementController {
     }
 
     /**
-     * 统一的学术成果审批接口（根据用户角色自动调用对应的审批方法）
-     * 自动识别当前登录用户角色：
-     * - 导师角色调用导师审批方法
-     * - 教学秘书角色调用秘书审批方法
-     * - 分管院长角色调用院长审批方法
-     * - 其他角色返回无权限错误
-     * @param params 审批参数，包含：
-     *               - id: 成果ID
-     *               - status: 审批状态（1-同意，2-拒绝）
-     *               - comment: 审批意见（可选）
-     * @return 审批结果JSON
+     * 兼容旧审批接口（前端传 status: 1=通过, 2=驳回）
      */
+    @PostMapping("/activity/approve")
+    public String approveActivity(@RequestBody Map<String, Object> params) {
+        return approveCompat(params);
+    }
+
     @PostMapping("/achievement/approve")
     public String approveAchievement(@RequestBody Map<String, Object> params) {
-        try {
-            Long id = Long.valueOf(params.get("id").toString());
-            Integer status = Integer.valueOf(params.get("status").toString());
-            String comment = params.get("comment") != null ? params.get("comment").toString() : null;
+        return approveCompat(params);
+    }
 
-            boolean success;
-            if (CurrentUserUtil.isMentor()) {
-                // 导师审批
-                success = academicAchievementService.mentorApprove(id, status, comment);
-            } else if (CurrentUserUtil.isSecretary()) {
-                // 教学秘书审批
-                success = academicAchievementService.secretaryApprove(id, status, comment);
-            } else if (CurrentUserUtil.isDean()) {
-                // 分管院长审批
-                success = academicAchievementService.deanApprove(id, status, comment);
-            } else {
-                // 其他角色不允许审批
-                return jsonReturn.returnFailed("无审批权限");
+    @PostMapping("/innovation/approve")
+    public String approveProject(@RequestBody Map<String, Object> params) {
+        return approveCompat(params);
+    }
+
+    // 旧的三级审批接口兼容（增加角色校验）
+    @PostMapping("/activity/mentor/approve")
+    public String activityMentorApprove(@RequestParam Long id, @RequestParam Integer status,
+                                         @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return mentorApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/activity/secretary/approve")
+    public String activitySecretaryApprove(@RequestParam Long id, @RequestParam Integer status,
+                                            @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return secretaryApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/activity/dean/approve")
+    public String activityDeanApprove(@RequestParam Long id, @RequestParam Integer status,
+                                       @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return deanApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/achievement/mentor/approve")
+    public String achievementMentorApprove(@RequestParam Long id, @RequestParam Integer status,
+                                            @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return mentorApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/achievement/secretary/approve")
+    public String achievementSecretaryApprove(@RequestParam Long id, @RequestParam Integer status,
+                                               @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return secretaryApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/achievement/dean/approve")
+    public String achievementDeanApprove(@RequestParam Long id, @RequestParam Integer status,
+                                          @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return deanApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/innovation/mentor/approve")
+    public String projectMentorApprove(@RequestParam Long id, @RequestParam Integer status,
+                                        @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return mentorApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/innovation/secretary/approve")
+    public String projectSecretaryApprove(@RequestParam Long id, @RequestParam Integer status,
+                                           @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return secretaryApproveCompat(id, status, comment);
+    }
+
+    @PostMapping("/innovation/dean/approve")
+    public String projectDeanApprove(@RequestParam Long id, @RequestParam Integer status,
+                                      @RequestParam(required = false) String comment) throws JsonProcessingException {
+        return deanApproveCompat(id, status, comment);
+    }
+
+    // ==================== 删除接口 ====================
+
+    @Log(title = "学术管理", businessType = BusinessType.DELETE)
+    @PostMapping("/delete")
+    public String deleteContent(@RequestParam Long id) {
+        try {
+            // 获取记录检查状态和归属
+            com.jameshao.gp22023237.DTO.SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) return jsonReturn.returnFailed("未找到记录");
+
+            // 权限校验：仅允许提交人本人删除
+            if (!isOwnerOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权删除该记录");
             }
 
-            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+            // 只有草稿(0)和已驳回(5)状态可删除
+            if (detail.getApprovalStatus() != null
+                    && detail.getApprovalStatus() != 0
+                    && detail.getApprovalStatus() != 5) {
+                return jsonReturn.returnFailed("当前状态不允许删除，仅草稿和已驳回状态可删除");
+            }
+
+            boolean success = submissionService.softDelete(id);
+            return success ? jsonReturn.returnSuccess("删除成功") : jsonReturn.returnFailed("删除失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
+    }
+
+    @PostMapping("/activity/delete")
+    public String deleteActivity(@RequestParam Long id) {
+        return deleteContent(id);
     }
 
     @PostMapping("/achievement/delete")
     public String deleteAchievement(@RequestParam Long id) {
-        try {
-            boolean success = academicAchievementService.removeById(id);
-            return success ? jsonReturn.returnSuccess("删除成功") : jsonReturn.returnFailed("删除失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
+        return deleteContent(id);
     }
 
     @PostMapping("/innovation/delete")
     public String deleteProject(@RequestParam Long id) {
-        try {
-            boolean success = innovationProjectService.removeById(id);
-            return success ? jsonReturn.returnSuccess("删除成功") : jsonReturn.returnFailed("删除失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
+        return deleteContent(id);
     }
 
-    @Log(title = "学术管理", businessType = BusinessType.DELETE)
-    @PostMapping("/activity/delete")
-    public String deleteActivity(@RequestParam Long id) {
-        try {
-            boolean success = academicActivityService.removeById(id);
-            return success ? jsonReturn.returnSuccess("删除成功") : jsonReturn.returnFailed("删除失败");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return jsonReturn.returnError(e.getMessage());
-        }
-    }
+    // ==================== 审核管理 ====================
 
-    // ==================== 统一审核管理 ====================
-
-    /**
-     * 获取统一审核列表
-     * 汇总学术活动、创新项目、学术成果三类待审批内容
-     * 根据当前用户角色返回对应待审批项
-     */
     @GetMapping("/review/list")
     public String getReviewList(@RequestParam(defaultValue = "1") Integer pageNum,
                                  @RequestParam(defaultValue = "10") Integer pageSize,
                                  @RequestParam(required = false) Integer type,
                                  @RequestParam(required = false) Integer status) {
         try {
-            java.util.List<ReviewItemDTO> allItems = new java.util.ArrayList<>();
+            Long currentStudentId = getCurrentStudentId();
+            Long mentorId = getCurrentMentorTeacherId();
 
-            // 权限过滤：学生只能看到自己的数据，导师只能看到自己学生的数据
-            FilterResult filterResult = filterStudentIds(null);
+            Long filterStudentId = null;
+            List<Long> filterStudentIds = null;
+            boolean isSuperAdmin = CurrentUserUtil.isRoundAdmin() || CurrentUserUtil.isDean() || CurrentUserUtil.isSecretary();
 
-            // 查询学术活动
-            if (type == null || type == 1) {
-                List<AcademicActivityWithDetailsDTO> activities = academicActivityMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
-                for (AcademicActivityWithDetailsDTO activity : activities) {
-                    ReviewItemDTO item = convertToReviewItem(activity, 1);
-                    if (item != null && (status == null || item.getStatus() == status)) {
-                        allItems.add(item);
-                    }
+            if (currentStudentId != null) {
+                // 学生：只能看到自己提交的
+                filterStudentId = currentStudentId;
+            } else if (mentorId != null) {
+                // 导师：只能看到自己学生的提交
+                filterStudentIds = getMentorStudentIds(mentorId);
+                if (filterStudentIds.isEmpty()) {
+                    // 导师没有关联学生，直接返回空列表
+                    Map<String, Object> emptyResult = new HashMap<>();
+                    emptyResult.put("records", new ArrayList<>());
+                    emptyResult.put("total", 0);
+                    emptyResult.put("size", pageSize);
+                    emptyResult.put("current", pageNum);
+                    return jsonReturn.returnSuccess(emptyResult);
                 }
+            } else if (!isSuperAdmin) {
+                // 非管理员/秘书/院长，且非学生/导师，返回空列表
+                Map<String, Object> emptyResult = new HashMap<>();
+                emptyResult.put("records", new ArrayList<>());
+                emptyResult.put("total", 0);
+                emptyResult.put("size", pageSize);
+                emptyResult.put("current", pageNum);
+                return jsonReturn.returnSuccess(emptyResult);
             }
+            // 管理员/秘书/院长可以看到所有（filterStudentId 和 filterStudentIds 都为 null）
 
-            // 查询创新项目
-            if (type == null || type == 2) {
-                List<InnovationProjectWithDetailsDTO> projects = innovationProjectMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
-                for (InnovationProjectWithDetailsDTO project : projects) {
-                    ReviewItemDTO item = convertToReviewItem(project, 2);
-                    if (item != null && (status == null || item.getStatus() == status)) {
-                        allItems.add(item);
-                    }
-                }
+            // 根据 status 参数筛选
+            Integer filterApprovalStatus = status;
+
+            List<SubmissionWithDetailsDTO> allItems = new ArrayList<>();
+
+            // type参数对齐ContentType编码：1=ACTIVITY, 2=ACHIEVEMENT, 3=INNOVATION
+            if (type == null || type == ContentType.ACTIVITY.getCode()) {
+                allItems.addAll(submissionService.listWithDetails(
+                        filterStudentId, filterStudentIds, ContentType.ACTIVITY.getCode(), filterApprovalStatus, null, null, null));
             }
-
-            // 查询学术成果
-            if (type == null || type == 3) {
-                List<AcademicAchievementWithDetailsDTO> achievements = academicAchievementMapper.listWithDetails(filterResult.studentId, filterResult.studentIds, null, null);
-                for (AcademicAchievementWithDetailsDTO achievement : achievements) {
-                    ReviewItemDTO item = convertToReviewItem(achievement, 3);
-                    if (item != null && (status == null || item.getStatus() == status)) {
-                        allItems.add(item);
-                    }
-                }
+            if (type == null || type == ContentType.ACHIEVEMENT.getCode()) {
+                allItems.addAll(submissionService.listWithDetails(
+                        filterStudentId, filterStudentIds, ContentType.ACHIEVEMENT.getCode(), filterApprovalStatus, null, null, null));
+            }
+            if (type == null || type == ContentType.INNOVATION.getCode()) {
+                allItems.addAll(submissionService.listWithDetails(
+                        filterStudentId, filterStudentIds, ContentType.INNOVATION.getCode(), filterApprovalStatus, null, null, null));
             }
 
             // 按提交时间排序
@@ -687,14 +599,13 @@ public class AcademicManagementController {
             int total = allItems.size();
             int fromIndex = Math.min((pageNum - 1) * pageSize, total);
             int toIndex = Math.min(fromIndex + pageSize, total);
-            List<ReviewItemDTO> pageList = allItems.subList(fromIndex, toIndex);
+            List<SubmissionWithDetailsDTO> pageList = allItems.subList(fromIndex, toIndex);
 
             Map<String, Object> result = new HashMap<>();
             result.put("records", pageList);
             result.put("total", total);
             result.put("size", pageSize);
             result.put("current", pageNum);
-
             return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -702,161 +613,230 @@ public class AcademicManagementController {
         }
     }
 
-    /**
-     * 统一审批接口
-     */
     @PostMapping("/review/approve")
     public String approveReview(@RequestBody Map<String, Object> params) {
         try {
             Long id = Long.valueOf(params.get("id").toString());
-            Integer type = Integer.valueOf(params.get("type").toString());
-            Integer status = Integer.valueOf(params.get("status").toString());
+            Integer oldStatus = params.get("status") != null ? Integer.valueOf(params.get("status").toString()) : null;
             String comment = params.get("comment") != null ? params.get("comment").toString() : null;
+            String reviewerFileUrls = params.get("reviewerFileUrls") != null ? params.get("reviewerFileUrls").toString() : null;
 
-            boolean success = false;
+            // 旧 status: 1=通过, 2=驳回 → 新 action: 2=通过, 3=驳回
+            Integer action = (oldStatus != null && oldStatus == 2) ? ApprovalAction.REJECT.getCode() : ApprovalAction.APPROVE.getCode();
 
-            if (type == 1) {
-                // 学术活动审批
-                if (CurrentUserUtil.isMentor()) {
-                    success = academicActivityService.mentorApprove(id, status, comment);
-                } else if (CurrentUserUtil.isSecretary()) {
-                    success = academicActivityService.secretaryApprove(id, status, comment);
-                } else if (CurrentUserUtil.isDean()) {
-                    success = academicActivityService.deanApprove(id, status, comment);
-                }
-            } else if (type == 2) {
-                // 创新项目审批
-                if (CurrentUserUtil.isMentor()) {
-                    success = innovationProjectService.mentorApprove(id, status, comment);
-                } else if (CurrentUserUtil.isSecretary()) {
-                    success = innovationProjectService.secretaryApprove(id, status, comment);
-                } else if (CurrentUserUtil.isDean()) {
-                    success = innovationProjectService.deanApprove(id, status, comment);
-                }
-            } else if (type == 3) {
-                // 学术成果审批
-                if (CurrentUserUtil.isMentor()) {
-                    success = academicAchievementService.mentorApprove(id, status, comment);
-                } else if (CurrentUserUtil.isSecretary()) {
-                    success = academicAchievementService.secretaryApprove(id, status, comment);
-                } else if (CurrentUserUtil.isDean()) {
-                    success = academicAchievementService.deanApprove(id, status, comment);
-                }
+            Long[] approverInfo = getCurrentApproverInfo();
+            if (approverInfo == null) {
+                return jsonReturn.returnFailed("无审批权限");
             }
 
-            if (success) {
-                return jsonReturn.returnSuccess("审批成功");
-            } else {
-                return jsonReturn.returnFailed("审批失败或无权限");
+            // 校验审批人是否有权审批该提交
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) {
+                return jsonReturn.returnFailed("未找到记录");
             }
+            if (!isApproverOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权审批该记录");
+            }
+
+            boolean success = submissionService.approve(id, approverInfo[0], approverInfo[1].intValue(), action, comment, reviewerFileUrls);
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
         }
     }
 
-    // 转换学术活动为审核项
-    private ReviewItemDTO convertToReviewItem(AcademicActivityWithDetailsDTO activity, Integer type) {
-        ReviewItemDTO item = new ReviewItemDTO();
-        item.setId(activity.getId());
-        item.setType(type);
-        item.setTitle(activity.getActivityName());
-        item.setStudentId(activity.getStudentId());
-        item.setStudentNo(activity.getStudentNo());
-        item.setStudentName(activity.getStudentName());
-        item.setSubmitTime(activity.getSubmitTime());
-        item.setCreateTime(activity.getCreateTime());
-        item.setDescription(activity.getContent());
-        item.setMentorStatus(activity.getMentorStatus());
-        item.setMentorComment(activity.getMentorComment());
-        item.setSecretaryStatus(activity.getSecretaryStatus());
-        item.setSecretaryComment(activity.getSecretaryComment());
-        item.setDeanStatus(activity.getDeanStatus());
-        item.setDeanComment(activity.getDeanComment());
+    /**
+     * 获取审批历史记录
+     */
+    @GetMapping("/approval/records/{submissionId}")
+    public String getApprovalRecords(@PathVariable Long submissionId) {
+        try {
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(submissionId);
+            if (detail == null) return jsonReturn.returnFailed("未找到记录");
 
-        // 计算统一状态
-        calculateUnifiedStatus(item);
-        return item;
+            // 权限校验：提交人本人 或 审批人可查看审批记录
+            if (!isOwnerOfSubmission(detail) && !isApproverOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权查看该审批记录");
+            }
+
+            List<ApprovalRecordDTO> records = detail.getApprovalRecords() != null
+                    ? detail.getApprovalRecords()
+                    : new ArrayList<>();
+            return jsonReturn.returnSuccess(records);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
     }
 
-    // 转换创新项目为审核项
-    private ReviewItemDTO convertToReviewItem(InnovationProjectWithDetailsDTO project, Integer type) {
-        ReviewItemDTO item = new ReviewItemDTO();
-        item.setId(project.getId());
-        item.setType(type);
-        item.setTitle(project.getProjectName());
-        item.setStudentId(project.getStudentId());
-        item.setStudentNo(project.getStudentNo());
-        item.setStudentName(project.getStudentName());
-        item.setSubmitTime(project.getSubmitTime());
-        item.setCreateTime(project.getCreateTime());
-        item.setDescription(project.getDescription());
-        item.setMentorStatus(project.getMentorStatus());
-        item.setMentorComment(project.getMentorComment());
-        item.setSecretaryStatus(project.getSecretaryStatus());
-        item.setSecretaryComment(project.getSecretaryComment());
-        item.setDeanStatus(project.getDeanStatus());
-        item.setDeanComment(project.getDeanComment());
+    // ==================== 私有辅助方法 ====================
 
-        // 计算统一状态
-        calculateUnifiedStatus(item);
-        return item;
+    private String approveCompat(Map<String, Object> params) {
+        try {
+            Long id = Long.valueOf(params.get("id").toString());
+            Integer oldStatus = Integer.valueOf(params.get("status").toString());
+            String comment = params.get("comment") != null ? params.get("comment").toString() : null;
+
+            Integer action = (oldStatus == 2) ? ApprovalAction.REJECT.getCode() : ApprovalAction.APPROVE.getCode();
+
+            Long[] approverInfo = getCurrentApproverInfo();
+            if (approverInfo == null) {
+                return jsonReturn.returnFailed("无审批权限");
+            }
+
+            // 校验审批人是否有权审批该提交
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) {
+                return jsonReturn.returnFailed("未找到记录");
+            }
+            if (!isApproverOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权审批该记录");
+            }
+
+            boolean success = submissionService.approve(id, approverInfo[0], approverInfo[1].intValue(), action, comment);
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
     }
 
-    // 转换学术成果为审核项
-    private ReviewItemDTO convertToReviewItem(AcademicAchievementWithDetailsDTO achievement, Integer type) {
-        ReviewItemDTO item = new ReviewItemDTO();
-        item.setId(achievement.getId());
-        item.setType(type);
-        item.setTitle(achievement.getTitle());
-        item.setStudentId(achievement.getStudentId());
-        item.setStudentNo(achievement.getStudentNo());
-        item.setStudentName(achievement.getStudentName());
-        item.setSubmitTime(achievement.getSubmitTime());
-        item.setCreateTime(achievement.getCreateTime());
-        item.setDescription(achievement.getAbstractContent());
-        item.setMentorStatus(achievement.getMentorStatus());
-        item.setMentorComment(achievement.getMentorComment());
-        item.setSecretaryStatus(achievement.getSecretaryStatus());
-        item.setSecretaryComment(achievement.getSecretaryComment());
-        item.setDeanStatus(achievement.getDeanStatus());
-        item.setDeanComment(achievement.getDeanComment());
+    private String approveCompat(Long id, Integer status, String comment) {
+        try {
+            Integer action = (status == 2) ? ApprovalAction.REJECT.getCode() : ApprovalAction.APPROVE.getCode();
+            Long[] approverInfo = getCurrentApproverInfo();
+            if (approverInfo == null) {
+                return jsonReturn.returnFailed("无审批权限");
+            }
 
-        // 计算统一状态
-        calculateUnifiedStatus(item);
-        return item;
+            // 校验审批人是否有权审批该提交
+            SubmissionWithDetailsDTO detail = submissionService.getFullDetail(id);
+            if (detail == null) {
+                return jsonReturn.returnFailed("未找到记录");
+            }
+            if (!isApproverOfSubmission(detail)) {
+                return jsonReturn.returnFailed("无权审批该记录");
+            }
+
+            boolean success = submissionService.approve(id, approverInfo[0], approverInfo[1].intValue(), action, comment);
+            return success ? jsonReturn.returnSuccess("审批成功") : jsonReturn.returnFailed("审批失败");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
     }
 
-    // 计算统一状态（根据当前用户角色和审批流程）
-    private void calculateUnifiedStatus(ReviewItemDTO item) {
-        // 检查是否已拒绝（任意阶段拒绝即算拒绝）
-        if (item.getMentorStatus() != null && item.getMentorStatus() == 2) {
-            item.setStatus(2);
-            item.setApprovalComment(item.getMentorComment());
-            return;
+    /**
+     * 旧版三级审批接口 - 导师审批（仅允许导师角色调用）
+     */
+    private String mentorApproveCompat(Long id, Integer status, String comment) throws JsonProcessingException {
+        if (!CurrentUserUtil.isMentor()) {
+            return jsonReturn.returnFailed("仅导师可执行此操作");
         }
-        if (item.getSecretaryStatus() != null && item.getSecretaryStatus() == 2) {
-            item.setStatus(2);
-            item.setApprovalComment(item.getSecretaryComment());
-            return;
-        }
-        if (item.getDeanStatus() != null && item.getDeanStatus() == 2) {
-            item.setStatus(2);
-            item.setApprovalComment(item.getDeanComment());
-            return;
-        }
+        return approveCompat(id, status, comment);
+    }
 
-        // 检查是否全部通过
-        boolean allApproved = (item.getMentorStatus() != null && item.getMentorStatus() == 1)
-                && (item.getSecretaryStatus() != null && item.getSecretaryStatus() == 1)
-                && (item.getDeanStatus() != null && item.getDeanStatus() == 1);
-        if (allApproved) {
-            item.setStatus(1);
-            item.setApprovalComment("审批通过");
-            return;
+    /**
+     * 旧版三级审批接口 - 秘书审批（仅允许教学秘书/综合管理员角色调用）
+     */
+    private String secretaryApproveCompat(Long id, Integer status, String comment) throws JsonProcessingException {
+        if (!CurrentUserUtil.isSecretary() && !(CurrentUserUtil.getCurrentRoleId() != null && CurrentUserUtil.getCurrentRoleId() == 4)) {
+            return jsonReturn.returnFailed("仅教学秘书或综合管理员可执行此操作");
         }
+        return approveCompat(id, status, comment);
+    }
 
-        // 否则为待审批
-        item.setStatus(0);
+    /**
+     * 旧版三级审批接口 - 院长审批（仅允许院长/超级管理员角色调用）
+     */
+    private String deanApproveCompat(Long id, Integer status, String comment) throws JsonProcessingException {
+        if (!CurrentUserUtil.isDean() && !(CurrentUserUtil.getCurrentRoleId() != null && CurrentUserUtil.getCurrentRoleId() == 1)) {
+            return jsonReturn.returnFailed("仅院长或超级管理员可执行此操作");
+        }
+        return approveCompat(id, status, comment);
+    }
+
+    /**
+     * 旧 status 映射到新 approvalStatus
+     * 旧: 1=待导师审批, 2=待秘书审批, 3=待院长审批
+     * 新: 1=待导师审批, 2=待秘书审批, 3=待院长审批
+     */
+    private Integer mapOldStatusToNew(Integer oldStatus) {
+        return oldStatus; // 编码恰好一致
+    }
+
+    private String getStringParam(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        return value != null ? value.toString() : null;
+    }
+
+    private Integer getIntParam(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).intValue();
+        try { return Integer.parseInt(value.toString()); }
+        catch (NumberFormatException e) { return null; }
+    }
+
+    /**
+     * 兼容旧格式：将平铺在 params 中的子表字段复制到 detailData
+     */
+    private void copyDetailFields(Map<String, Object> src, Map<String, Object> dest, Integer contentType) {
+        if (contentType == null) return;
+
+        ContentType type = ContentType.fromCode(contentType);
+        if (type == null) return;
+
+        switch (type) {
+            case ACTIVITY:
+                copyIfPresent(src, dest, "activityType");
+                copyIfPresent(src, dest, "activityName");
+                copyIfPresent(src, dest, "activityTime");
+                copyIfPresent(src, dest, "location");
+                copyIfPresent(src, dest, "speaker");
+                copyIfPresent(src, dest, "content");
+                break;
+            case ACHIEVEMENT:
+                copyIfPresent(src, dest, "achievementType");
+                copyIfPresent(src, dest, "authors");
+                copyIfPresent(src, dest, "publicationDate");
+                copyIfPresent(src, dest, "journalName");
+                copyIfPresent(src, dest, "journalLevel");
+                copyIfPresent(src, dest, "volume");
+                copyIfPresent(src, dest, "issue");
+                copyIfPresent(src, dest, "pages");
+                copyIfPresent(src, dest, "doi");
+                copyIfPresent(src, dest, "patentNo");
+                copyIfPresent(src, dest, "patentType");
+                copyIfPresent(src, dest, "patentStatus");
+                copyIfPresent(src, dest, "awardName");
+                copyIfPresent(src, dest, "awardLevel");
+                copyIfPresent(src, dest, "awardIssuer");
+                copyIfPresent(src, dest, "projectName");
+                copyIfPresent(src, dest, "projectRole");
+                break;
+            case INNOVATION:
+                copyIfPresent(src, dest, "projectType");
+                copyIfPresent(src, dest, "projectName");
+                copyIfPresent(src, dest, "projectLevel");
+                copyIfPresent(src, dest, "projectNo");
+                copyIfPresent(src, dest, "leader");
+                copyIfPresent(src, dest, "members");
+                copyIfPresent(src, dest, "advisor");
+                copyIfPresent(src, dest, "startDate");
+                copyIfPresent(src, dest, "endDate");
+                copyIfPresent(src, dest, "description");
+                copyIfPresent(src, dest, "achievements");
+                copyIfPresent(src, dest, "awardLevel");
+                copyIfPresent(src, dest, "fundingAmount");
+                break;
+        }
+    }
+
+    private void copyIfPresent(Map<String, Object> src, Map<String, Object> dest, String key) {
+        if (src.containsKey(key)) {
+            dest.put(key, src.get(key));
+        }
     }
 }

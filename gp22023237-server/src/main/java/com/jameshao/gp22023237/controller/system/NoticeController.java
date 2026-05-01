@@ -7,12 +7,16 @@ import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.Notice;
+import com.jameshao.gp22023237.po.NoticeRead;
+import com.jameshao.gp22023237.service.NoticeReadService;
 import com.jameshao.gp22023237.service.NoticeService;
+import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,6 +25,8 @@ public class NoticeController {
 
     @Autowired
     private NoticeService noticeService;
+    @Autowired
+    private NoticeReadService noticeReadService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -94,16 +100,122 @@ public class NoticeController {
     }
 
     /**
-     * 删除通知公告
+     * 删除通知公告（级联删除阅读记录）
      */
     @Log(title = "通知公告", businessType = BusinessType.DELETE)
     @DeleteMapping("/{noticeIds}")
     public String remove(@PathVariable Long[] noticeIds) {
         try {
             for (Long noticeId : noticeIds) {
+                // 级联删除阅读记录（数据库有ON DELETE CASCADE，此处双保险）
+                LambdaQueryWrapper<NoticeRead> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(NoticeRead::getNoticeId, noticeId);
+                noticeReadService.remove(wrapper);
                 noticeService.removeById(noticeId);
             }
             return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户未读通知数量
+     */
+    @GetMapping("/unread-count")
+    public String unreadCount() {
+        try {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            Integer roleId = CurrentUserUtil.getCurrentRoleId();
+            if (userId == null) {
+                return jsonReturn.returnError("未登录");
+            }
+            int count = noticeService.getUnreadCount(userId, roleId);
+            Map<String, Object> data = new HashMap<>();
+            data.put("unreadCount", count);
+            return jsonReturn.returnSuccess(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户未读通知列表
+     */
+    @GetMapping("/unread-list")
+    public String unreadList() {
+        try {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            Integer roleId = CurrentUserUtil.getCurrentRoleId();
+            if (userId == null) {
+                return jsonReturn.returnError("未登录");
+            }
+            List<Notice> list = noticeService.getUnreadList(userId, roleId);
+            return jsonReturn.returnSuccess(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 标记指定通知为已读
+     */
+    @PutMapping("/read/{noticeId}")
+    public String markAsRead(@PathVariable Long noticeId) {
+        try {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            if (userId == null) {
+                return jsonReturn.returnError("未登录");
+            }
+            noticeService.markAsRead(userId, noticeId);
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 标记当前用户所有通知为已读
+     */
+    @PutMapping("/read-all")
+    public String markAllAsRead() {
+        try {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            Integer roleId = CurrentUserUtil.getCurrentRoleId();
+            if (userId == null) {
+                return jsonReturn.returnError("未登录");
+            }
+            noticeService.markAllAsRead(userId, roleId);
+            return jsonReturn.returnSuccess();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 分页获取当前用户可见通知列表（含已读状态）
+     */
+    @GetMapping("/user-list")
+    public String userList(Integer pageNum, Integer pageSize) {
+        try {
+            Long userId = CurrentUserUtil.getCurrentUserId();
+            Integer roleId = CurrentUserUtil.getCurrentRoleId();
+            if (userId == null) {
+                return jsonReturn.returnError("未登录");
+            }
+            Page<Notice> result = noticeService.getUserNoticePage(
+                    pageNum != null ? pageNum : 1,
+                    pageSize != null ? pageSize : 15,
+                    userId, roleId);
+            Map<String, Object> data = new HashMap<>();
+            data.put("rows", result.getRecords());
+            data.put("total", result.getTotal());
+            return jsonReturn.returnSuccess(data);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

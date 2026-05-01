@@ -50,7 +50,7 @@ public class AcademicActivityWithDetailsDTO {
         return speaker;
     }
 
-    public Integer getTutorApproval() {
+    public Integer getApproverStatus() {
         return mentorStatus;
     }
 }

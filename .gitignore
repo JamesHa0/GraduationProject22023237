@@ -54,3 +54,5 @@ temp_summary/
 temp_unpack/
 temp_volunteer/
 .codebuddy/
+docs/
+gp22023237-server/src/main/resources/db/

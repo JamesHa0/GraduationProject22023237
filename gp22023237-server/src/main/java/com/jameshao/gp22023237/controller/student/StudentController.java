@@ -142,7 +142,7 @@ public class StudentController {
             user.setUsername(student.getStudentNo()); // 学号作为用户名
             user.setPassword(student.getStudentNo()); // 默认密码为学号
             user.setName(student.getStudentName());
-            user.setRoleId(1); // 1-学生角色
+            user.setRoleId(6); // 6-学生角色
             user.setStatus(1); // 默认为正常状态
             user.setCreateTime(new Date());
             user.setUpdateTime(new Date());
