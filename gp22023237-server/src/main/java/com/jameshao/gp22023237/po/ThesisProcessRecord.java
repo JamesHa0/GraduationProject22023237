@@ -28,7 +28,7 @@ public class ThesisProcessRecord {
     private Long thesisId;
 
     /**
-     * 流程环节类型：1-开题报告，2-中期检查，3-预答辩，4-论文外审，5-正式答辩，6-二次答辩，7-修改后再审
+     * 流程环节类型：1-选题，2-任务书，3-开题报告，4-中期检查，5-过程稿，6-论文答辩稿，7-毕业论文
      */
     private Integer processType;
 

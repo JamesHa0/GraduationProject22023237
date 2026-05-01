@@ -3,18 +3,18 @@ package com.jameshao.gp22023237.common.enums;
 import lombok.Getter;
 
 /**
- * 论文流程环节类型枚举
+ * 论文流程环节类型枚举（VGMS风格7环节）
  */
 @Getter
 public enum ProcessType {
 
-    PROPOSAL(1, "开题报告"),
-    MIDTERM(2, "中期检查"),
-    PRE_DEFENSE(3, "预答辩"),
-    EXTERNAL_REVIEW(4, "论文外审"),
-    DEFENSE(5, "正式答辩"),
-    SECOND_DEFENSE(6, "二次答辩"),
-    RE_SUBMISSION(7, "修改后再审");
+    TOPIC(1, "选题"),
+    TASK_BOOK(2, "任务书"),
+    PROPOSAL(3, "开题报告"),
+    MIDTERM(4, "中期检查"),
+    DRAFT(5, "过程稿"),
+    DEFENSE_DRAFT(6, "论文答辩稿"),
+    FINAL_THESIS(7, "毕业论文");
 
     private final Integer code;
     private final String desc;

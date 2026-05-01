@@ -1,5 +1,5 @@
 /**
- * 学位流程类型配置（参照 academic/submit/typeConfig.js）
+ * 论文流程类型配置（VGMS风格7环节）
  * 定义7种流程类型的表单字段、验证规则、提交处理等
  */
 import {
@@ -11,25 +11,25 @@ import {
 // ==================== 流程类型选项 ====================
 
 export const PROCESS_TYPE_OPTIONS = [
-  { label: '论文开题', value: 1 },
-  { label: '论文中期检查', value: 2 },
-  { label: '论文预答辩', value: 3 },
-  { label: '论文外审', value: 4 },
-  { label: '正式答辩', value: 5 },
-  { label: '二次答辩', value: 6 },
-  { label: '修改后再审', value: 7 }
+  { label: '选题', value: 1 },
+  { label: '任务书', value: 2 },
+  { label: '开题报告', value: 3 },
+  { label: '中期检查', value: 4 },
+  { label: '过程稿', value: 5 },
+  { label: '论文答辩稿', value: 6 },
+  { label: '毕业论文', value: 7 }
 ]
 
 export const PROCESS_TYPE_LABELS = {
-  1: '论文开题', 2: '论文中期检查', 3: '论文预答辩',
-  4: '论文外审', 5: '正式答辩', 6: '二次答辩', 7: '修改后再审'
+  1: '选题', 2: '任务书', 3: '开题报告',
+  4: '中期检查', 5: '过程稿', 6: '论文答辩稿', 7: '毕业论文'
 }
 
 export function getProcessTypeLabel(type) {
   return PROCESS_TYPE_LABELS[type] || '论文流程'
 }
 
-/** 流程状态选项（供查询表单使用） */
+/** 流程状态选项 */
 export const PROCESS_STATUS_OPTIONS = [
   { label: '未提交', value: 0 },
   { label: '审批中', value: 1 },
@@ -39,7 +39,7 @@ export const PROCESS_STATUS_OPTIONS = [
   { label: '已完成', value: 5 }
 ]
 
-/** 评审结果选项（供录入结果对话框使用） */
+/** 评审结果选项 */
 export const REVIEW_RESULT_OPTIONS = [
   { label: '通过', value: 1 },
   { label: '修改后通过', value: 2 },
@@ -66,6 +66,25 @@ const COMMON_FORM = {
   eventLocation: undefined
 }
 
+// 选题表单
+const TOPIC_FORM = {
+  ...COMMON_FORM,
+  topicName: undefined,
+  topicSource: undefined,
+  topicDesc: undefined,
+  expectedGoal: undefined
+}
+
+// 任务书（学生只读，导师编辑）
+const TASK_BOOK_FORM = {
+  ...COMMON_FORM,
+  background: undefined,
+  mainTask: undefined,
+  schedule: undefined,
+  references: undefined
+}
+
+// 开题报告
 const PROPOSAL_FORM = {
   ...COMMON_FORM,
   background: undefined,
@@ -74,47 +93,50 @@ const PROPOSAL_FORM = {
   researchMethod: undefined
 }
 
+// 中期检查
 const MIDTERM_FORM = {
   ...COMMON_FORM,
   completedWork: undefined,
   remainingWork: undefined,
   problems: undefined,
-  nextPlan: undefined,
-  draftProgress: undefined
+  nextPlan: undefined
 }
 
-const PREDEFENSE_FORM = {
+// 过程稿
+const DRAFT_FORM = {
   ...COMMON_FORM,
-  abstractContent: undefined
+  draftDesc: undefined,
+  modificationNote: undefined
 }
 
-const EXTERNAL_REVIEW_FORM = {
+// 论文答辩稿
+const DEFENSE_DRAFT_FORM = {
   ...COMMON_FORM,
-  reviewerName: undefined,
-  reviewerInstitution: undefined,
-  reviewField: undefined
+  defenseDraftDesc: undefined,
+  pptAttachment: undefined
 }
 
-const DEFENSE_FORM = {
-  ...COMMON_FORM,
-  reviewCommitteeChair: undefined,
-  reviewCommitteeMembers: undefined
-}
-
-const RESUBMISSION_FORM = {
-  ...COMMON_FORM,
-  modificationDescription: undefined,
-  modificationDetails: undefined
+// 毕业论文
+const FINAL_THESIS_FORM = {
+  ...COMMON_FORM
 }
 
 // ==================== 各类型验证规则 ====================
 
-const COMMON_RULES = {
-  thesisTitle: [{ required: true, message: '请输入论文题目', trigger: 'blur' }]
+const COMMON_RULES = {}
+
+const TOPIC_RULES = {
+  topicName: [{ required: true, message: '请输入课题名称', trigger: 'blur' }],
+  topicSource: [{ required: true, message: '请选择课题来源', trigger: 'change' }]
+}
+
+const TASK_BOOK_RULES = {
+  background: [{ required: true, message: '请输入课题背景', trigger: 'blur' }],
+  mainTask: [{ required: true, message: '请输入主要任务', trigger: 'blur' }],
+  schedule: [{ required: true, message: '请输入进度安排', trigger: 'blur' }]
 }
 
 const PROPOSAL_RULES = {
-  ...COMMON_RULES,
   background: [{ required: true, message: '请输入研究背景', trigger: 'blur' }],
   researchStatus: [{ required: true, message: '请输入研究现状', trigger: 'blur' }],
   researchContent: [{ required: true, message: '请输入研究内容', trigger: 'blur' }],
@@ -122,56 +144,34 @@ const PROPOSAL_RULES = {
 }
 
 const MIDTERM_RULES = {
-  ...COMMON_RULES,
   completedWork: [{ required: true, message: '请输入已完成工作', trigger: 'blur' }],
   remainingWork: [{ required: true, message: '请输入未完成工作', trigger: 'blur' }],
   nextPlan: [{ required: true, message: '请输入下一步计划', trigger: 'blur' }]
 }
 
-const PREDEFENSE_RULES = {
-  ...COMMON_RULES,
-  abstractContent: [{ required: true, message: '请输入论文摘要', trigger: 'blur' }]
-}
+const DRAFT_RULES = {}
 
-const EXTERNAL_REVIEW_RULES = {
-  ...COMMON_RULES,
-  reviewerName: [{ required: true, message: '请输入外审专家', trigger: 'blur' }],
-  reviewerInstitution: [{ required: true, message: '请输入专家单位', trigger: 'blur' }],
-  reviewField: [{ required: true, message: '请输入评审领域', trigger: 'blur' }]
-}
+const DEFENSE_DRAFT_RULES = {}
 
-const DEFENSE_RULES = {
-  ...COMMON_RULES,
-  reviewCommitteeChair: [{ required: true, message: '请输入答辩委员会主席', trigger: 'blur' }],
-  reviewCommitteeMembers: [{ required: true, message: '请输入答辩委员', trigger: 'blur' }]
-}
-
-const RESUBMISSION_RULES = {
-  ...COMMON_RULES,
-  modificationDescription: [{ required: true, message: '请输入修改说明', trigger: 'blur' }],
-  modificationDetails: [{ required: true, message: '请输入修改详情', trigger: 'blur' }]
-}
+const FINAL_THESIS_RULES = {}
 
 // ==================== 提交数据处理 ====================
 
 /**
  * 各类型特有的 contentExtend 字段名列表
- * 不在此列表中的字段将直接提交到主表
  */
 const CONTENT_EXTEND_FIELDS = {
-  1: ['background', 'researchStatus', 'researchContent', 'researchMethod'],
-  2: ['completedWork', 'remainingWork', 'problems', 'nextPlan', 'draftProgress'],
-  3: ['abstractContent'],
-  4: ['reviewerName', 'reviewerInstitution', 'reviewField'],
-  7: ['modificationDescription', 'modificationDetails']
-  // 5/6 没有 contentExtend 字段，committee 字段直接提交主表
+  1: ['topicName', 'topicSource', 'topicDesc', 'expectedGoal'],
+  2: ['background', 'mainTask', 'schedule', 'references'],
+  3: ['background', 'researchStatus', 'researchContent', 'researchMethod'],
+  4: ['completedWork', 'remainingWork', 'problems', 'nextPlan'],
+  5: ['draftDesc', 'modificationNote'],
+  6: ['defenseDraftDesc', 'pptAttachment']
+  // 7 毕业论文无 contentExtend
 }
 
 /**
  * 将表单数据转换为提交数据
- * @param {Object} formData - 表单数据
- * @param {number} processType - 流程类型
- * @returns {Object} 提交数据
  */
 export function buildSubmitData(formData, processType) {
   const contentFields = CONTENT_EXTEND_FIELDS[processType] || []
@@ -197,66 +197,69 @@ export function buildSubmitData(formData, processType) {
   return submitData
 }
 
+/**
+ * 从contentExtend JSON中解析各类型特有字段
+ */
+export function parseContentExtend(record) {
+  if (!record || !record.contentExtend) return {}
+  try {
+    return JSON.parse(record.contentExtend)
+  } catch {
+    return {}
+  }
+}
+
 // ==================== 核心配置对象 ====================
 
 export const PROCESS_CONFIG = {
   1: {
-    name: '论文开题',
+    name: '选题',
     typeValue: 1,
-    component: 'ProposalForm',
+    defaultForm: TOPIC_FORM,
+    rules: TOPIC_RULES,
+    canRecordResult: false
+  },
+  2: {
+    name: '任务书',
+    typeValue: 2,
+    defaultForm: TASK_BOOK_FORM,
+    rules: TASK_BOOK_RULES,
+    canRecordResult: false
+  },
+  3: {
+    name: '开题报告',
+    typeValue: 3,
     defaultForm: PROPOSAL_FORM,
     rules: PROPOSAL_RULES,
     canRecordResult: false
   },
-  2: {
-    name: '论文中期检查',
-    typeValue: 2,
-    component: 'MidtermForm',
+  4: {
+    name: '中期检查',
+    typeValue: 4,
     defaultForm: MIDTERM_FORM,
     rules: MIDTERM_RULES,
     canRecordResult: false
   },
-  3: {
-    name: '论文预答辩',
-    typeValue: 3,
-    component: 'PreDefenseForm',
-    defaultForm: PREDEFENSE_FORM,
-    rules: PREDEFENSE_RULES,
+  5: {
+    name: '过程稿',
+    typeValue: 5,
+    defaultForm: DRAFT_FORM,
+    rules: DRAFT_RULES,
     canRecordResult: false
   },
-  4: {
-    name: '论文外审',
-    typeValue: 4,
-    component: 'ExternalReviewForm',
-    defaultForm: EXTERNAL_REVIEW_FORM,
-    rules: EXTERNAL_REVIEW_RULES,
-    canRecordResult: true
-  },
-  5: {
-    name: '正式答辩',
-    typeValue: 5,
-    component: 'DefenseForm',
-    defaultForm: DEFENSE_FORM,
-    rules: DEFENSE_RULES,
-    canRecordResult: true,
-    hasQaRecord: true
-  },
   6: {
-    name: '二次答辩',
+    name: '论文答辩稿',
     typeValue: 6,
-    component: 'DefenseForm',
-    defaultForm: DEFENSE_FORM,
-    rules: DEFENSE_RULES,
-    canRecordResult: true,
-    hasQaRecord: true
+    defaultForm: DEFENSE_DRAFT_FORM,
+    rules: DEFENSE_DRAFT_RULES,
+    canRecordResult: false
   },
   7: {
-    name: '修改后再审',
+    name: '毕业论文',
     typeValue: 7,
-    component: 'ReSubmissionForm',
-    defaultForm: RESUBMISSION_FORM,
-    rules: RESUBMISSION_RULES,
-    canRecordResult: true
+    defaultForm: FINAL_THESIS_FORM,
+    rules: FINAL_THESIS_RULES,
+    canRecordResult: false
   }
 }
 

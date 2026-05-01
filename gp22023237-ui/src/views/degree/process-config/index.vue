@@ -108,13 +108,13 @@ import { listProcessConfig, saveProcessConfig, getGlobalConfig, saveGlobalConfig
 const activeStep = ref(5)
 
 const processSteps = [
-  { type: 1, label: '开题报告' },
-  { type: 2, label: '中期检查' },
-  { type: 3, label: '预答辩' },
-  { type: 4, label: '论文外审' },
-  { type: 5, label: '正式答辩' },
-  { type: 6, label: '二次答辩' },
-  { type: 7, label: '修改后再审' }
+  { type: 1, label: '选题' },
+  { type: 2, label: '任务书' },
+  { type: 3, label: '开题报告' },
+  { type: 4, label: '中期检查' },
+  { type: 5, label: '过程稿' },
+  { type: 6, label: '论文答辩稿' },
+  { type: 7, label: '毕业论文' }
 ]
 
 // 各环节配置

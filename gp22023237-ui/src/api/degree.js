@@ -39,7 +39,7 @@ export function archiveThesis(id) {
   })
 }
 
-// ==================== 论文流程记录 API（开题、中期、预答辩、外审、答辩统一接口）====================
+// ==================== 论文流程记录 API ====================
 
 export function listProcess(params) {
   return request({
@@ -68,7 +68,7 @@ export function approveProcessSupervisor(id, status, comment, approverId) {
   return request({
     url: '/thesis/process/supervisor/approve',
     method: 'post',
-    data: { id, status, comment, approverId }
+    params: { id, status, comment, approverId }
   })
 }
 
@@ -76,7 +76,7 @@ export function approveProcessSecretary(id, status, comment, approverId) {
   return request({
     url: '/thesis/process/secretary/approve',
     method: 'post',
-    data: { id, status, comment, approverId }
+    params: { id, status, comment, approverId }
   })
 }
 
@@ -84,7 +84,7 @@ export function approveProcessDean(id, status, comment, approverId) {
   return request({
     url: '/thesis/process/dean/approve',
     method: 'post',
-    data: { id, status, comment, approverId }
+    params: { id, status, comment, approverId }
   })
 }
 
@@ -92,7 +92,7 @@ export function recordProcessResult(id, result, score, comment, qaRecord) {
   return request({
     url: '/thesis/process/recordResult',
     method: 'post',
-    data: { id, result, score, comment, qaRecord }
+    params: { id, result, score, comment, qaRecord }
   })
 }
 
@@ -118,7 +118,7 @@ export function committeeApprove(id, status, comment) {
   return request({
     url: '/thesis/degree/committee/approve',
     method: 'post',
-    data: { id, status, comment }
+    params: { id, status, comment }
   })
 }
 
@@ -126,7 +126,7 @@ export function grantDegree(id, certificateNo) {
   return request({
     url: '/thesis/degree/grant',
     method: 'post',
-    data: { id, certificateNo }
+    params: { id, certificateNo }
   })
 }
 
@@ -184,5 +184,136 @@ export function saveGlobalConfig(data) {
     url: '/thesis/config/global/save',
     method: 'post',
     data: data
+  })
+}
+
+// ==================== 导师端 API ====================
+
+export function getSupervisorStudents(supervisorId) {
+  return request({
+    url: '/thesis/supervisor/students',
+    method: 'get',
+    params: { supervisorId }
+  })
+}
+
+export function getSupervisorTopic(params) {
+  return request({
+    url: '/thesis/supervisor/topic',
+    method: 'get',
+    params
+  })
+}
+
+export function assignTopic(data) {
+  return request({
+    url: '/thesis/supervisor/topic/assign',
+    method: 'post',
+    data
+  })
+}
+
+export function getTopicModifications(params) {
+  return request({
+    url: '/thesis/supervisor/topic-modification',
+    method: 'get',
+    params
+  })
+}
+
+export function approveTopicModification(id, status, comment, approverId) {
+  return request({
+    url: '/thesis/supervisor/topic-modification/approve',
+    method: 'post',
+    params: { id, status, comment, approverId }
+  })
+}
+
+export function getSupervisorTask(params) {
+  return request({
+    url: '/thesis/supervisor/task',
+    method: 'get',
+    params
+  })
+}
+
+export function createTask(data) {
+  return request({
+    url: '/thesis/supervisor/task/create',
+    method: 'post',
+    data
+  })
+}
+
+export function updateTask(data) {
+  return request({
+    url: '/thesis/supervisor/task/update',
+    method: 'put',
+    data
+  })
+}
+
+export function getSupervisorDefenseDraft(params) {
+  return request({
+    url: '/thesis/supervisor/defense-draft',
+    method: 'get',
+    params
+  })
+}
+
+export function commentDefenseDraft(id, status, comment, approverId) {
+  return request({
+    url: '/thesis/supervisor/defense-draft/comment',
+    method: 'post',
+    params: { id, status, comment, approverId }
+  })
+}
+
+export function getSupervisorThesisFinal(params) {
+  return request({
+    url: '/thesis/supervisor/thesis-final',
+    method: 'get',
+    params
+  })
+}
+
+// ==================== 成绩评定 API ====================
+
+export function getThesisGrade(thesisId) {
+  return request({
+    url: `/thesis/grade/${thesisId}`,
+    method: 'get'
+  })
+}
+
+export function supervisorGrade(data) {
+  return request({
+    url: '/thesis/grade/supervisor',
+    method: 'post',
+    data
+  })
+}
+
+export function reviewerGrade(data) {
+  return request({
+    url: '/thesis/grade/reviewer',
+    method: 'post',
+    data
+  })
+}
+
+export function defenseGrade(data) {
+  return request({
+    url: '/thesis/grade/defense',
+    method: 'post',
+    data
+  })
+}
+
+export function calculateTotalGrade(thesisId) {
+  return request({
+    url: '/thesis/grade/calculate',
+    method: 'post',
+    params: { thesisId }
   })
 }
