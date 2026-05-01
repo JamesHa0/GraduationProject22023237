@@ -1,6 +1,7 @@
 package com.jameshao.gp22023237.aspect;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.po.OperLog;
@@ -89,6 +90,21 @@ public class OperLogAspect {
             if (e != null) {
                 operLog.setStatus(1); // 异常
                 operLog.setErrorMsg(e.getMessage());
+            } else if (jsonResult != null) {
+                // 检查业务返回结果，如果返回状态为"failed"则标记为异常
+                try {
+                    String resultStr = jsonResult instanceof String ? (String) jsonResult : JSON.toJSONString(jsonResult);
+                    JSONObject jsonObj = JSON.parseObject(resultStr);
+                    if ("failed".equals(jsonObj.getString("result"))) {
+                        operLog.setStatus(1); // 异常
+                        String error = jsonObj.getString("error");
+                        if (error != null && !error.isEmpty()) {
+                            operLog.setErrorMsg(error);
+                        }
+                    }
+                } catch (Exception ex) {
+                    // 非JSON格式的返回结果，忽略解析失败
+                }
             }
 
             // 注解信息
@@ -150,6 +166,29 @@ public class OperLogAspect {
                         }
                     } catch (Exception ex) {
                         // 忽略角色查询失败
+                    }
+                }
+            } else {
+                // 未登录状态（如登录操作），从方法参数中提取用户信息
+                Object[] args = joinPoint.getArgs();
+                if (args != null) {
+                    for (Object arg : args) {
+                        if (arg instanceof User argUser) {
+                            if (argUser.getUsername() != null && !argUser.getUsername().isEmpty()) {
+                                operLog.setOperName(argUser.getUsername());
+                            }
+                            if (argUser.getRoleId() != null) {
+                                try {
+                                    Role role = roleService.getById(argUser.getRoleId());
+                                    if (role != null) {
+                                        operLog.setOperRole(role.getName());
+                                    }
+                                } catch (Exception ex) {
+                                    // 忽略角色查询失败
+                                }
+                            }
+                            break;
+                        }
                     }
                 }
             }

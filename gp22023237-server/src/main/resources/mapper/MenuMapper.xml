@@ -10,11 +10,12 @@
             <result property="title" column="title" />
             <result property="icon" column="icon" />
             <result property="path" column="path" />
+            <result property="sort" column="sort" />
             <result property="parentId" column="parent_id" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,menus_index,title,icon,path,parent_id
+        id,menus_index,title,icon,path,sort,parent_id
     </sql>
 
     <!-- 根据父菜单ID查询子菜单（已废弃，保留兼容性） -->
@@ -28,6 +29,6 @@
         from menu
         inner join role_menu on menu.menus_index = role_menu.menu_id
         where role_menu.role_id = #{roleid}
-        order by menu.menus_index
+        order by menu.sort, menu.menus_index
     </select>
 </mapper>

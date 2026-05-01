@@ -76,6 +76,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuMapper, Menu>
 
         for (Menu root : rootMenus) {
             List<Menu> children = childrenMap.get(root.getMenusIndex());
+            if (children != null) {
+                children.sort(Comparator.comparingInt(m -> m.getSort() != null ? m.getSort() : 0));
+            }
             root.setChildren(children != null ? children : new ArrayList<>());
         }
 

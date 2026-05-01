@@ -32,4 +32,7 @@ public class ReviewItemDTO {
 
     // 额外的详情字段
     private String extraInfo;
+
+    // 附件路径（逗号分隔多个URL）
+    private String attachmentPath;
 }

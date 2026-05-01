@@ -129,8 +129,8 @@
       />
 
       <!-- 操作日志详细 -->
-      <el-dialog title="操作日志详细" v-model="open" width="800px" append-to-body>
-         <el-form :model="form" label-width="100px">
+      <el-dialog title="操作日志详细" v-model="open" width="800px" append-to-body class="oplog-detail-dialog">
+         <el-form :model="form" label-width="100px" class="oplog-detail-form">
             <el-row>
                <el-col :span="12">
                   <el-form-item label="操作模块：">{{ form.title }} / {{ typeFormat(form) }}</el-form-item>
@@ -144,10 +144,14 @@
                   <el-form-item label="操作方法：">{{ form.method }}</el-form-item>
                </el-col>
                <el-col :span="24">
-                  <el-form-item label="请求参数：">{{ form.operParam }}</el-form-item>
+                  <el-form-item label="请求参数：">
+                     <div class="param-content">{{ formatJson(form.operParam) }}</div>
+                  </el-form-item>
                </el-col>
                <el-col :span="24">
-                  <el-form-item label="返回参数：">{{ form.jsonResult }}</el-form-item>
+                  <el-form-item label="返回参数：">
+                     <div class="param-content return-param-content">{{ formatJson(form.jsonResult) }}</div>
+                  </el-form-item>
                </el-col>
                <el-col :span="8">
                   <el-form-item label="操作状态：">
@@ -162,7 +166,9 @@
                   <el-form-item label="操作时间：">{{ parseTime(form.operTime) }}</el-form-item>
                </el-col>
                <el-col :span="24">
-                  <el-form-item label="异常信息：" v-if="form.status === 1">{{ form.errorMsg }}</el-form-item>
+                  <el-form-item label="异常信息：" v-if="form.status === 1">
+                     <div class="param-content error-msg-content">{{ form.errorMsg }}</div>
+                  </el-form-item>
                </el-col>
             </el-row>
          </el-form>
@@ -275,5 +281,50 @@ function handleClean() {
   }).catch(() => {});
 }
 
+/** 格式化JSON字符串，提升可读性 */
+function formatJson(str) {
+  if (!str) return '';
+  try {
+    return JSON.stringify(JSON.parse(str), null, 2);
+  } catch {
+    return str;
+  }
+}
+
 getList();
 </script>
+
+<style scoped>
+.oplog-detail-form {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.param-content {
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #303133;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.return-param-content {
+  max-height: 400px;
+}
+
+.error-msg-content {
+  color: #f56c6c;
+  background-color: #fef0f0;
+  border-color: #fde2e2;
+}
+</style>

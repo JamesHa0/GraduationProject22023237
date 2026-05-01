@@ -69,10 +69,22 @@ public class Notice {
     private Date updateTime;
 
     /**
+     * 目标角色（逗号分隔角色ID，空表示全体）
+     */
+    @TableField(value = "target_roles")
+    private String targetRoles;
+
+    /**
      * 备注
      */
     @TableField(value = "remark")
     private String remark;
+
+    /**
+     * 当前用户是否已读（非数据库字段）
+     */
+    @TableField(exist = false)
+    private Boolean isRead;
 
     @Override
     public boolean equals(Object that) {
@@ -91,6 +103,7 @@ public class Notice {
             && (this.getNoticeType() == null ? other.getNoticeType() == null : this.getNoticeType().equals(other.getNoticeType()))
             && (this.getNoticeContent() == null ? other.getNoticeContent() == null : this.getNoticeContent().equals(other.getNoticeContent()))
             && (this.getStatus() == null ? other.getStatus() == null : this.getStatus().equals(other.getStatus()))
+            && (this.getTargetRoles() == null ? other.getTargetRoles() == null : this.getTargetRoles().equals(other.getTargetRoles()))
             && (this.getCreateBy() == null ? other.getCreateBy() == null : this.getCreateBy().equals(other.getCreateBy()))
             && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
             && (this.getUpdateBy() == null ? other.getUpdateBy() == null : this.getUpdateBy().equals(other.getUpdateBy()))
@@ -107,6 +120,7 @@ public class Notice {
         result = prime * result + ((getNoticeType() == null) ? 0 : getNoticeType().hashCode());
         result = prime * result + ((getNoticeContent() == null) ? 0 : getNoticeContent().hashCode());
         result = prime * result + ((getStatus() == null) ? 0 : getStatus().hashCode());
+        result = prime * result + ((getTargetRoles() == null) ? 0 : getTargetRoles().hashCode());
         result = prime * result + ((getCreateBy() == null) ? 0 : getCreateBy().hashCode());
         result = prime * result + ((getCreateTime() == null) ? 0 : getCreateTime().hashCode());
         result = prime * result + ((getUpdateBy() == null) ? 0 : getUpdateBy().hashCode());
@@ -126,6 +140,7 @@ public class Notice {
         sb.append(", noticeType=").append(noticeType);
         sb.append(", noticeContent=").append(noticeContent);
         sb.append(", status=").append(status);
+        sb.append(", targetRoles=").append(targetRoles);
         sb.append(", createBy=").append(createBy);
         sb.append(", createTime=").append(createTime);
         sb.append(", updateBy=").append(updateBy);

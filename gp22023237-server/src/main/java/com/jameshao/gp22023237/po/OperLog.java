@@ -27,7 +27,7 @@ public class OperLog {
     private String title;
 
     /**
-     * 业务类型（0其它 1新增 2修改 3删除 4导出 5导入）
+     * 业务类型（0其它 1新增 2修改 3删除 4导出 5导入 6登录）
      */
     @TableField(value = "business_type")
     private Integer businessType;

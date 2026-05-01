@@ -40,7 +40,8 @@ public class LoginConfig extends WebMvcConfigurationSupport {
                         "/",
                         "/index",
                         "/401",
-                        "/404"
+                        "/404",
+                        "/system/sse/**"
                 );
     }
 }

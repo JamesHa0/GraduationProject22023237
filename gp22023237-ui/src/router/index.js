@@ -206,25 +206,25 @@ export const constantRoutes = [
     path: '/academic',
     component: Layout,
     hidden: true,
-    redirect: 'noredirect',
+    redirect: '/academic/submit',
     children: [
       {
+        path: 'submit',
+        component: () => import('@/views/academic/submit/index'),
+        name: 'AcademicManagement',
+        meta: { title: '学术内容管理', icon: 'star' }
+      },
+      {
         path: 'activity',
-        component: () => import('@/views/academic/activity/index'),
-        name: 'AcademicActivity',
-        meta: { title: '学术活动管理', icon: 'star' }
+        redirect: { path: '/academic/submit', query: { type: 'activity' } }
       },
       {
         path: 'innovation',
-        component: () => import('@/views/academic/innovation/index'),
-        name: 'InnovationProject',
-        meta: { title: '创新实践项目', icon: 'trophy' }
+        redirect: { path: '/academic/submit', query: { type: 'innovation' } }
       },
       {
         path: 'achievement',
-        component: () => import('@/views/academic/achievement/index'),
-        name: 'AcademicAchievement',
-        meta: { title: '学术成果管理', icon: 'medal' }
+        redirect: { path: '/academic/submit', query: { type: 'achievement' } }
       },
       {
         path: 'review',
@@ -259,16 +259,58 @@ export const constantRoutes = [
         meta: { title: '论文预答辩', icon: 'chat-dot-round' }
       },
       {
-        path: 'application',
-        component: () => import('@/views/degree/application/index'),
-        name: 'DegreeApplication',
-        meta: { title: '学位申请', icon: 's-promotion' }
+        path: 'external-review',
+        component: () => import('@/views/degree/progress/index'),
+        name: 'ThesisExternalReview',
+        meta: { title: '论文外审', icon: 'document-checked' }
+      },
+      {
+        path: 'defense',
+        component: () => import('@/views/degree/progress/index'),
+        name: 'ThesisDefense',
+        meta: { title: '正式答辩', icon: 'medal' }
+      },
+      {
+        path: 'second-defense',
+        component: () => import('@/views/degree/progress/index'),
+        name: 'ThesisSecondDefense',
+        meta: { title: '二次答辩', icon: 'refresh-right' }
+      },
+      {
+        path: 're-submission',
+        component: () => import('@/views/degree/progress/index'),
+        name: 'ThesisReSubmission',
+        meta: { title: '修改后再审', icon: 'edit' }
+      },
+      {
+        path: 'overview',
+        component: () => import('@/views/degree/overview/index'),
+        name: 'ThesisOverview',
+        meta: { title: '论文概览', icon: 'data-analysis' }
+      },
+      {
+        path: 'statistics',
+        component: () => import('@/views/degree/statistics/index'),
+        name: 'ThesisStatistics',
+        meta: { title: '统计归档', icon: 'chart' }
       },
       {
         path: 'approval',
         component: () => import('@/views/degree/approval/index'),
         name: 'DegreeApproval',
         meta: { title: '学位审批', icon: 's-check' }
+      },
+      {
+        path: 'workbench',
+        component: () => import('@/views/degree/workbench/index'),
+        name: 'MentorWorkbench',
+        meta: { title: '导师工作台', icon: 'checked' }
+      },
+      {
+        path: 'process-config',
+        component: () => import('@/views/degree/process-config/index'),
+        name: 'ProcessConfig',
+        meta: { title: '流程配置', icon: 'setup' }
       }
     ]
   },

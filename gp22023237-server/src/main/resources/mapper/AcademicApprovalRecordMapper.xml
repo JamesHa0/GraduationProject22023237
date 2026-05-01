@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.AcademicApprovalRecordMapper">
+
+    <select id="listBySubmissionId" resultType="com.jameshao.gp22023237.po.AcademicApprovalRecord">
+        SELECT * FROM academic_approval_record
+        WHERE submission_id = #{submissionId}
+        ORDER BY approval_time ASC
+    </select>
+
+</mapper>

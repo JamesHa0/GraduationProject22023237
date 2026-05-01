@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.AcademicSubmissionMapper">
+
+    <resultMap id="SubmissionWithDetailsDTOMap" type="com.jameshao.gp22023237.DTO.SubmissionWithDetailsDTO">
+        <!-- 主表字段 -->
+        <id property="id" column="id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="studentName" column="student_name"/>
+        <result property="submitterId" column="submitter_id"/>
+        <result property="submitterType" column="submitter_type"/>
+        <result property="contentType" column="content_type"/>
+        <result property="title" column="title"/>
+        <result property="abstractContent" column="abstract_content"/>
+        <result property="fileUrls" column="file_urls"/>
+        <result property="approvalStatus" column="approval_status"/>
+        <result property="currentApproverId" column="current_approver_id"/>
+        <result property="currentApproverType" column="current_approver_type"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="isDeleted" column="is_deleted"/>
+        <result property="version" column="version"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+
+        <!-- 学术活动详情 -->
+        <result property="activityType" column="activity_type"/>
+        <result property="activityName" column="activity_name"/>
+        <result property="activityTime" column="activity_time"/>
+        <result property="location" column="location"/>
+        <result property="speaker" column="speaker"/>
+        <result property="content" column="content"/>
+
+        <!-- 学术成果详情 -->
+        <result property="achievementType" column="achievement_type"/>
+        <result property="authors" column="authors"/>
+        <result property="publicationDate" column="publication_date"/>
+        <result property="journalName" column="journal_name"/>
+        <result property="journalLevel" column="journal_level"/>
+        <result property="volume" column="volume"/>
+        <result property="issue" column="issue"/>
+        <result property="pages" column="pages"/>
+        <result property="doi" column="doi"/>
+        <result property="patentNo" column="patent_no"/>
+        <result property="patentType" column="patent_type"/>
+        <result property="patentStatus" column="patent_status"/>
+        <result property="awardName" column="award_name"/>
+        <result property="awardLevel" column="award_level"/>
+        <result property="awardIssuer" column="award_issuer"/>
+        <result property="projectName" column="project_name"/>
+        <result property="projectRole" column="project_role"/>
+
+        <!-- 创新创业详情 -->
+        <result property="projectType" column="project_type"/>
+        <result property="projectLevel" column="project_level"/>
+        <result property="projectNo" column="project_no"/>
+        <result property="leader" column="leader"/>
+        <result property="members" column="members"/>
+        <result property="advisor" column="advisor"/>
+        <result property="startDate" column="start_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="description" column="description"/>
+        <result property="achievements" column="achievements"/>
+        <result property="innovationAwardLevel" column="innovation_award_level"/>
+        <result property="fundingAmount" column="funding_amount"/>
+    </resultMap>
+
+    <!-- 公共 JOIN 片段：主表 + 学生 + 三种详情子表 -->
+    <sql id="submissionWithDetailsJoin">
+        SELECT
+            sub.*,
+            s.student_no,
+            s.student_name,
+            aad.activity_type, aad.activity_name, aad.activity_time, aad.location, aad.speaker, aad.content,
+            achd.achievement_type, achd.authors, achd.publication_date, achd.journal_name, achd.journal_level,
+            achd.volume, achd.issue, achd.pages, achd.doi, achd.patent_no, achd.patent_type, achd.patent_status,
+            achd.award_name, achd.award_level, achd.award_issuer, achd.project_name, achd.project_role,
+            ind.project_type, ind.project_level, ind.project_no, ind.leader, ind.members, ind.advisor,
+            ind.start_date, ind.end_date, ind.description, ind.achievements, ind.award_level AS innovation_award_level, ind.funding_amount
+        FROM academic_submission sub
+        LEFT JOIN student s ON sub.student_id = s.id
+        LEFT JOIN academic_activity_detail aad ON sub.id = aad.submission_id AND sub.content_type = 1
+        LEFT JOIN academic_achievement_detail achd ON sub.id = achd.submission_id AND sub.content_type = 2
+        LEFT JOIN academic_innovation_detail ind ON sub.id = ind.submission_id AND sub.content_type = 3
+    </sql>
+
+    <!-- 通用 WHERE 条件 -->
+    <sql id="submissionWhereConditions">
+        <where>
+            sub.is_deleted = 0
+            <if test="studentId != null">
+                AND sub.student_id = #{studentId}
+            </if>
+            <if test="studentIds != null and studentIds.size() > 0">
+                AND sub.student_id IN
+                <foreach collection="studentIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="contentType != null">
+                AND sub.content_type = #{contentType}
+            </if>
+            <if test="approvalStatus != null">
+                AND sub.approval_status = #{approvalStatus}
+            </if>
+            <!-- 子类型过滤：活动类型/成果类型/项目类型 -->
+            <if test="subType != null and contentType == 1">
+                AND aad.activity_type = #{subType}
+            </if>
+            <if test="subType != null and contentType == 2">
+                AND achd.achievement_type = #{subType}
+            </if>
+            <if test="subType != null and contentType == 3">
+                AND ind.project_type = #{subType}
+            </if>
+            <if test="submitterId != null and submitterType != null">
+                AND sub.submitter_id = #{submitterId}
+                AND sub.submitter_type = #{submitterType}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询提交列表 -->
+    <select id="listWithDetails" resultMap="SubmissionWithDetailsDTOMap">
+        <include refid="submissionWithDetailsJoin"/>
+        <include refid="submissionWhereConditions"/>
+        ORDER BY sub.submit_time DESC
+    </select>
+
+    <!-- 查询提交详情 -->
+    <select id="getDetailWithDetails" resultMap="SubmissionWithDetailsDTOMap">
+        <include refid="submissionWithDetailsJoin"/>
+        WHERE sub.id = #{id} AND sub.is_deleted = 0
+    </select>
+
+    <!-- 查询待审批列表 -->
+    <select id="listPendingApproval" resultMap="SubmissionWithDetailsDTOMap">
+        <include refid="submissionWithDetailsJoin"/>
+        <where>
+            sub.is_deleted = 0
+            <if test="contentType != null">
+                AND sub.content_type = #{contentType}
+            </if>
+            <if test="approverType != null">
+                AND sub.current_approver_type = #{approverType}
+            </if>
+            <!-- 审批状态为"待XX审批"的记录 -->
+            AND sub.approval_status IN (1, 2, 3)
+            <!-- 导师角色：只能看到自己学生的 -->
+            <if test="studentIds != null and studentIds.size() > 0">
+                AND sub.student_id IN
+                <foreach collection="studentIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY sub.submit_time ASC
+    </select>
+
+</mapper>

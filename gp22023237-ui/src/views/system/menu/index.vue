@@ -33,6 +33,15 @@
           @click="toggleExpandAll"
         >展开/折叠</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="success"
+          plain
+          icon="Check"
+          :disabled="!sortChanged"
+          @click="handleSaveSort"
+        >保存排序</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -49,6 +58,21 @@
         <template #default="scope">
           <svg-icon v-if="scope.row.icon" :icon-class="scope.row.icon" />
           <span v-else>{{ scope.row.icon }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="sort" label="排序" align="center" width="120">
+        <template #default="scope">
+          <span v-if="!scope.row.parentId || scope.row.parentId === 0" style="color: #909399; font-weight: 500;">{{ scope.row.sort }}</span>
+          <el-input-number
+            v-else
+            v-model="scope.row.sort"
+            :min="0"
+            :max="9999"
+            controls-position="right"
+            size="small"
+            style="width: 90px"
+            @change="onSortChange"
+          />
         </template>
       </el-table-column>
       <el-table-column prop="menusIndex" label="菜单索引" width="100"></el-table-column>
@@ -83,6 +107,11 @@
           <el-col :span="12">
             <el-form-item label="菜单索引" prop="menusIndex">
               <el-input-number v-model="form.menusIndex" controls-position="right" :min="1" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sort">
+              <el-input-number v-model="form.sort" controls-position="right" :min="0" :max="9999" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -133,6 +162,8 @@ const showSearch = ref(true)
 const isExpandAll = ref(true)
 const refreshTable = ref(true)
 const title = ref('')
+const sortChanged = ref(false)
+const originalSortMap = ref({})
 
 const data = reactive({
   form: {},
@@ -193,12 +224,55 @@ function treeselect() {
   })
 }
 
+function updateSort(data) {
+  return request({
+    url: '/system/menu/sort',
+    method: 'put',
+    data
+  })
+}
+
+// 收集所有菜单项（扁平化树结构）
+function flattenMenus(menus) {
+  const result = []
+  for (const menu of menus) {
+    result.push(menu)
+    if (menu.children && menu.children.length) {
+      result.push(...flattenMenus(menu.children))
+    }
+  }
+  return result
+}
+
+// 保存原始排序值
+function saveOriginalSort(menus) {
+  const flat = flattenMenus(menus)
+  originalSortMap.value = {}
+  for (const menu of flat) {
+    originalSortMap.value[menu.id] = menu.sort
+  }
+  sortChanged.value = false
+}
+
+// 排序号变更检测
+function onSortChange() {
+  const flat = flattenMenus(menuList.value)
+  for (const menu of flat) {
+    if (menu.sort !== originalSortMap.value[menu.id]) {
+      sortChanged.value = true
+      return
+    }
+  }
+  sortChanged.value = false
+}
+
 // 查询菜单列表 - 使用 treeselect 接口直接获取树形结构
 function getList() {
   loading.value = true
   treeselect().then(res => {
     loading.value = false
     menuList.value = res.data || []
+    saveOriginalSort(menuList.value)
   })
 }
 
@@ -263,6 +337,25 @@ function handleDelete(row) {
   }).catch(() => {})
 }
 
+// 批量保存排序
+function handleSaveSort() {
+  const flat = flattenMenus(menuList.value)
+  const changedItems = flat.filter(menu => menu.sort !== originalSortMap.value[menu.id])
+  if (changedItems.length === 0) {
+    proxy.$modal.msgSuccess('排序未变更')
+    return
+  }
+  const sortData = changedItems.map(item => ({ id: item.id, sort: item.sort }))
+  updateSort(sortData).then(() => {
+    proxy.$modal.msgSuccess('排序保存成功')
+    sortChanged.value = false
+    saveOriginalSort(menuList.value)
+    getTreeselect()
+  }).catch(() => {
+    proxy.$modal.msgError('排序保存失败')
+  })
+}
+
 // 提交按钮
 function submitForm() {
   proxy.$refs['menuRef'].validate(valid => {
@@ -297,6 +390,7 @@ function reset() {
   form.value = {
     id: null,
     menusIndex: null,
+    sort: 0,
     title: '',
     icon: '',
     path: '',

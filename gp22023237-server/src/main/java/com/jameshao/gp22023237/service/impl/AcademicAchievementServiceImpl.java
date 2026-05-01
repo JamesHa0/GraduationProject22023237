@@ -55,6 +55,7 @@ public class AcademicAchievementServiceImpl extends ServiceImpl<AcademicAchievem
 
     @Override
     public boolean removeById(Long id) {
-        return removeById(id);
+        // 直接调用MyBatis-Plus基类的removeById，避免递归调用自身
+        return super.removeById(id);
     }
 }

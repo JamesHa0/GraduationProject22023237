@@ -51,6 +51,10 @@ public class UserIntercepter implements HandlerInterceptor {
         if (token == null || token.isEmpty()) {
             token = request.getHeader("Token");
         }
+        if (token == null || token.isEmpty()) {
+            // SSE兼容：从URL参数获取token（EventSource不支持自定义请求头）
+            token = request.getParameter("token");
+        }
 
         JSONReturn jsonReturn = new JSONReturn();
 

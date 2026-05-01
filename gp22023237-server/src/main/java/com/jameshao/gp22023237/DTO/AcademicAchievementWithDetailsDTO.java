@@ -59,7 +59,7 @@ public class AcademicAchievementWithDetailsDTO {
         return attachmentPath;
     }
 
-    public Integer getTutorApproval() {
+    public Integer getApproverStatus() {
         return mentorStatus;
     }
 

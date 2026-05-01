@@ -46,6 +46,12 @@ public class Menu {
     private String path;
 
     /**
+     * 排序
+     */
+    @TableField(value = "sort")
+    private Integer sort;
+
+    /**
      * 父级Id
      */
     @TableField(value = "parent_id")
@@ -71,6 +77,7 @@ public class Menu {
             && (this.getTitle() == null ? other.getTitle() == null : this.getTitle().equals(other.getTitle()))
             && (this.getIcon() == null ? other.getIcon() == null : this.getIcon().equals(other.getIcon()))
             && (this.getPath() == null ? other.getPath() == null : this.getPath().equals(other.getPath()))
+            && (this.getSort() == null ? other.getSort() == null : this.getSort().equals(other.getSort()))
             && (this.getParentId() == null ? other.getParentId() == null : this.getParentId().equals(other.getParentId()));
     }
 
@@ -83,6 +90,7 @@ public class Menu {
         result = prime * result + ((getTitle() == null) ? 0 : getTitle().hashCode());
         result = prime * result + ((getIcon() == null) ? 0 : getIcon().hashCode());
         result = prime * result + ((getPath() == null) ? 0 : getPath().hashCode());
+        result = prime * result + ((getSort() == null) ? 0 : getSort().hashCode());
         result = prime * result + ((getParentId() == null) ? 0 : getParentId().hashCode());
         return result;
     }
@@ -98,6 +106,7 @@ public class Menu {
         sb.append(", title=").append(title);
         sb.append(", icon=").append(icon);
         sb.append(", path=").append(path);
+        sb.append(", sort=").append(sort);
         sb.append(", parentId=").append(parentId);
         sb.append("]");
         return sb.toString();
