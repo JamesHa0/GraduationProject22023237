@@ -15,6 +15,7 @@ import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.SelectionRoundService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
@@ -33,6 +34,8 @@ import java.util.List;
 @RequestMapping("/student/selection")
 public class StudentSelectionController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(StudentSelectionController.class);
+
     @Autowired
     private TeacherService teacherService;
     @Autowired
@@ -41,6 +44,8 @@ public class StudentSelectionController {
     private SelectionRoundService selectionRoundService;
     @Autowired
     private StudentService studentService;
+    @Autowired
+    private NoticeService noticeService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -114,7 +119,7 @@ public class StudentSelectionController {
     @RequestMapping("/studentSubmit")
     public String submitSelection(@RequestBody MentorStudent mentorStudent){
         try {
-            System.out.println("学生提交选择:"+mentorStudent);
+            logger.debug("学生提交选择:{}", mentorStudent);
 
             // 检查是否在学生选择时间内
             if (!selectionRoundService.canSubmitByRole("student")) {
@@ -233,6 +238,19 @@ public class StudentSelectionController {
                         return jsonReturn.returnError("更新导师剩余名额失败");
                     }
                 }
+            }
+
+            // 1.3 通知：学生提交志愿 → 通知被选导师
+            try {
+                Teacher selectedTeacher = teacherService.getById(mentorStudent.getMentorId());
+                Student currentStudent = studentService.getById(mentorStudent.getStudentId());
+                if (selectedTeacher != null && selectedTeacher.getUserId() != null && currentStudent != null) {
+                    noticeService.createAndPush("学生选导师通知",
+                        "学生" + currentStudent.getStudentName() + "将您选为志愿导师",
+                        "1", selectedTeacher.getUserId());
+                }
+            } catch (Exception e) {
+                System.out.println("学生提交志愿通知推送失败: " + e.getMessage());
             }
 
             return jsonReturn.returnSuccess();
@@ -373,6 +391,23 @@ public class StudentSelectionController {
                 }
                 studentForStatus.setUpdateTime(new Date());
                 studentService.updateById(studentForStatus);
+            }
+
+            // 1.3 通知：学生批量提交志愿 → 通知所有被选导师
+            try {
+                Student currentStudent = studentService.getById(batchDTO.getStudentId());
+                if (currentStudent != null) {
+                    for (Long mentorId : mentorIds) {
+                        Teacher selectedTeacher = teacherService.getById(mentorId);
+                        if (selectedTeacher != null && selectedTeacher.getUserId() != null) {
+                            noticeService.createAndPush("学生选导师通知",
+                                "学生" + currentStudent.getStudentName() + "将您选为志愿导师",
+                                "1", selectedTeacher.getUserId());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("学生批量提交志愿通知推送失败: " + e.getMessage());
             }
 
             return jsonReturn.returnSuccess();

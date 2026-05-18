@@ -149,6 +149,11 @@ public class ScheduleController {
     @PostMapping("/copy")
     public String copy(@RequestBody Map<String, Object> params) {
         try {
+            if (params.get("id") == null || params.get("newClassId") == null
+                    || params.get("newDayOfWeek") == null || params.get("newStartSection") == null
+                    || params.get("newEndSection") == null) {
+                return jsonReturn.returnFailed("缺少必要参数");
+            }
             Long id = Long.valueOf(params.get("id").toString());
             Long newClassId = Long.valueOf(params.get("newClassId").toString());
             Integer newDayOfWeek = Integer.valueOf(params.get("newDayOfWeek").toString());

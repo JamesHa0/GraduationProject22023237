@@ -53,6 +53,9 @@ public class ScoreController {
     @Autowired
     private TeachingEvaluationService evaluationService;
 
+    @Autowired
+    private com.jameshao.gp22023237.mapper.ScheduleMapper scheduleMapper;
+
     @GetMapping("/list")
     public String list(Long studentId, Long courseId, String grade) {
         try {
@@ -123,7 +126,19 @@ public class ScoreController {
                 return jsonReturn.returnFailed(error);
             }
             scoreService.calculateScore(score);
-            boolean success = scoreService.updateById(score);
+            // 如果id为空，说明该学生还没有成绩记录，自动转为新增
+            boolean success;
+            if (score.getId() == null) {
+                if (score.getTeacherId() == null && score.getCourseId() != null) {
+                    scheduleMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.jameshao.gp22023237.po.Schedule>()
+                            .eq(com.jameshao.gp22023237.po.Schedule::getCourseId, score.getCourseId())
+                            .last("LIMIT 1"))
+                        .stream().findFirst().ifPresent(s -> score.setTeacherId(s.getTeacherId()));
+                }
+                success = scoreService.save(score);
+            } else {
+                success = scoreService.updateById(score);
+            }
             if (success) {
                 return jsonReturn.returnSuccess("更新成功");
             } else {
@@ -165,9 +180,13 @@ public class ScoreController {
                 return jsonReturn.returnSuccess(data);
             }
             List<String> errors = scoreService.batchUpdateWithValidation(validScores);
+            // errors只包含validScores的校验错误，evalErrors是教学评价未完成的错误
+            int validErrorsInBatch = errors.size();
             errors.addAll(0, evalErrors);
+            // 实际更新数 = 有效成绩数 - 有效成绩中的校验错误数
+            int actualUpdated = validScores.size() - validErrorsInBatch;
             Map<String, Object> data = new HashMap<>();
-            data.put("updatedCount", validScores.size() - errors.size() + evalErrors.size());
+            data.put("updatedCount", Math.max(0, actualUpdated));
             data.put("errors", errors);
             if (errors.isEmpty()) {
                 return jsonReturn.returnSuccess("批量更新成功");

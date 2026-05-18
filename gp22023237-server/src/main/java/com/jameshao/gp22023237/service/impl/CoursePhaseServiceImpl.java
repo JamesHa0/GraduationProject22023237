@@ -1,10 +1,16 @@
 package com.jameshao.gp22023237.service.impl;
 
+import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.SystemConfig;
 import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.service.CourseSelectionService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.ScoreService;
+import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.SystemConfigService;
+import com.jameshao.gp22023237.service.TeacherService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +23,8 @@ import java.util.Map;
 @Service
 public class CoursePhaseServiceImpl implements CoursePhaseService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CoursePhaseServiceImpl.class);
+
     @Autowired
     private SystemConfigService systemConfigService;
 
@@ -25,6 +33,15 @@ public class CoursePhaseServiceImpl implements CoursePhaseService {
 
     @Autowired
     private ScoreService scoreService;
+
+    @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
+    private StudentService studentService;
+
+    @Autowired
+    private TeacherService teacherService;
 
     // 配置键常量
     private static final String CONFIG_PHASE_STATUS = "course_phase_status";
@@ -93,6 +110,41 @@ public class CoursePhaseServiceImpl implements CoursePhaseService {
 
             // 更新阶段状态
             updateConfigValue(CONFIG_PHASE_STATUS, String.valueOf(targetPhase));
+
+            // 5.1 通知：课程阶段推进 → 通知全体学生
+            try {
+                String phaseText = "";
+                if (targetPhase == 1) phaseText = "选课阶段已开启，截止时间：" + (endTime != null ? endTime : "待定");
+                else if (targetPhase == 2) phaseText = "选课阶段已结束";
+                else if (targetPhase == 3) phaseText = "成绩录入阶段已开启，截止时间：" + (endTime != null ? endTime : "待定");
+                else if (targetPhase == 4) phaseText = "课程已结课";
+                if (!phaseText.isEmpty()) {
+                    java.util.List<Student> students = studentService.list();
+                    java.util.List<Long> userIds = new java.util.ArrayList<>();
+                    for (Student s : students) {
+                        if (s.getUserId() != null) userIds.add(s.getUserId());
+                    }
+                    if (!userIds.isEmpty()) {
+                        noticeService.createAndPushToUsers(userIds, "课程阶段通知", phaseText, "1");
+                    }
+                }
+                // 通知教师（成绩录入阶段尤其需要）
+                try {
+                    java.util.List<com.jameshao.gp22023237.po.Teacher> teachers = teacherService.list();
+                    java.util.List<Long> teacherUserIds = new java.util.ArrayList<>();
+                    for (com.jameshao.gp22023237.po.Teacher t : teachers) {
+                        if (t.getUserId() != null) teacherUserIds.add(t.getUserId());
+                    }
+                    if (!teacherUserIds.isEmpty()) {
+                        noticeService.createAndPushToUsers(teacherUserIds, "课程阶段通知", phaseText, "1");
+                    }
+                } catch (Exception te) {
+                    logger.warn("课程阶段教师通知推送失败: {}", te.getMessage());
+                }
+            } catch (Exception e) {
+                logger.warn("课程阶段推进通知推送失败: {}", e.getMessage());
+            }
+
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -130,6 +182,23 @@ public class CoursePhaseServiceImpl implements CoursePhaseService {
                 return false;
             }
             updateConfigValue(configKey, configValue);
+
+            // 5.6 通知：选课截止时间变更 → 通知全体学生
+            try {
+                String deadlineName = CONFIG_SELECTION_END.equals(configKey) ? "选课" : "成绩录入";
+                java.util.List<Student> students = studentService.list();
+                java.util.List<Long> userIds = new java.util.ArrayList<>();
+                for (Student s : students) {
+                    if (s.getUserId() != null) userIds.add(s.getUserId());
+                }
+                if (!userIds.isEmpty()) {
+                    noticeService.createAndPushToUsers(userIds, "截止时间变更通知",
+                        deadlineName + "截止时间已调整为" + configValue, "1");
+                }
+            } catch (Exception e) {
+                logger.warn("截止时间变更通知推送失败: {}", e.getMessage());
+            }
+
             return true;
         } catch (Exception e) {
             e.printStackTrace();

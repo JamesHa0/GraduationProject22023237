@@ -54,16 +54,26 @@ const useUserStore = defineStore(
               this.permissions = ["PERMISSIONS_DEFAULT"]
               //this.permissions = res.permissions // 这里没有权限（我的数据库里角色代表了权限）
 
-              // 获取角色信息
-              this.fetchRoleInfo(userId, res.data[0].roleId);
+              // 获取角色信息（等待完成，确保页面加载时 roleInfo 已就绪）
+              this.fetchRoleInfo(userId, res.data[0].roleId).then(() => {
+                this.name = res.data[0].nickname
+                this.avatar = avatar
+                resolve(res)
+              }).catch(error => {
+                // 角色信息获取失败不影响主流程
+                console.warn('获取角色信息失败，不影响主流程', error)
+                this.name = res.data[0].nickname
+                this.avatar = avatar
+                resolve(res)
+              })
 
 
             } else {
               this.roles = ['ROLE_DEFAULT']
+              this.name = res.data[0].nickname
+              this.avatar = avatar
+              resolve(res)
             }
-            this.name = res.data[0].nickname
-            this.avatar = avatar
-            resolve(res)
           }).catch(error => {
             reject(error)
           })

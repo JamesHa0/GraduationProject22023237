@@ -245,7 +245,7 @@ public class SystemUserController {
             if (ObjectUtils.isEmpty(passwordDTO.getOldPassword()) || ObjectUtils.isEmpty(passwordDTO.getNewPassword())) {
                 return jsonReturn.returnFailed("旧密码和新密码不能为空");
             }
-            if (!passwordDTO.getOldPassword().equals(dbUser.getPassword())) {
+            if (!com.jameshao.gp22023237.service.impl.UserServiceImpl.checkPassword(passwordDTO.getOldPassword(), dbUser.getPassword())) {
                 return jsonReturn.returnFailed("旧密码错误");
             }
             String newPassword = passwordDTO.getNewPassword();

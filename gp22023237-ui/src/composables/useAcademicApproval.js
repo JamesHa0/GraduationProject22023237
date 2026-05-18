@@ -54,8 +54,11 @@ export function useAcademicApproval(proxy) {
 
   function getCurrentUserRoleId() {
     const userStore = useUserStore()
-    if (userStore.roles && userStore.roles.length > 0) {
-      return userStore.roles[0]
+    if (userStore.roles) {
+      if (Array.isArray(userStore.roles)) {
+        return userStore.roles.length > 0 ? userStore.roles[0] : null
+      }
+      return userStore.roles
     }
     return null
   }

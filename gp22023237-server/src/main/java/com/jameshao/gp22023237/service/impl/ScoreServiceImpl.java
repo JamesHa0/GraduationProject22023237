@@ -9,7 +9,9 @@ import com.jameshao.gp22023237.mapper.ScoreMapper;
 import com.jameshao.gp22023237.mapper.StudentMapper;
 import com.jameshao.gp22023237.po.Score;
 import com.jameshao.gp22023237.po.Student;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.ScoreService;
+import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeachingEvaluationService;
 import com.jameshao.gp22023237.utils.ScoreImportListener;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,12 @@ public class ScoreServiceImpl extends ServiceImpl<ScoreMapper, Score>
 
     @Autowired
     private TeachingEvaluationService evaluationService;
+
+    @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
+    private StudentService studentService;
 
     @Override
     public void calculateScore(Score score) {
@@ -139,6 +147,21 @@ public class ScoreServiceImpl extends ServiceImpl<ScoreMapper, Score>
 
         if (!validScores.isEmpty()) {
             updateBatchById(validScores, 100);
+            // 5.4 通知：成绩录入/更新 → 通知对应学生
+            try {
+                for (Score s : validScores) {
+                    if (s.getStudentId() != null) {
+                        Long studentUserId = noticeService.getStudentUserId(s.getStudentId());
+                        if (studentUserId != null && s.getTotalScore() != null) {
+                            noticeService.createAndPush("成绩录入通知",
+                                "您的成绩已录入：" + s.getTotalScore() + "分（" + s.getGrade() + "）",
+                                "1", studentUserId);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("成绩录入通知推送失败: {}", e.getMessage());
+            }
         }
 
         return errors;

@@ -183,12 +183,6 @@ export const constantRoutes = [
         meta: { title: '学籍异动审核', icon: 'check' }
       },
       {
-        path: 'graduation',
-        component: () => import('@/views/student/graduation/index'),
-        name: 'GraduationAudit',
-        meta: { title: '毕业资格审核', icon: 'finished' }
-      },
-      {
         path: 'student-change',
         component: () => import('@/views/student/student-change/index'),
         name: 'StudentChangeApply',
@@ -235,7 +229,7 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/degree',
+    path: '/thesis',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
@@ -326,7 +320,7 @@ export const constantRoutes = [
         name: 'SupervisorThesisFinal',
         meta: { title: '论文最终稿管理', icon: 'document-checked' }
       },
-      // ==================== 行政管理区（520-524）====================
+      // ==================== 行政管理区（520-525）====================
       {
         path: 'progress',
         component: () => import('@/views/degree/progress/index'),
@@ -334,10 +328,10 @@ export const constantRoutes = [
         meta: { title: '进度查询', icon: 'search' }
       },
       {
-        path: 'approval',
-        component: () => import('@/views/degree/approval/index'),
-        name: 'DegreeApproval',
-        meta: { title: '学位审批', icon: 's-check' }
+        path: 'process-approval',
+        component: () => import('@/views/degree/process-approval/index'),
+        name: 'ProcessApproval',
+        meta: { title: '流程审批', icon: 'check' }
       },
       {
         path: 'process-config',
@@ -356,6 +350,40 @@ export const constantRoutes = [
         component: () => import('@/views/degree/evaluation/index'),
         name: 'ThesisEvaluation',
         meta: { title: '成绩评定', icon: 'score' }
+      }
+    ]
+  },
+  {
+    path: '/degree',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      // ==================== 毕业审核区（701）====================
+      {
+        path: 'graduation-audit',
+        component: () => import('@/views/degree/graduation-audit/index'),
+        name: 'GraduationAuditManage',
+        meta: { title: '毕业审核', icon: 'finished' }
+      },
+      // ==================== 学位管理区（702-704）====================
+      {
+        path: 'degree-application',
+        component: () => import('@/views/degree/degree-application/index'),
+        name: 'DegreeApplication',
+        meta: { title: '学位申请', icon: 'form' }
+      },
+      {
+        path: 'defense-manage',
+        component: () => import('@/views/degree/defense-manage/index'),
+        name: 'DefenseManage',
+        meta: { title: '答辩管理', icon: 'date' }
+      },
+      {
+        path: 'degree-approval',
+        component: () => import('@/views/degree/degree-approval/index'),
+        name: 'DegreeApprovalNew',
+        meta: { title: '学位审批', icon: 'approval' }
       }
     ]
   },
@@ -486,6 +514,12 @@ export const constantRoutes = [
         component: () => import('@/views/selection/round-manage/index'),
         name: 'RoundChange',
         meta: { title: '双选轮次管理', icon: 'build' }
+      },
+      {
+        path: 'quota-manage',
+        component: () => import('@/views/selection/quota-manage/index'),
+        name: 'QuotaManage',
+        meta: { title: '导师名额管理', icon: 'peoples' }
       }
     ]
   }

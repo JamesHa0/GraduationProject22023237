@@ -148,7 +148,7 @@ async function loadData() {
   loading.value = true
   try {
     const res = await listThesisMain({ pageSize: 100 })
-    const list = res.data?.records || res.rows || []
+    const list = res.data || res.rows || []
     thesisList.value = list.map(t => ({
       ...t,
       supervisorScore: null, supervisorComment: '', scored: false,

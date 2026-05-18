@@ -81,6 +81,12 @@ public class Notice {
     private String remark;
 
     /**
+     * 通知去重键（格式：模块:事件:关联ID:日期）
+     */
+    @TableField(value = "notification_key")
+    private String notificationKey;
+
+    /**
      * 当前用户是否已读（非数据库字段）
      */
     @TableField(exist = false)

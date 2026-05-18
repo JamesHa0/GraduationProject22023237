@@ -60,12 +60,12 @@ async function loadData() {
   loading.value = true
   try {
     const thesisRes = await listThesisMain({ pageSize: 100 })
-    const thesisList = thesisRes.data?.records || thesisRes.rows || []
+    const thesisList = thesisRes.data || thesisRes.rows || []
 
     const results = []
     for (const thesis of thesisList) {
       const processRes = await listProcess({ thesisId: thesis.id, pageSize: 50 })
-      const records = processRes.data?.records || processRes.rows || []
+      const records = processRes.data || processRes.rows || []
 
       const progress = {}
       for (const r of records) {

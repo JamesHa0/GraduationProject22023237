@@ -49,14 +49,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { getCurrentInstance } from 'vue'
 import { getThesisMainByStudent, listProcess, submitProcess } from '@/api/degree'
 import { buildSubmitData } from '@/views/degree/processConfig'
 import { getProcessStatusText, getProcessStatusType, parseDate } from '@/composables/useDegreeStatus'
+import { onRoleInfoReady, getStudentId } from '@/composables/useRoleInfoReady'
 
 const { proxy } = getCurrentInstance()
-const userStore = proxy.$pinia._s.get('user')
 
 const dialogVisible = ref(false)
 const formRef = ref(null)
@@ -85,14 +85,14 @@ function doSubmit() {
 
 async function loadData() {
   try {
-    const studentId = userStore?.id
+    const studentId = getStudentId()
     if (!studentId) return
     const res = await getThesisMainByStudent(studentId)
     const thesis = res.data || res
     if (thesis && thesis.id) {
       thesisId.value = thesis.id
       const processRes = await listProcess({ thesisId: thesis.id, processType: 7, pageSize: 1 })
-      const records = processRes.data?.records || processRes.rows || []
+      const records = processRes.data || processRes.rows || []
       if (records.length > 0) {
         currentRecord.value = records.reduce((a, b) => a.version > b.version ? a : b)
       }
@@ -102,7 +102,7 @@ async function loadData() {
   }
 }
 
-onMounted(() => loadData())
+onRoleInfoReady(loadData)
 </script>
 
 <style scoped>

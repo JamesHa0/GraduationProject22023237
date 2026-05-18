@@ -56,6 +56,17 @@ public class FileController {
                 return jsonReturn.returnFailed("文件不能为空");
             }
 
+            // 文件大小校验
+            if (file.getSize() > MAX_FILE_SIZE) {
+                return jsonReturn.returnFailed("文件大小不能超过20MB");
+            }
+
+            // 文件类型校验
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !isAllowedExtension(originalFilename)) {
+                return jsonReturn.returnFailed("不支持的文件类型，允许上传：doc/docx/xls/xlsx/ppt/pptx/pdf/txt/zip/rar/7z/jpg/jpeg/png/gif");
+            }
+
             // 确保上传目录存在
             File uploadDir = new File(UPLOAD_PATH);
             if (!uploadDir.exists()) {
@@ -63,7 +74,6 @@ public class FileController {
             }
 
             // 生成唯一文件名
-            String originalFilename = file.getOriginalFilename();
             String extension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".dat";
             String fileName = UUID.randomUUID().toString() + extension;
 

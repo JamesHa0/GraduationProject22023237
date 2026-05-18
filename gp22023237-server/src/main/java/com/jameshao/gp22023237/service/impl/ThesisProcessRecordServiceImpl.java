@@ -8,27 +8,50 @@ import com.jameshao.gp22023237.common.enums.ProcessType;
 import com.jameshao.gp22023237.common.enums.ReviewResult;
 import com.jameshao.gp22023237.mapper.ThesisProcessRecordMapper;
 import com.jameshao.gp22023237.po.ProcessConfig;
+import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.ThesisMain;
 import com.jameshao.gp22023237.po.ThesisProcessRecord;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.ProcessConfigService;
+import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.ThesisMainService;
 import com.jameshao.gp22023237.service.ThesisProcessRecordService;
+import com.jameshao.gp22023237.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRecordMapper, ThesisProcessRecord>
         implements ThesisProcessRecordService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ThesisProcessRecordServiceImpl.class);
 
     @Autowired
     private ThesisMainService thesisMainService;
 
     @Autowired
     private ProcessConfigService processConfigService;
+
+    @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
+    private StudentService studentService;
+
+    @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
+    private UserService userService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -38,10 +61,27 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
             throw new IllegalArgumentException("thesisId和processType不能为空");
         }
 
+        // 校验thesisId对应的ThesisMain记录是否存在
+        ThesisMain thesisMain = thesisMainService.getById(record.getThesisId());
+        if (thesisMain == null) {
+            throw new IllegalArgumentException("论文主记录不存在，thesisId: " + record.getThesisId());
+        }
+
         // 检查processType是否有效
         ProcessType processType = ProcessType.fromCode(record.getProcessType());
         if (processType == null) {
             throw new IllegalArgumentException("无效的流程类型: " + record.getProcessType());
+        }
+
+        // 检查同一环节是否有正在审批/评审中的记录，避免重复提交
+        LambdaQueryWrapper<ThesisProcessRecord> activeWrapper = new LambdaQueryWrapper<>();
+        activeWrapper.eq(ThesisProcessRecord::getThesisId, record.getThesisId());
+        activeWrapper.eq(ThesisProcessRecord::getProcessType, record.getProcessType());
+        activeWrapper.in(ThesisProcessRecord::getProcessStatus,
+                ProcessStatus.APPROVING.getCode(), ProcessStatus.REVIEWING.getCode());
+        long activeCount = count(activeWrapper);
+        if (activeCount > 0) {
+            throw new IllegalStateException("该环节已有正在审批或评审中的记录，请等待处理完成后再提交");
         }
 
         // === ProcessConfig生效检查 ===
@@ -120,7 +160,29 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
         record.setReviewResult(ReviewResult.NOT_STARTED.getCode());
         record.setSubmitTime(new Date());
 
-        return save(record);
+        boolean result = save(record);
+
+        // 2.1 通知：学生提交论文材料 → 通知学生导师
+        if (result) {
+            try {
+                ThesisMain thesis = thesisMainService.getById(record.getThesisId());
+                if (thesis != null && thesis.getSupervisorId() != null) {
+                    Long supervisorUserId = noticeService.getTeacherUserId(thesis.getSupervisorId());
+                    String processDesc = processType.getDesc();
+                    Student student = studentService.getById(thesis.getStudentId());
+                    String studentName = student != null ? student.getStudentName() : "学生";
+                    if (supervisorUserId != null) {
+                        noticeService.createAndPush("论文提交通知",
+                            "学生" + studentName + "提交了【" + processDesc + "】，请审批",
+                            "1", supervisorUserId);
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("论文提交通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -148,13 +210,60 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
         record.setSupervisorApproverId(approverId);
 
         if (ApprovalStatus.APPROVED.getCode().equals(status)) {
-            // 导师通过 → 进入秘书审批（仍在审批中状态）
-            // processStatus保持APPROVING，等待秘书审批
+            // 导师通过 → 检查是否所有必需审批都已完成，如果是则推进流程状态
+            checkAndAdvanceProcessStatus(record);
         } else if (ApprovalStatus.REJECTED.getCode().equals(status)) {
+            // 校验状态流转合法性
+            ProcessStatus targetStatus = ProcessStatus.REJECTED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.REJECTED.getCode());
         }
 
-        return updateById(record);
+        boolean result = updateById(record);
+
+        // 2.2 通知：导师审批论文 → 通知学生（结果）+ 秘书（通过时）
+        if (result) {
+            try {
+                ThesisMain thesis = thesisMainService.getById(record.getThesisId());
+                if (thesis != null) {
+                    ProcessType processType = ProcessType.fromCode(record.getProcessType());
+                    String processDesc = processType != null ? processType.getDesc() : "论文环节";
+                    String actionText = ApprovalStatus.APPROVED.getCode().equals(status) ? "通过" : "驳回";
+                    // 通知学生
+                    Long studentUserId = noticeService.getStudentUserId(thesis.getStudentId());
+                    if (studentUserId != null) {
+                        noticeService.createAndPush("论文审批通知",
+                            "【" + processDesc + "】导师已" + actionText,
+                            "1", studentUserId);
+                    }
+                    // 导师通过时，通知教学秘书
+                    if (ApprovalStatus.APPROVED.getCode().equals(status)) {
+                        try {
+                            List<com.jameshao.gp22023237.po.User> secretaries = userService.list(
+                                new LambdaQueryWrapper<com.jameshao.gp22023237.po.User>()
+                                    .eq(com.jameshao.gp22023237.po.User::getRoleId, 5)
+                                    .eq(com.jameshao.gp22023237.po.User::getStatus, 1));
+                            List<Long> secretaryUserIds = secretaries.stream()
+                                .map(com.jameshao.gp22023237.po.User::getId).collect(Collectors.toList());
+                            if (!secretaryUserIds.isEmpty()) {
+                                com.jameshao.gp22023237.po.Student stu = studentService.getById(thesis.getStudentId());
+                                String stuName = stu != null ? stu.getStudentName() : "学生";
+                                noticeService.createAndPushToUsers(secretaryUserIds, "论文审批通知",
+                                    "学生" + stuName + "的【" + processDesc + "】导师已通过，请审批", "1");
+                            }
+                        } catch (Exception ex) {
+                            logger.warn("导师审批流转通知推送失败: {}", ex.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("导师审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -171,9 +280,13 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
             throw new IllegalStateException("当前状态不允许秘书审批，当前状态: " + currentStatus.getDesc());
         }
 
-        // 校验导师是否已通过
-        if (!ApprovalStatus.APPROVED.getCode().equals(record.getSupervisorStatus())) {
-            throw new IllegalStateException("导师尚未通过，不能进行秘书审批");
+        // 校验导师是否已通过（根据配置决定是否需要检查）
+        ProcessConfig secretaryConfig = processConfigService.getOne(
+            new LambdaQueryWrapper<ProcessConfig>().eq(ProcessConfig::getProcessType, record.getProcessType()));
+        if (secretaryConfig != null && secretaryConfig.getNeedSupervisorApproval() != null && secretaryConfig.getNeedSupervisorApproval() == 1) {
+            if (!ApprovalStatus.APPROVED.getCode().equals(record.getSupervisorStatus())) {
+                throw new IllegalStateException("导师尚未通过，不能进行秘书审批");
+            }
         }
 
         // 校验秘书是否已审批
@@ -187,12 +300,59 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
         record.setSecretaryApproverId(approverId);
 
         if (ApprovalStatus.APPROVED.getCode().equals(status)) {
-            // 秘书通过 → 进入院长审批（仍在审批中状态）
+            // 秘书通过 → 检查是否所有必需审批都已完成，如果是则推进流程状态
+            checkAndAdvanceProcessStatus(record);
         } else if (ApprovalStatus.REJECTED.getCode().equals(status)) {
+            // 校验状态流转合法性
+            ProcessStatus targetStatus = ProcessStatus.REJECTED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.REJECTED.getCode());
         }
 
-        return updateById(record);
+        boolean result = updateById(record);
+
+        // 2.3 通知：秘书审批论文 → 通知学生（结果）+ 院长（通过时）
+        if (result) {
+            try {
+                ThesisMain thesis = thesisMainService.getById(record.getThesisId());
+                if (thesis != null) {
+                    ProcessType processType = ProcessType.fromCode(record.getProcessType());
+                    String processDesc = processType != null ? processType.getDesc() : "论文环节";
+                    String actionText = ApprovalStatus.APPROVED.getCode().equals(status) ? "通过" : "驳回";
+                    Long studentUserId = noticeService.getStudentUserId(thesis.getStudentId());
+                    if (studentUserId != null) {
+                        noticeService.createAndPush("论文审批通知",
+                            "【" + processDesc + "】教学秘书已" + actionText,
+                            "1", studentUserId);
+                    }
+                    // 秘书通过时，通知分管院长
+                    if (ApprovalStatus.APPROVED.getCode().equals(status)) {
+                        try {
+                            List<com.jameshao.gp22023237.po.User> deans = userService.list(
+                                new LambdaQueryWrapper<com.jameshao.gp22023237.po.User>()
+                                    .eq(com.jameshao.gp22023237.po.User::getRoleId, 2)
+                                    .eq(com.jameshao.gp22023237.po.User::getStatus, 1));
+                            List<Long> deanUserIds = deans.stream()
+                                .map(com.jameshao.gp22023237.po.User::getId).collect(Collectors.toList());
+                            if (!deanUserIds.isEmpty()) {
+                                com.jameshao.gp22023237.po.Student stu = studentService.getById(thesis.getStudentId());
+                                String stuName = stu != null ? stu.getStudentName() : "学生";
+                                noticeService.createAndPushToUsers(deanUserIds, "论文审批通知",
+                                    "学生" + stuName + "的【" + processDesc + "】教学秘书已通过，请审批", "1");
+                            }
+                        } catch (Exception ex) {
+                            logger.warn("秘书审批流转通知推送失败: {}", ex.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("秘书审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -209,12 +369,16 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
             throw new IllegalStateException("当前状态不允许院长审批，当前状态: " + currentStatus.getDesc());
         }
 
-        // 校验导师和秘书是否已通过
+        // 校验导师和秘书是否已通过（根据配置决定是否需要检查）
         if (!ApprovalStatus.APPROVED.getCode().equals(record.getSupervisorStatus())) {
             throw new IllegalStateException("导师尚未通过，不能进行院长审批");
         }
-        if (!ApprovalStatus.APPROVED.getCode().equals(record.getSecretaryStatus())) {
-            throw new IllegalStateException("秘书尚未通过，不能进行院长审批");
+        ProcessConfig deanConfig = processConfigService.getOne(
+            new LambdaQueryWrapper<ProcessConfig>().eq(ProcessConfig::getProcessType, record.getProcessType()));
+        if (deanConfig != null && deanConfig.getNeedSecretaryApproval() != null && deanConfig.getNeedSecretaryApproval() == 1) {
+            if (!ApprovalStatus.APPROVED.getCode().equals(record.getSecretaryStatus())) {
+                throw new IllegalStateException("秘书尚未通过，不能进行院长审批");
+            }
         }
 
         // 校验院长是否已审批
@@ -232,16 +396,49 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
             // 其他环节：直接标记为已通过
             ProcessConfig config = processConfigService.getOne(
                 new LambdaQueryWrapper<ProcessConfig>().eq(ProcessConfig::getProcessType, record.getProcessType()));
+            ProcessStatus targetStatus;
             if (config != null && config.getNeedReviewResult() != null && config.getNeedReviewResult() == 1) {
-                record.setProcessStatus(ProcessStatus.REVIEWING.getCode());
+                targetStatus = ProcessStatus.REVIEWING;
             } else {
-                record.setProcessStatus(ProcessStatus.PASSED.getCode());
+                targetStatus = ProcessStatus.PASSED;
             }
+            // 校验状态流转合法性
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
+            record.setProcessStatus(targetStatus.getCode());
         } else if (ApprovalStatus.REJECTED.getCode().equals(status)) {
+            // 校验状态流转合法性
+            ProcessStatus targetStatus = ProcessStatus.REJECTED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.REJECTED.getCode());
         }
 
-        return updateById(record);
+        boolean deanResult = updateById(record);
+
+        // 2.4 通知：院长审批论文 → 通知学生（结果）
+        if (deanResult) {
+            try {
+                ThesisMain thesis = thesisMainService.getById(record.getThesisId());
+                if (thesis != null) {
+                    ProcessType processType = ProcessType.fromCode(record.getProcessType());
+                    String processDesc = processType != null ? processType.getDesc() : "论文环节";
+                    String actionText = ApprovalStatus.APPROVED.getCode().equals(status) ? "通过" : "驳回";
+                    Long studentUserId = noticeService.getStudentUserId(thesis.getStudentId());
+                    if (studentUserId != null) {
+                        noticeService.createAndPush("论文审批通知",
+                            "【" + processDesc + "】院长已" + actionText,
+                            "1", studentUserId);
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("院长审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return deanResult;
     }
 
     @Override
@@ -272,6 +469,10 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
 
         // 根据评审结果更新流程状态
         if (reviewResult == ReviewResult.PASSED) {
+            ProcessStatus targetStatus = ProcessStatus.COMPLETED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.COMPLETED.getCode());
 
             // 如果是毕业论文通过，更新论文主表的最终结果和评分
@@ -287,6 +488,10 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
                 }
             }
         } else if (reviewResult == ReviewResult.MODIFY_PASSED) {
+            ProcessStatus targetStatus = ProcessStatus.COMPLETED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.COMPLETED.getCode());
 
             // 修改后通过也更新主表
@@ -302,6 +507,10 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
                 }
             }
         } else if (reviewResult == ReviewResult.FAILED) {
+            ProcessStatus targetStatus = ProcessStatus.REJECTED;
+            if (!ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                throw new IllegalStateException("不允许从" + currentStatus.getDesc() + "转换到" + targetStatus.getDesc());
+            }
             record.setProcessStatus(ProcessStatus.REJECTED.getCode());
 
             // 如果是毕业论文未通过，更新主表
@@ -315,7 +524,41 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
             }
         }
 
+        // 2.5 通知：评审结果录入 → 通知学生+导师
+        notifyReviewResult(record, reviewResult);
+
         return updateById(record);
+    }
+
+    /**
+     * 通知学生+导师评审结果（2.5）
+     */
+    private void notifyReviewResult(ThesisProcessRecord record, ReviewResult reviewResult) {
+        try {
+            ThesisMain thesis = thesisMainService.getById(record.getThesisId());
+            if (thesis == null) return;
+            ProcessType processType = ProcessType.fromCode(record.getProcessType());
+            String processDesc = processType != null ? processType.getDesc() : "论文环节";
+            String resultText;
+            if (reviewResult == ReviewResult.PASSED) resultText = "通过";
+            else if (reviewResult == ReviewResult.MODIFY_PASSED) resultText = "修改后通过";
+            else resultText = "不通过";
+            String content = "【" + processDesc + "】评审结果：" + resultText;
+            // 通知学生
+            Long studentUserId = noticeService.getStudentUserId(thesis.getStudentId());
+            if (studentUserId != null) {
+                noticeService.createAndPush("论文评审结果通知", content, "1", studentUserId);
+            }
+            // 通知导师
+            if (thesis.getSupervisorId() != null) {
+                Long supervisorUserId = noticeService.getTeacherUserId(thesis.getSupervisorId());
+                if (supervisorUserId != null) {
+                    noticeService.createAndPush("论文评审结果通知", content, "1", supervisorUserId);
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("评审结果通知推送失败: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -333,9 +576,41 @@ public class ThesisProcessRecordServiceImpl extends ServiceImpl<ThesisProcessRec
         LambdaQueryWrapper<ThesisProcessRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ThesisProcessRecord::getThesisId, thesisId);
         wrapper.eq(ThesisProcessRecord::getProcessType, processType);
-        wrapper.eq(ThesisProcessRecord::getProcessStatus, ProcessStatus.PASSED.getCode())
+        wrapper.and(w -> w.eq(ThesisProcessRecord::getProcessStatus, ProcessStatus.PASSED.getCode())
                 .or()
-                .eq(ThesisProcessRecord::getProcessStatus, ProcessStatus.COMPLETED.getCode());
+                .eq(ThesisProcessRecord::getProcessStatus, ProcessStatus.COMPLETED.getCode()));
         return count(wrapper) > 0;
+    }
+
+    /**
+     * 审批通过后检查是否所有必需的审批环节都已完成，如果是则自动推进流程状态
+     */
+    private void checkAndAdvanceProcessStatus(ThesisProcessRecord record) {
+        ProcessConfig config = processConfigService.getOne(
+            new LambdaQueryWrapper<ProcessConfig>().eq(ProcessConfig::getProcessType, record.getProcessType()));
+        if (config == null) return;
+
+        boolean supervisorDone = config.getNeedSupervisorApproval() == null
+            || config.getNeedSupervisorApproval() == 0
+            || ApprovalStatus.APPROVED.getCode().equals(record.getSupervisorStatus());
+        boolean secretaryDone = config.getNeedSecretaryApproval() == null
+            || config.getNeedSecretaryApproval() == 0
+            || ApprovalStatus.APPROVED.getCode().equals(record.getSecretaryStatus());
+        boolean deanDone = config.getNeedDeanApproval() == null
+            || config.getNeedDeanApproval() == 0
+            || ApprovalStatus.APPROVED.getCode().equals(record.getDeanStatus());
+
+        if (supervisorDone && secretaryDone && deanDone) {
+            ProcessStatus currentStatus = ProcessStatus.fromCode(record.getProcessStatus());
+            ProcessStatus targetStatus;
+            if (config.getNeedReviewResult() != null && config.getNeedReviewResult() == 1) {
+                targetStatus = ProcessStatus.REVIEWING;
+            } else {
+                targetStatus = ProcessStatus.PASSED;
+            }
+            if (ProcessStatus.canTransition(currentStatus, targetStatus)) {
+                record.setProcessStatus(targetStatus.getCode());
+            }
+        }
     }
 }

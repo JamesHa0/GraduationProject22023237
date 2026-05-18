@@ -54,7 +54,7 @@
                 <el-form-item label="允许驳回重提">
                   <el-switch v-model="configMap[step.type].allowResubmit" active-text="允许" inactive-text="不允许" />
                 </el-form-item>
-                <el-form-item label="最大重提次数" v-if="configMap[step.type].allowResubmit">
+                <el-form-item label="最大重提次数" v-if="configMap[step.type]?.allowResubmit">
                   <el-input-number v-model="configMap[step.type].maxResubmitCount" :min="1" :max="5" />
                 </el-form-item>
                 <el-form-item label="备注">
@@ -137,6 +137,9 @@ function initConfig() {
   })
 }
 
+// 模块加载时立即初始化，确保模板渲染时 configMap 已填充
+initConfig()
+
 // 全局配置
 const globalConfig = reactive({
   overdueReminder: true,
@@ -206,12 +209,20 @@ function loadConfig() {
 }
 
 function handleSaveAll() {
+  // 将Date对象格式化为后端期望的 yyyy-MM-dd HH:mm:ss 字符串
+  const formatDateStr = (date) => {
+    if (!date) return null
+    const d = new Date(date)
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+
   // 构建后端保存数据
   const configs = processSteps.map(step => ({
     id: configMap[step.type]._id || undefined,
     processType: step.type,
     processName: step.label,
-    deadline: configMap[step.type].deadline,
+    deadline: formatDateStr(configMap[step.type].deadline),
     enabled: configMap[step.type].enabled ? 1 : 0,
     needSupervisorApproval: configMap[step.type].supervisorApproval ? 1 : 0,
     needSecretaryApproval: configMap[step.type].secretaryApproval ? 1 : 0,
@@ -245,7 +256,6 @@ function handleSaveAll() {
 }
 
 onMounted(() => {
-  initConfig()
   loadConfig()
 })
 </script>

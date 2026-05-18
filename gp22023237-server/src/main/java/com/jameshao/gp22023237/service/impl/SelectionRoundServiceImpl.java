@@ -7,10 +7,13 @@ import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.SystemConfig;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.SelectionRoundService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.SystemConfigService;
 import com.jameshao.gp22023237.service.TeacherService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,8 @@ import java.util.Map;
 @Service
 public class SelectionRoundServiceImpl implements SelectionRoundService {
 
+    private static final Logger logger = LoggerFactory.getLogger(SelectionRoundServiceImpl.class);
+
     @Autowired
     private SystemConfigService systemConfigService;
 
@@ -36,6 +41,9 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
 
     @Autowired
     private TeacherService teacherService;
+
+    @Autowired
+    private NoticeService noticeService;
 
     private static final String CONFIG_CURRENT_ROUND = "current_round";
     private static final String CONFIG_ENABLE_EXTRA_ROUND = "enable_extra_round";
@@ -142,7 +150,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
      * 推进到下一轮
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean advanceToNextRound(String endTimeStudent, String endTimeTutor) {
         try {
             // 直接从数据库读取当前轮次，不经过时间自动判断逻辑
@@ -194,7 +202,23 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             }
 
             // 更新当前轮次
-            return switchRound(targetRound);
+            boolean result = switchRound(targetRound);
+
+            // 1.1 & 1.6 通知：轮次推进/结果发布 → 通知全体参与学生+导师
+            if (result) {
+                try {
+                    String roundText = getRoundText(targetRound);
+                    String endTimeDisplay = (targetRound == 9 || targetRound == 7) ? endTimeStudent : endTimeTutor;
+                    String title = "双选轮次推进通知";
+                    String content = "双选已进入【" + roundText + "】，截止时间：" + (endTimeDisplay != null ? endTimeDisplay : "待定");
+                    List<Long> userIds = getSelectionParticipantUserIds();
+                    noticeService.createAndPushToUsers(userIds, title, content, "1");
+                } catch (Exception e) {
+                    logger.warn("双选轮次推进通知推送失败: {}", e.getMessage());
+                }
+            }
+
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -220,7 +244,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
      * 重置双选
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean resetRounds(Integer maxChoices, String cohortYear) {
         try {
             // 清空所有轮次的时间配置
@@ -327,7 +351,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean switchRound(int targetRound) {
         try {
             SystemConfig config = systemConfigService.getConfigByKey(CONFIG_CURRENT_ROUND);
@@ -382,7 +406,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateRoundConfig(String configKey, String configValue) {
         try {
             SystemConfig config = systemConfigService.getConfigByKey(configKey);
@@ -399,7 +423,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int advanceRejectedStudents() {
         int count = 0;
 
@@ -420,6 +444,16 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
         for (Long studentId : studentIds) {
             if (advanceStudentToNextRound(studentId)) {
                 count++;
+                // 1.9 通知：被拒学生志愿推进 → 通知被推进的学生
+                try {
+                    Student student = studentService.getById(studentId);
+                    if (student != null && student.getUserId() != null) {
+                        noticeService.createAndPush("志愿推进通知",
+                            "您的志愿被拒绝，已自动推进到下一志愿", "1", student.getUserId());
+                    }
+                } catch (Exception e) {
+                    logger.warn("志愿推进通知推送失败: {}", e.getMessage());
+                }
             }
         }
 
@@ -427,7 +461,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean advanceStudentToNextRound(Long studentId) {
         try {
             // 查询该学生的所有志愿
@@ -470,7 +504,6 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                     updateWrapper.eq("id", nextChoice.getId())
                             .set("round", nextRound);
                     mentorStudentService.update(null, updateWrapper);
-                    System.out.println("学生 " + studentId + " 的志愿 " + nextChoice.getStudentChoiceOrder() + " 推进到第 " + nextRound + " 轮");
 
                     // 更新学生selection_status为1（双选中）
                     Student student = studentService.getById(studentId);
@@ -479,10 +512,12 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                         student.setUpdateTime(new java.util.Date());
                         studentService.updateById(student);
                     }
+                    return true;
                 }
             }
 
-            return true;
+            // 被拒绝但没有可推进的志愿，返回false
+            return false;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -530,7 +565,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean manualAssignMentor(Long studentId, Long mentorId) {
         try {
             // 创建新的 mentor_student 记录
@@ -549,12 +584,15 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 return false;
             }
 
-            // 更新导师已确认名额
+            // 更新导师已确认名额（使用SQL原子操作避免并发超限）
             Teacher teacher = teacherService.getById(mentorId);
             if (teacher != null) {
+                int currentQuota = teacher.getConfirmedQuota() != null ? teacher.getConfirmedQuota() : 0;
+                int currentRemaining = teacher.getRemainingQuota() != null ? teacher.getRemainingQuota() : 0;
                 UpdateWrapper<Teacher> teacherWrapper = new UpdateWrapper<>();
                 teacherWrapper.eq("id", mentorId)
-                        .set("confirmed_quota", teacher.getConfirmedQuota() + 1);
+                        .set("confirmed_quota", currentQuota + 1)
+                        .set("remaining_quota", Math.max(0, currentRemaining - 1));
                 teacherService.update(null, teacherWrapper);
             }
 
@@ -564,6 +602,23 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                 student.setSelectionStatus(3);
                 student.setUpdateTime(new java.util.Date());
                 studentService.updateById(student);
+            }
+
+            // 1.8 通知：手动分配导师 → 通知学生+导师
+            try {
+                Teacher assignedTeacher = teacherService.getById(mentorId);
+                String teacherName = assignedTeacher != null ? assignedTeacher.getTeacherName() : "未知";
+                String studentName = student != null ? student.getStudentName() : "未知";
+                // 通知学生
+                if (student != null && student.getUserId() != null) {
+                    noticeService.createAndPush("导师分配通知", "您已被分配导师：" + teacherName, "1", student.getUserId());
+                }
+                // 通知导师
+                if (assignedTeacher != null && assignedTeacher.getUserId() != null) {
+                    noticeService.createAndPush("学生分配通知", "您有一名新分配的学生：" + studentName, "1", assignedTeacher.getUserId());
+                }
+            } catch (Exception e) {
+                logger.warn("手动分配导师通知推送失败: {}", e.getMessage());
             }
 
             return true;
@@ -842,7 +897,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int markUnmatchedStudentsForSupplementary() {
         int count = 0;
         try {
@@ -891,6 +946,16 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
                         mentorStudentService.updateById(choice);
                     }
 
+                    // 1.10 通知：标记需补选学生 → 通知该学生
+                    try {
+                        if (student != null && student.getUserId() != null) {
+                            noticeService.createAndPush("补选通知",
+                                "常规轮次未被导师选中，请参加补选", "1", student.getUserId());
+                        }
+                    } catch (Exception e) {
+                        logger.warn("补选标记通知推送失败: {}", e.getMessage());
+                    }
+
                     count++;
                 }
             }
@@ -901,7 +966,7 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean startSupplementaryRound(String endTimeStudent, String endTimeTutor) {
         try {
             // 1. 标记需要补选的学生
@@ -923,10 +988,91 @@ public class SelectionRoundServiceImpl implements SelectionRoundService {
             updateConfigValue(configKeys[1], endTimeStudent);
 
             // 3. 更新当前轮次为补选学生选择轮（7）
-            return switchRound(targetRound);
+            boolean result = switchRound(targetRound);
+
+            // 1.2 通知：补选轮次开启 → 通知未匹配学生+参与导师
+            if (result) {
+                try {
+                    String title = "补选轮次开启通知";
+                    String content = "补选轮次已开启，请于" + (endTimeStudent != null ? endTimeStudent : "待定") + "前提交志愿";
+                    List<Long> userIds = getSupplementaryParticipantUserIds();
+                    noticeService.createAndPushToUsers(userIds, title, content, "1");
+                } catch (Exception e) {
+                    logger.warn("补选轮次开启通知推送失败: {}", e.getMessage());
+                }
+            }
+
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * 获取轮次文字描述
+     */
+    private String getRoundText(int round) {
+        switch (round) {
+            case 9: return "学生预选轮";
+            case 1: return "第1轮";
+            case 2: return "第2轮";
+            case 3: return "第3轮";
+            case 7: return "补选学生选择轮";
+            case 8: return "补选导师选择轮";
+            default: return "第" + round + "轮";
+        }
+    }
+
+    /**
+     * 获取当前双选参与者的userId列表（学生+导师）
+     */
+    private List<Long> getSelectionParticipantUserIds() {
+        List<Long> userIds = new ArrayList<>();
+        String cohortYearConfig = getSelectionCohortYear();
+        // 查询参与双选的学生
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        if (cohortYearConfig != null && !cohortYearConfig.isEmpty()) {
+            try {
+                studentWrapper.eq(Student::getCohortYear, Integer.parseInt(cohortYearConfig));
+            } catch (NumberFormatException ignored) {}
+        }
+        studentWrapper.select(Student::getUserId);
+        List<Student> students = studentService.list(studentWrapper);
+        for (Student s : students) {
+            if (s.getUserId() != null) userIds.add(s.getUserId());
+        }
+        // 查询所有导师
+        LambdaQueryWrapper<Teacher> teacherWrapper = new LambdaQueryWrapper<>();
+        teacherWrapper.eq(Teacher::getIsMentor, 1).select(Teacher::getUserId);
+        List<Teacher> teachers = teacherService.list(teacherWrapper);
+        for (Teacher t : teachers) {
+            if (t.getUserId() != null) userIds.add(t.getUserId());
+        }
+        return userIds;
+    }
+
+    /**
+     * 获取补选参与者的userId列表（未匹配学生+导师）
+     */
+    private List<Long> getSupplementaryParticipantUserIds() {
+        List<Long> userIds = new ArrayList<>();
+        // 查询selection_status=2（补选中）的学生
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(Student::getSelectionStatus, 2).select(Student::getUserId);
+        List<Student> students = studentService.list(studentWrapper);
+        for (Student s : students) {
+            if (s.getUserId() != null) userIds.add(s.getUserId());
+        }
+        // 查询所有有剩余名额的导师
+        LambdaQueryWrapper<Teacher> teacherWrapper = new LambdaQueryWrapper<>();
+        teacherWrapper.eq(Teacher::getIsMentor, 1)
+                .gt(Teacher::getRemainingQuota, 0)
+                .select(Teacher::getUserId);
+        List<Teacher> teachers = teacherService.list(teacherWrapper);
+        for (Teacher t : teachers) {
+            if (t.getUserId() != null) userIds.add(t.getUserId());
+        }
+        return userIds;
     }
 }

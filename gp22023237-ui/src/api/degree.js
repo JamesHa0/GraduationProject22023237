@@ -122,6 +122,14 @@ export function committeeApprove(id, status, comment) {
   })
 }
 
+export function resubmitDegreeApplication(data) {
+  return request({
+    url: '/thesis/degree/resubmit',
+    method: 'post',
+    data: data
+  })
+}
+
 export function grantDegree(id, certificateNo) {
   return request({
     url: '/thesis/degree/grant',

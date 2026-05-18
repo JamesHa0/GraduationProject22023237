@@ -11,6 +11,7 @@ import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.SelectionRoundService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
@@ -28,6 +29,8 @@ import java.util.List;
 @RequestMapping("/mentor/selection")
 public class MentorSelectionController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MentorSelectionController.class);
+
     @Autowired
     private StudentService studentService;
     @Autowired
@@ -36,6 +39,8 @@ public class MentorSelectionController {
     private MentorStudentService mentorStudentService;
     @Autowired
     private SelectionRoundService selectionRoundService;
+    @Autowired
+    private NoticeService noticeService;
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -251,6 +256,25 @@ public class MentorSelectionController {
                     student.setUpdateTime(new Date());
                     studentService.updateById(student);
                 }
+            }
+
+            // 1.4/1.5 通知：导师同意/拒绝 → 通知学生
+            try {
+                Student notifyStudent = studentService.getById(originalRecord.getStudentId());
+                Teacher notifyTeacher = teacherService.getById(originalRecord.getMentorId());
+                if (notifyStudent != null && notifyStudent.getUserId() != null && notifyTeacher != null) {
+                    if (mentorStudent.getTeacherStatus() == 1) {
+                        noticeService.createAndPush("双选结果通知",
+                            "导师" + notifyTeacher.getTeacherName() + "已同意您的选择，双选匹配成功",
+                            "1", notifyStudent.getUserId());
+                    } else if (mentorStudent.getTeacherStatus() == 2) {
+                        noticeService.createAndPush("双选结果通知",
+                            "导师" + notifyTeacher.getTeacherName() + "暂未接受您的选择",
+                            "1", notifyStudent.getUserId());
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("导师选择结果通知推送失败: {}", e.getMessage());
             }
 
             return jsonReturn.returnSuccess();

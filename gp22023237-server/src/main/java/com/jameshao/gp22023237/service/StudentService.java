@@ -17,4 +17,11 @@ public interface StudentService extends IService<Student> {
     StudentImportTaskDTO queryImportTask(String taskId);
 
     void startImportTask(String taskId, MultipartFile file, Long classId);
+
+    /**
+     * 根据用户ID查询学生信息
+     * @param userId 系统用户ID（user表主键）
+     * @return 学生信息，不存在则返回null
+     */
+    Student getByUserId(Long userId);
 }

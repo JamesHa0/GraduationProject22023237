@@ -134,14 +134,13 @@ public class ThesisMainServiceImpl extends ServiceImpl<ThesisMainMapper, ThesisM
             throw new IllegalArgumentException("ID列表不能为空");
         }
         Date now = new Date();
-        for (Long id : ids) {
-            ThesisMain thesisMain = getById(id);
-            if (thesisMain != null && thesisMain.getArchiveStatus() != 1) {
-                thesisMain.setArchiveStatus(1);
-                thesisMain.setArchiveTime(now);
-                updateById(thesisMain);
-            }
-        }
-        return true;
+        // 使用LambdaUpdateWrapper批量更新，避免N+1查询问题
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ThesisMain> updateWrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        updateWrapper.in(ThesisMain::getId, ids)
+                     .ne(ThesisMain::getArchiveStatus, 1)
+                     .set(ThesisMain::getArchiveStatus, 1)
+                     .set(ThesisMain::getArchiveTime, now);
+        return update(updateWrapper);
     }
 }

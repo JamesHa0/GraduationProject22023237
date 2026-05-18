@@ -134,7 +134,6 @@
           <div class="detail-left">
             <h4 class="section-title">审批流程</h4>
             <el-timeline class="approval-timeline">
-              <!-- 答辩环节 -->
               <el-timeline-item
                 :type="getReviewResultType(currentRow.defenseResult) === 'success' ? 'success' : getReviewResultType(currentRow.defenseResult) === 'danger' ? 'danger' : 'primary'"
                 :hollow="!currentRow.defenseResult"
@@ -146,13 +145,10 @@
                       {{ getReviewResultText(currentRow.defenseResult) }}
                     </el-tag>
                   </div>
-                  <div class="timeline-node__detail" v-if="currentRow.defenseScore">
-                    评分: {{ currentRow.defenseScore }}
-                  </div>
+                  <div class="timeline-node__detail" v-if="currentRow.defenseScore">评分: {{ currentRow.defenseScore }}</div>
                 </div>
               </el-timeline-item>
 
-              <!-- 分委审批 -->
               <el-timeline-item
                 :type="currentRow.committeeStatus === 1 ? 'success' : currentRow.committeeStatus === 2 ? 'danger' : currentRow.committeeStatus === 0 ? 'warning' : 'info'"
                 :hollow="currentRow.committeeStatus === 0"
@@ -164,13 +160,10 @@
                       {{ getApprovalStatusText(currentRow.committeeStatus) }}
                     </el-tag>
                   </div>
-                  <div class="timeline-node__detail" v-if="currentRow.committeeComment">
-                    意见: {{ currentRow.committeeComment }}
-                  </div>
+                  <div class="timeline-node__detail" v-if="currentRow.committeeComment">意见: {{ currentRow.committeeComment }}</div>
                 </div>
               </el-timeline-item>
 
-              <!-- 学位授予 -->
               <el-timeline-item
                 :type="currentRow.degreeGranted === 1 ? 'success' : 'info'"
                 :hollow="currentRow.degreeGranted !== 1"
@@ -224,13 +217,7 @@
             <div class="action-area">
               <div class="action-block" v-if="canApprove(currentRow)">
                 <el-alert title="该申请待您审批" type="warning" :closable="false" show-icon style="margin-bottom: 16px" />
-                <el-input
-                  v-model="detailApprovalComment"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入审批意见（拒绝时必填）"
-                  style="margin-bottom: 12px"
-                />
+                <el-input v-model="detailApprovalComment" type="textarea" :rows="3" placeholder="请输入审批意见（拒绝时必填）" style="margin-bottom: 12px" />
                 <div style="display: flex; gap: 8px">
                   <el-button type="danger" @click="handleDetailReject">拒绝</el-button>
                   <el-button type="primary" @click="handleDetailApprove">通过</el-button>
@@ -360,7 +347,7 @@
       </div>
     </el-drawer>
 
-    <!-- 审批对话框（备用，从表格行内快速审批） -->
+    <!-- 审批对话框 -->
     <el-dialog v-model="approvalDialogVisible" :title="approvalType === 'approve' ? '通过申请' : '拒绝申请'" width="500px" append-to-body>
       <el-form :model="approvalForm" :rules="approvalRules" ref="approvalFormRef" label-width="80px">
         <el-form-item label="审批意见" prop="comment">
@@ -368,14 +355,12 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="approvalDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitApproval">确定</el-button>
-        </div>
+        <el-button @click="approvalDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitApproval">确定</el-button>
       </template>
     </el-dialog>
 
-    <!-- 学位授予对话框（备用，从表格行内快速授予） -->
+    <!-- 学位授予对话框 -->
     <el-dialog v-model="grantDialogVisible" title="授予学位" width="500px" append-to-body>
       <el-form :model="grantForm" :rules="grantRules" ref="grantFormRef" label-width="100px">
         <el-form-item label="学位证书编号" prop="certificateNo">
@@ -383,10 +368,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="grantDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitGrant">确定</el-button>
-        </div>
+        <el-button @click="grantDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitGrant">确定</el-button>
       </template>
     </el-dialog>
 
@@ -443,27 +426,25 @@
         </el-row>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="appDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitApplication">确定</el-button>
-        </div>
+        <el-button @click="appDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitApplication">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
-<script setup name="DegreeApproval">
+<script setup name="DegreeApprovalNew">
 import { ref, reactive, getCurrentInstance, toRefs, computed, onMounted } from 'vue'
 import { listDegreeApplication, submitDegreeApplication, committeeApprove, grantDegree, listThesisMain, listProcess } from '@/api/degree'
-import useUserStore from '@/store/modules/user'
 import {
   getApprovalStatusText, getApprovalStatusType,
-  getProcessStatusText, getProcessStatusType,
   getReviewResultText, getReviewResultType,
+  getProcessStatusText, getProcessStatusType,
   getFinalResultText, getFinalResultType,
   parseDate, getLatestProcessStatusText, getTimelineType
 } from '@/composables/useDegreeStatus'
-import { getCurrentUserRoleId } from '@/composables/useDegreeApproval'
+import { getCurrentUserRoleId, ROLE } from '@/composables/useDegreeApproval'
+import useUserStore from '@/store/modules/user'
 
 const { proxy } = getCurrentInstance()
 const userStore = useUserStore()
@@ -542,20 +523,10 @@ const data = reactive({
     pageNum: 1,
     pageSize: 10
   },
-  approvalForm: {
-    id: undefined,
-    comment: ''
-  },
-  approvalRules: {
-    comment: [{ required: false, message: '请输入审批意见', trigger: 'blur' }]
-  },
-  grantForm: {
-    id: undefined,
-    certificateNo: ''
-  },
-  grantRules: {
-    certificateNo: [{ required: true, message: '请输入学位证书编号', trigger: 'blur' }]
-  },
+  approvalForm: { id: undefined, comment: '' },
+  approvalRules: { comment: [{ required: false, message: '请输入审批意见', trigger: 'blur' }] },
+  grantForm: { id: undefined, certificateNo: '' },
+  grantRules: { certificateNo: [{ required: true, message: '请输入学位证书编号', trigger: 'blur' }] },
   appForm: {
     id: undefined,
     studentId: undefined,
@@ -613,13 +584,13 @@ function getStudentTimelineType(type) {
 function canApprove(row) {
   if (!row) return false
   const roleId = getCurrentUserRoleId()
-  return (roleId === 3 || roleId === 1) && row.committeeStatus === 0
+  return (roleId === ROLE.COMMITTEE_MEMBER || roleId === ROLE.SUPER_ADMIN) && row.committeeStatus === 0
 }
 
 function canGrant(row) {
   if (!row) return false
   const roleId = getCurrentUserRoleId()
-  return (roleId === 2 || roleId === 1) && row.committeeStatus === 1 && row.degreeGranted === 0
+  return (roleId === ROLE.DEAN || roleId === ROLE.SUPER_ADMIN) && row.committeeStatus === 1 && row.degreeGranted === 0
 }
 
 // ==================== 学位审批操作 ====================
@@ -628,8 +599,8 @@ function getList() {
   loading.value = true
   listDegreeApplication(queryParams.value).then(res => {
     loading.value = false
-    dataList.value = res.data.records || res.data || []
-    total.value = res.data.total || dataList.value.length
+    dataList.value = res.data || []
+    total.value = res.pagination?.total || dataList.value.length
   }).catch(() => {
     loading.value = false
   })
@@ -752,8 +723,8 @@ function loadMyStudents() {
     supervisorId: userStore.user?.id
   }).then(res => {
     studentsLoading.value = false
-    studentsList.value = res.data.records || res.data || []
-    studentsTotal.value = res.data.total || studentsList.value.length
+    studentsList.value = res.data || []
+    studentsTotal.value = res.pagination?.total || studentsList.value.length
   }).catch(() => {
     studentsLoading.value = false
   })
@@ -767,7 +738,7 @@ function viewStudentProgress(row) {
   // 并行加载各环节记录
   const promises = processSteps.map(step =>
     listProcess({ thesisId: row.id, processType: step.type, pageSize: 100 }).then(res => {
-      const list = res.data.records || res.data || []
+      const list = res.data || []
       studentProcessMap.value[step.type] = list.map(item => {
         if (item.contentExtend) {
           try {
@@ -784,9 +755,11 @@ function viewStudentProgress(row) {
 // ==================== 新增学位申请 ====================
 
 function handleAddApplication() {
+  // 从roleInfo获取真实的studentId（userStore.userId是user表主键，非student表主键）
+  const studentId = userStore.roleInfo?.[0]?.id || userStore.userId
   appForm.value = {
     id: undefined,
-    studentId: undefined,
+    studentId: studentId,
     degreeType: 1,
     thesisTitle: undefined,
     defenseTime: undefined,
@@ -827,84 +800,27 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: bold;
-}
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-size: 16px; font-weight: bold; }
 
 /* 左右分栏布局 */
-.detail-layout {
-  display: flex;
-  gap: 24px;
-  min-height: 400px;
-}
+.detail-layout { display: flex; gap: 24px; min-height: 400px; }
+.detail-left { flex: 1; min-width: 0; border-right: 1px solid #ebeef5; padding-right: 20px; }
+.detail-right { width: 340px; flex-shrink: 0; }
 
-.detail-left {
-  flex: 1;
-  min-width: 0;
-  border-right: 1px solid #ebeef5;
-  padding-right: 20px;
-}
-
-.detail-right {
-  width: 340px;
-  flex-shrink: 0;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: bold;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #409eff;
-  color: #303133;
-}
+.section-title { font-size: 15px; font-weight: bold; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #409eff; color: #303133; }
 
 /* 审批时间轴 */
-.approval-timeline {
-  padding-left: 4px;
-}
-
-.timeline-node__title {
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.timeline-node__status {
-  margin-bottom: 4px;
-}
-
-.timeline-node__detail {
-  font-size: 12px;
-  color: #909399;
-  line-height: 1.6;
-}
+.approval-timeline { padding-left: 4px; }
+.timeline-node__title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+.timeline-node__status { margin-bottom: 4px; }
+.timeline-node__detail { font-size: 12px; color: #909399; line-height: 1.6; }
 
 /* 操作区 */
-.action-area {
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
-}
-
-.action-block {
-  margin-bottom: 16px;
-}
-
-.action-block:last-child {
-  margin-bottom: 0;
-}
+.action-area { padding: 12px; background: #fafafa; border-radius: 8px; }
+.action-block { margin-bottom: 16px; }
+.action-block:last-child { margin-bottom: 0; }
 
 /* 折叠面板标题 */
-.collapse-title {
-  display: flex;
-  align-items: center;
-}
+.collapse-title { display: flex; align-items: center; }
 </style>

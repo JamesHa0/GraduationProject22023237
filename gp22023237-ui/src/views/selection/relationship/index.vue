@@ -184,8 +184,9 @@ const rules = {
 };
 
 const canModify = computed(() => {
-    if (userStore.roles && userStore.roles.length > 0) {
-        const roleId = userStore.roles[0];
+    const roles = userStore.roles
+    if (roles) {
+        const roleId = Array.isArray(roles) ? (roles.length > 0 ? roles[0] : null) : roles
         return roleId === 1 || roleId === 4 || roleId === 5;
     }
     return true;

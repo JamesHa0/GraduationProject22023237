@@ -17,6 +17,7 @@ import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.service.CourseSelectionService;
 import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.service.CourseService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,8 @@ import java.util.Set;
 @RequestMapping("/course/selection")
 public class CourseSelectionController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CourseSelectionController.class);
+
     @Autowired
     private JSONReturn jsonReturn;
 
@@ -43,6 +46,9 @@ public class CourseSelectionController {
 
     @Autowired
     private StudentService studentService;
+
+    @Autowired
+    private NoticeService noticeService;
 
     @Autowired
     private CourseSelectionMapper courseSelectionMapper;
@@ -193,6 +199,15 @@ public class CourseSelectionController {
                 }
             }
 
+            // 5.2 通知：选课提交 → 通知学生
+            try {
+                Student stu = studentService.getById(batchDTO.getStudentId());
+                if (stu != null && stu.getUserId() != null) {
+                    noticeService.createAndPush("选课通知", "选课已提交，共选" + batchDTO.getChoices().size() + "门课程", "1", stu.getUserId());
+                }
+            } catch (Exception ex) {
+                logger.warn("选课提交通知推送失败: {}", ex.getMessage());
+            }
             return jsonReturn.returnSuccess("保存成功");
         } catch (Exception e) {
             e.printStackTrace();
@@ -270,8 +285,26 @@ public class CourseSelectionController {
     @DeleteMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
         try {
+            // 先获取记录信息用于通知
+            CourseSelection cs = courseSelectionService.getById(id);
+            if (cs == null) {
+                return jsonReturn.returnError("记录不存在");
+            }
+            Long studentId = cs.getStudentId();
+            Long courseId = cs.getCourseId();
             boolean success = courseSelectionService.removeById(id);
             if (success) {
+                // 5.3 通知：退课 → 通知学生
+                try {
+                    Long studentUserId = noticeService.getStudentUserId(studentId);
+                    if (studentUserId != null) {
+                        Course course = courseService.getById(courseId);
+                        String courseName = course != null ? course.getName() : "课程";
+                        noticeService.createAndPush("退课通知", "已退选课程：" + courseName, "1", studentUserId);
+                    }
+                } catch (Exception ex) {
+                    logger.warn("退课通知推送失败: {}", ex.getMessage());
+                }
                 return jsonReturn.returnSuccess("删除成功");
             } else {
                 return jsonReturn.returnFailed("删除失败");

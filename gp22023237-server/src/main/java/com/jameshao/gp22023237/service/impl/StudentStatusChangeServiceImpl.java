@@ -7,17 +7,35 @@ import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.StudentStatusChange;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.StudentStatusChangeService;
+import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusChangeMapper, StudentStatusChange>
         implements StudentStatusChangeService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StudentStatusChangeServiceImpl.class);
+
+    private static final String[] CHANGE_TYPES = {"", "休学", "复学", "退学", "延期毕业"};
+
+    private String getChangeTypeText(Integer changeType) {
+        if (changeType != null && changeType > 0 && changeType < CHANGE_TYPES.length) {
+            return CHANGE_TYPES[changeType];
+        }
+        return "学籍异动";
+    }
 
     @Autowired
     private StudentService studentService;
@@ -25,8 +43,17 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
     @Autowired
     private MentorStudentService mentorStudentService;
 
+    @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
+    private UserService userService;
+
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean submitApplication(StudentStatusChange application) {
         // 校验变更类型必填
         if (application.getChangeType() == null) {
@@ -85,11 +112,27 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
         application.setSecretaryStatus(0);
         application.setStatus(0); // 整体状态为待审批
 
-        return save(application);
+        boolean result = save(application);
+        // 3.1 通知：异动申请提交 → 通知导师
+        if (result && application.getMentorId() != null) {
+            try {
+                Student student = studentService.getById(application.getStudentId());
+                String studentName = student != null ? student.getStudentName() : "学生";
+                String changeTypeText = getChangeTypeText(application.getChangeType());
+                Long mentorUserId = noticeService.getTeacherUserId(application.getMentorId());
+                if (mentorUserId != null) {
+                    noticeService.createAndPush("学籍异动申请通知",
+                        "学生" + studentName + "申请" + changeTypeText, "1", mentorUserId);
+                }
+            } catch (Exception e) {
+                logger.warn("异动申请通知推送失败: {}", e.getMessage());
+            }
+        }
+        return result;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean mentorApprove(Long id, Integer status, String comment) {
         StudentStatusChange application = getById(id);
         if (application == null) {
@@ -119,11 +162,47 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
 
         boolean updated = updateById(application);
 
+        // 3.2/3.3 通知：导师审批流转/驳回 → 通知秘书（通过时）或学生（驳回时）
+        if (updated) {
+            try {
+                Long studentUserId = noticeService.getStudentUserId(application.getStudentId());
+                if (status == 2 && studentUserId != null) {
+                    // 3.3 导师驳回 → 通知学生
+                    noticeService.createAndPush("异动审批通知",
+                        "异动申请被导师驳回" + (comment != null ? "，原因：" + comment : ""),
+                        "1", studentUserId);
+                }
+                // 3.2 导师通过 → 通知教学秘书
+                if (status == 1) {
+                    try {
+                        List<com.jameshao.gp22023237.po.User> secretaries = userService.list(
+                            new LambdaQueryWrapper<com.jameshao.gp22023237.po.User>()
+                                .eq(com.jameshao.gp22023237.po.User::getRoleId, 5)
+                                .eq(com.jameshao.gp22023237.po.User::getStatus, 1));
+                        List<Long> secretaryUserIds = secretaries.stream()
+                            .map(com.jameshao.gp22023237.po.User::getId).collect(Collectors.toList());
+                        if (!secretaryUserIds.isEmpty()) {
+                            String changeTypeText = getChangeTypeText(application.getChangeType());
+                            Student studentForName = studentService.getById(application.getStudentId());
+                            String studentName = studentForName != null ? studentForName.getStudentName() : "学生";
+                            noticeService.createAndPushToUsers(secretaryUserIds, "异动审批通知",
+                                "学生" + studentName
+                                + "申请" + changeTypeText + "导师已通过，请审批", "1");
+                        }
+                    } catch (Exception ex) {
+                        logger.warn("导师审批流转通知推送失败: {}", ex.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("导师审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
         return updated;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean secretaryApprove(Long id, Integer status, String comment) {
         StudentStatusChange application = getById(id);
         if (application == null) {
@@ -156,7 +235,28 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
             application.setStatus(3);
         }
 
-        return updateById(application);
+        boolean result = updateById(application);
+        // 3.3/3.4 通知：秘书审批驳回/完成 → 通知学生
+        if (result) {
+            try {
+                Long studentUserId = noticeService.getStudentUserId(application.getStudentId());
+                if (studentUserId != null) {
+                    if (status == 1) {
+                        // 3.4 审批完成
+                        noticeService.createAndPush("异动审批通知",
+                            "异动申请已审批通过，请及时办理手续", "1", studentUserId);
+                    } else {
+                        // 3.3 秘书驳回
+                        noticeService.createAndPush("异动审批通知",
+                            "异动申请被教学秘书驳回" + (comment != null ? "，原因：" + comment : ""),
+                            "1", studentUserId);
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("秘书审批通知推送失败: {}", e.getMessage());
+            }
+        }
+        return result;
     }
 
     private void updateStudentStatus(StudentStatusChange application) {

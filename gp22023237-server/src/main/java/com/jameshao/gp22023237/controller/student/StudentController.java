@@ -140,7 +140,7 @@ public class StudentController {
             // 创建用户账号
             User user = new User();
             user.setUsername(student.getStudentNo()); // 学号作为用户名
-            user.setPassword(student.getStudentNo()); // 默认密码为学号
+            user.setPassword(com.jameshao.gp22023237.service.impl.UserServiceImpl.hashPassword(student.getStudentNo())); // 默认密码为学号（哈希存储）
             user.setName(student.getStudentName());
             user.setRoleId(6); // 6-学生角色
             user.setStatus(1); // 默认为正常状态
