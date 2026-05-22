@@ -2,10 +2,10 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="学生ID" prop="studentId">
-        <el-input v-model="queryParams.studentId" placeholder="请输入学生ID" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.studentId" placeholder="请输入学生ID" clearable style="width: 200px" @keyup.enter="debouncedHandleQuery" />
       </el-form-item>
       <el-form-item label="课程ID" prop="courseId">
-        <el-input v-model="queryParams.courseId" placeholder="请输入课程ID" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.courseId" placeholder="请输入课程ID" clearable style="width: 200px" @keyup.enter="debouncedHandleQuery" />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="选课状态" clearable style="width: 120px">
@@ -15,7 +15,7 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button type="primary" icon="Search" @click="debouncedHandleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
       </el-form-item>
     </el-form>
@@ -104,6 +104,15 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 
+// 防抖工具函数
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 const data = reactive({
   form: {},
   queryParams: {
@@ -134,9 +143,12 @@ function getStatusText(status) {
 function getList() {
   loading.value = true;
   listCourseSelection(queryParams.value).then(res => {
+    selectionList.value = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
     loading.value = false;
-    selectionList.value = res.data || [];
-    total.value = selectionList.value.length;
+  }).catch((err) => {
+    console.error('选课管理列表查询失败:', err);
+    loading.value = false;
   });
 }
 
@@ -144,6 +156,8 @@ function handleQuery() {
   queryParams.value.pageNum = 1;
   getList();
 }
+
+const debouncedHandleQuery = debounce(handleQuery, 300);
 
 function resetQuery() {
   proxy.resetForm("queryRef");

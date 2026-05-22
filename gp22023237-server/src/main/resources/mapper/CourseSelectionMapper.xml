@@ -42,4 +42,78 @@
         ORDER BY cs.selection_time DESC
     </select>
 
+    <!-- 查询选课记录列表（分页） -->
+    <select id="listSelectionWithCourseDetailsPage" resultType="com.jameshao.gp22023237.DTO.CourseSelectionWithDetailsDTO">
+        SELECT
+            cs.id,
+            cs.student_id AS studentId,
+            cs.course_id AS courseId,
+            DATE_FORMAT(cs.selection_time, '%Y-%m-%d %H:%i:%s') AS selectionTime,
+            cs.status,
+            c.course_no AS courseNo,
+            c.name,
+            c.credit,
+            c.hours,
+            c.semester,
+            c.year,
+            c.max_credits AS maxCredits,
+            c.status AS courseStatus,
+            c.description,
+            c.study_nature AS studyNature,
+            c.textbook,
+            c.external_selection AS externalSelection,
+            c.remark
+        FROM course_selection cs
+        LEFT JOIN course c ON cs.course_id = c.id
+        <where>
+            <if test="studentId != null">
+                AND cs.student_id = #{studentId}
+            </if>
+            <if test="courseId != null">
+                AND cs.course_id = #{courseId}
+            </if>
+            <if test="status != null">
+                AND cs.status = #{status}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+        </where>
+        ORDER BY cs.selection_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计选课记录总数 -->
+    <select id="countSelectionWithCourseDetails" resultType="int">
+        SELECT COUNT(*)
+        FROM course_selection cs
+        LEFT JOIN course c ON cs.course_id = c.id
+        <where>
+            <if test="studentId != null">
+                AND cs.student_id = #{studentId}
+            </if>
+            <if test="courseId != null">
+                AND cs.course_id = #{courseId}
+            </if>
+            <if test="status != null">
+                AND cs.status = #{status}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND c.semester = #{semester}
+            </if>
+        </where>
+    </select>
+
+    <!-- 批量查询课程已选人数 -->
+    <select id="batchCountSelectedByCourseIds" resultType="java.util.Map">
+        SELECT cs.course_id AS courseId, COUNT(*) AS cnt
+        FROM course_selection cs
+        WHERE cs.status = 1
+        AND cs.course_id IN
+        <foreach collection="courseIds" item="courseId" open="(" separator="," close=")">
+            #{courseId}
+        </foreach>
+        GROUP BY cs.course_id
+    </select>
+
 </mapper>

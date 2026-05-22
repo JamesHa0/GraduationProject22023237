@@ -41,6 +41,11 @@ public class Course {
     private Integer hours;
 
     /**
+     * 课程容量（最多选课人数），不设置时默认不限制
+     */
+    private Integer capacity;
+
+    /**
      * 学期
      */
     private String semester;

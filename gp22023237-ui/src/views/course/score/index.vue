@@ -82,7 +82,7 @@
               clearable
               style="width: 180px"
               :prefix-icon="Search"
-              @input="handleSearch"
+              @input="debouncedHandleSearch"
               size="default"
             />
           </div>
@@ -119,7 +119,7 @@
       <!-- 成绩表格 -->
       <el-table
         v-loading="loading"
-        :data="filteredScoreList"
+        :data="scoreList"
         border
         style="width: 100%"
         :row-class-name="tableRowClassName"
@@ -330,6 +330,15 @@ import { Search, Document, UploadFilled, User, TrendCharts, CircleCheck, Trophy 
 
 const { proxy } = getCurrentInstance();
 
+// 防抖工具
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 // 状态
 const loading = ref(false);
 const scoreList = ref([]);
@@ -359,44 +368,19 @@ const editRules = {
 };
 
 // 查询参数
-const queryParams = ref({
-  pageNum: 1,
-  pageSize: 20,
-  courseId: null,
-  grade: undefined,
-  teacherId: null
-});
-
-// 统计数据
-const stats = computed(() => {
-  const list = scoreList.value;
-  if (!list || list.length === 0) {
-    return { enteredCount: 0, totalCount: 0, avgScore: '-', passRate: '0.0', excellentRate: '0.0' };
+const queryData = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 20,
+    courseId: null,
+    grade: undefined,
+    teacherId: null
   }
-  const entered = list.filter(s => s.totalScore != null);
-  const avg = entered.length > 0 ? (entered.reduce((sum, s) => sum + s.totalScore, 0) / entered.length).toFixed(1) : '-';
-  const passCount = entered.filter(s => s.totalScore >= 60).length;
-  const excellentCount = entered.filter(s => s.totalScore >= 90).length;
-  const passRate = entered.length > 0 ? ((passCount / entered.length) * 100).toFixed(1) : '0.0';
-  const excellentRate = entered.length > 0 ? ((excellentCount / entered.length) * 100).toFixed(1) : '0.0';
-  return {
-    enteredCount: entered.length,
-    totalCount: list.length,
-    avgScore: avg,
-    passRate,
-    excellentRate
-  };
 });
+const { queryParams } = toRefs(queryData);
 
-// 搜索过滤
-const filteredScoreList = computed(() => {
-  if (!searchKeyword.value) return scoreList.value;
-  const kw = searchKeyword.value.toLowerCase();
-  return scoreList.value.filter(row =>
-    (row.studentNo && row.studentNo.toLowerCase().includes(kw)) ||
-    (row.studentName && row.studentName.toLowerCase().includes(kw))
-  );
-});
+// 统计数据（独立查询全量数据）
+const stats = ref({ enteredCount: 0, totalCount: 0, avgScore: '-', passRate: '0.0', excellentRate: '0.0' });
 
 // 获取教师课程列表
 function getTeacherCourses() {
@@ -420,29 +404,61 @@ function handleCourseChange(courseId) {
     queryParams.value.pageNum = 1;
     importResult.value = null;
     getList();
+    getStats();
   } else {
     selectedCourse.value = null;
     scoreList.value = [];
     total.value = 0;
+    stats.value = { enteredCount: 0, totalCount: 0, avgScore: '-', passRate: '0.0', excellentRate: '0.0' };
   }
 }
 
-// 获取成绩列表
+// 获取成绩列表（分页）
 function getList() {
   if (!selectedCourseId.value) return;
   loading.value = true;
   listScoreWithDetails(queryParams.value).then(res => {
-    if (res.data && res.data.rows) {
-      scoreList.value = res.data.rows || [];
-      total.value = res.data.total || 0;
-    } else {
-      scoreList.value = res.data || [];
-      total.value = scoreList.value.length;
+    let rows = res.data.rows || res.data || [];
+    if (searchKeyword.value) {
+      const kw = searchKeyword.value.toLowerCase();
+      rows = rows.filter(row =>
+        (row.studentNo && row.studentNo.toLowerCase().includes(kw)) ||
+        (row.studentName && row.studentName.toLowerCase().includes(kw))
+      );
     }
+    scoreList.value = rows;
+    total.value = res.data.total || 0;
     loading.value = false;
-  }).catch(() => {
+  }).catch((err) => {
+    console.error('成绩列表查询失败:', err);
     loading.value = false;
   });
+}
+
+// 获取统计数据（不分页全量查询）
+function getStats() {
+  if (!selectedCourseId.value) return;
+  listScoreWithDetails({
+    courseId: selectedCourseId.value,
+    teacherId: queryParams.value.teacherId
+  }).then(res => {
+    const list = res.data && res.data.rows ? res.data.rows : (res.data || []);
+    if (!list || list.length === 0) {
+      stats.value = { enteredCount: 0, totalCount: 0, avgScore: '-', passRate: '0.0', excellentRate: '0.0' };
+      return;
+    }
+    const entered = list.filter(s => s.totalScore != null);
+    const avg = entered.length > 0 ? (entered.reduce((sum, s) => sum + s.totalScore, 0) / entered.length).toFixed(1) : '-';
+    const passCount = entered.filter(s => s.totalScore >= 60).length;
+    const excellentCount = entered.filter(s => s.totalScore >= 90).length;
+    stats.value = {
+      enteredCount: entered.length,
+      totalCount: list.length,
+      avgScore: avg,
+      passRate: entered.length > 0 ? ((passCount / entered.length) * 100).toFixed(1) : '0.0',
+      excellentRate: entered.length > 0 ? ((excellentCount / entered.length) * 100).toFixed(1) : '0.0'
+    };
+  }).catch(() => {});
 }
 
 // 编辑成绩
@@ -514,6 +530,7 @@ function submitEdit() {
         proxy.$modal.msgSuccess('修改成功');
         editOpen.value = false;
         getList();
+        getStats();
       }).catch(() => {
         editLoading.value = false;
         proxy.$modal.msgError('修改失败，请重试');
@@ -522,10 +539,12 @@ function submitEdit() {
   });
 }
 
-// 搜索
+// 搜索（后端查询）
 function handleSearch() {
-  // 前端过滤，无需重新请求
+  queryParams.value.pageNum = 1;
+  getList();
 }
+const debouncedHandleSearch = debounce(handleSearch, 300);
 
 // 导入
 function handleImport() {
@@ -585,6 +604,7 @@ function submitImport() {
     }
     if (importResult.value.successCount > 0) {
       getList();
+      getStats();
     }
   }).catch(() => {
     importing.value = false;

@@ -37,11 +37,11 @@
         <el-alert v-if="!isTutorRound" title="当前不是导师选择轮次，无法进行学生确认操作" type="warning" :closable="false" class="alert-warning" show-icon />
         <el-alert v-else-if="!canSubmit" title="当前轮次导师确认已截止，无法提交操作" type="warning" :closable="false" class="alert-warning" show-icon />
 
-        <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
+        <el-table v-loading="loading" :data="mentorList"
             style="width: 100%;" v-if="isTutorRound">
             <el-table-column label="序号" width="50" type="index" align="center">
                 <template #default="scope">
-                    <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
+                    <span>{{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}</span>
                 </template>
             </el-table-column>
             <el-table-column label="姓名" align="center" prop="studentName" :show-overflow-tooltip="true" />
@@ -73,7 +73,7 @@
             </el-table-column>
         </el-table>
 
-        <pagination v-show="total > 0 && isTutorRound" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
+        <pagination v-show="total > 0 && isTutorRound" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
 
 
@@ -118,7 +118,6 @@ import { onMounted } from "vue";
 const { proxy } = getCurrentInstance();
 
 const mentorList = ref([]);// 可选学生列表
-const allStudents = ref([]); // 所有学生原始数据
 const deadlineTime = ref(''); // 存储截止时间
 const quota = ref(0); // 导师名额
 const confirmedQuota = ref(0); // 已确认名额
@@ -165,8 +164,6 @@ const currentStudent = ref({}); // 当前查看的学生信息
 
 // 分页组件相关数据
 const total = ref(0);
-const pageNum = ref(1);
-const pageSize = ref(10);
 
 // 获取导师id
 const getMentorId = () => getUserInfo('id');
@@ -177,7 +174,9 @@ const getConfirmedQuota = () => getUserInfo('confirmedQuota');
 
 let queryParams = ref({
     name: undefined,
-    onlyUnselected: false
+    onlyUnselected: false,
+    pageNum: 1,
+    pageSize: 10
 });
 
 // 显示学生详情的方法
@@ -257,8 +256,8 @@ const selectStudent = (row, status) => {
 
 /** 搜索按钮操作 */
 function handleQuery() {
-    pageNum.value = 1;
-    applyFilters();
+    queryParams.value.pageNum = 1;
+    getList();
 }
 
 /** 重置按钮操作 */
@@ -282,33 +281,21 @@ function getList() {
     confirmedQuota.value = getConfirmedQuota();
 
     const data = {
-        mentorId: id
+        mentorId: id,
+        name: queryParams.value.name || undefined,
+        onlyUnselected: queryParams.value.onlyUnselected || undefined,
+        pageNum: queryParams.value.pageNum,
+        pageSize: queryParams.value.pageSize
     };
     initData(data).then(response => {
-        allStudents.value = response.data; // 保存原始数据
-        applyFilters(); // 应用过滤条件
+        mentorList.value = response.data.rows || response.data || [];
+        total.value = response.data.total || 0;
+    }).catch((err) => {
+        console.error('查询可选学生列表失败:', err);
+        loading.value = false;
     }).finally(() => {
         loading.value = false;
     });
-}
-
-// 应用过滤条件
-function applyFilters() {
-    let result = allStudents.value;
-
-    // 按姓名过滤（不区分大小写）
-    if (queryParams.value.name) {
-        const searchName = queryParams.value.name.toLowerCase();
-        result = result.filter(item => item.studentName.toLowerCase().includes(searchName));
-    }
-
-    // 按是否已选过滤
-    if (queryParams.value.onlyUnselected) {
-        result = result.filter(item => item.teacherStatus !== 1);
-    }
-
-    mentorList.value = result;
-    total.value = result.length;
 }
 
 

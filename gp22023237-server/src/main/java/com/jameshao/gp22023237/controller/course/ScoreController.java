@@ -234,13 +234,27 @@ public class ScoreController {
      * 学生查询自己的成绩（带详情）
      */
     @GetMapping("/myScores")
-    public String myScores(Long studentId, String grade, String semester) {
+    public String myScores(Long studentId, String grade, String semester,
+                           Integer pageNum, Integer pageSize) {
         try {
             if (studentId == null) {
                 return jsonReturn.returnError("学生ID不能为空");
             }
-            List<ScoreWithDetailsDTO> list = scoreMapper.listScoreWithDetails(studentId, null, grade, semester, null, null, null);
-            return jsonReturn.returnSuccess(list);
+            if (pageNum != null && pageSize != null) {
+                int offset = (pageNum - 1) * pageSize;
+                List<ScoreWithDetailsDTO> rows = scoreMapper.listScoreWithDetails(
+                        studentId, null, grade, semester, null, offset, pageSize);
+                int total = scoreMapper.countScoreWithDetails(
+                        studentId, null, grade, semester, null);
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<ScoreWithDetailsDTO> list = scoreMapper.listScoreWithDetails(
+                        studentId, null, grade, semester, null, null, null);
+                return jsonReturn.returnSuccess(list);
+            }
         } catch (Exception e) {
             log.error("查询学生成绩失败", e);
             return jsonReturn.returnError(e.getMessage());
@@ -404,29 +418,41 @@ public class ScoreController {
      * 返回包含未录入成绩的学生
      */
     @GetMapping("/courseStudents")
-    public String courseStudents(Long courseId, String keyword, String grade) {
+    public String courseStudents(Long courseId, String keyword, String grade,
+                                 Integer pageNum, Integer pageSize) {
         try {
             if (courseId == null) {
                 return jsonReturn.returnError("课程ID不能为空");
             }
-            List<CourseStudentScoreDTO> list = scoreMapper.listCourseStudentsWithScore(courseId, keyword, grade);
+            List<CourseStudentScoreDTO> allList = scoreMapper.listCourseStudentsWithScore(courseId, null, null);
             int total = scoreMapper.countCourseStudents(courseId);
 
-            // 统计信息
-            long enteredCount = list.stream().filter(s -> s.getTotalScore() != null).count();
-            double avgScore = list.stream()
+            // 统计信息（基于全量数据）
+            long enteredCount = allList.stream().filter(s -> s.getTotalScore() != null).count();
+            double avgScore = allList.stream()
                     .filter(s -> s.getTotalScore() != null)
                     .mapToDouble(CourseStudentScoreDTO::getTotalScore)
                     .average().orElse(0.0);
-            long passCount = list.stream()
+            long passCount = allList.stream()
                     .filter(s -> s.getTotalScore() != null && s.getTotalScore() >= 60)
                     .count();
-            long excellentCount = list.stream()
+            long excellentCount = allList.stream()
                     .filter(s -> s.getTotalScore() != null && s.getTotalScore() >= 90)
                     .count();
 
+            // 分页查询（keyword/grade 过滤后内存切片，课程学生数有限）
+            List<CourseStudentScoreDTO> queryList = scoreMapper.listCourseStudentsWithScore(courseId, keyword, grade);
+            List<CourseStudentScoreDTO> rows;
+            if (pageNum != null && pageSize != null) {
+                int offset = (pageNum - 1) * pageSize;
+                int toIndex = Math.min(offset + pageSize, queryList.size());
+                rows = offset < queryList.size() ? queryList.subList(offset, toIndex) : new ArrayList<>();
+            } else {
+                rows = queryList;
+            }
+
             Map<String, Object> data = new HashMap<>();
-            data.put("rows", list);
+            data.put("rows", rows);
             data.put("total", total);
             data.put("enteredCount", enteredCount);
             data.put("avgScore", Math.round(avgScore * 10.0) / 10.0);
@@ -560,5 +586,16 @@ public class ScoreController {
         private String grade;
         @com.alibaba.excel.annotation.ExcelProperty("评语")
         private String comment;
+    }
+
+    @GetMapping("/passRate/{courseId}")
+    public String getPassRate(@PathVariable Long courseId) {
+        try {
+            Map<String, Object> result = scoreService.calculatePassRate(courseId);
+            return jsonReturn.returnSuccess(result);
+        } catch (Exception e) {
+            log.error("计算及格率失败", e);
+            return jsonReturn.returnError(e.getMessage());
+        }
     }
 }

@@ -3,8 +3,13 @@
     <el-card shadow="never">
       <template #header><span>论文最终稿管理</span></template>
       <el-table :data="records" v-loading="loading" stripe>
-        <el-table-column label="论文文件" min-width="160">
-          <template #default="{ row }">{{ row.thesisVersionUrl || '-' }}</template>
+        <el-table-column label="论文文件" min-width="200">
+          <template #default="{ row }">
+            <el-link v-if="row.thesisVersionUrl" type="primary" :href="downloadUrl(row)" target="_blank">
+              {{ row.thesisVersionUrl.substring(row.thesisVersionUrl.lastIndexOf('/') + 1) || '查看文件' }}
+            </el-link>
+            <span v-else>-</span>
+          </template>
         </el-table-column>
         <el-table-column label="审核状态" width="100">
           <template #default="{ row }">
@@ -85,6 +90,12 @@ function doReject() {
     rejectVisible.value = false
     loadData()
   })
+}
+
+function downloadUrl(row) {
+  const baseAPI = import.meta.env.VITE_APP_BASE_API
+  const fileName = row.thesisVersionUrl.substring(row.thesisVersionUrl.lastIndexOf('/') + 1)
+  return baseAPI + '/file/download?fileUrl=' + encodeURIComponent(row.thesisVersionUrl) + '&fileName=' + encodeURIComponent(fileName)
 }
 
 async function loadData() {

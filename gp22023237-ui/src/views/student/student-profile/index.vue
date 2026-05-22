@@ -43,6 +43,9 @@
           <el-tag :type="getSelectionTagType(studentInfo.selectionStatus)" size="default">
             {{ getSelectionStatusText(studentInfo.selectionStatus) }}
           </el-tag>
+          <span v-if="studentInfo.selectionStatus === 3 && studentInfo.mentorName" class="mentor-name">
+            {{ studentInfo.mentorName }}
+          </span>
         </el-descriptions-item>
 
         <el-descriptions-item label="研究方向" :span="2">
@@ -184,6 +187,13 @@ onMounted(() => {
 .info-text {
   font-size: 14px;
   color: #303133;
+}
+
+.mentor-name {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 500;
 }
 
 :deep(.el-descriptions__label) {

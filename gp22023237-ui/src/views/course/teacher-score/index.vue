@@ -105,7 +105,7 @@
               clearable
               style="width: 180px"
               :prefix-icon="Search"
-              @input="handleSearch"
+              @input="debouncedHandleSearch"
               size="default"
             />
           </div>
@@ -219,6 +219,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <!-- 空状态 -->
@@ -373,6 +374,25 @@ import {
 
 const { proxy } = getCurrentInstance();
 
+// 防抖工具
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// ===== 分页参数 =====
+const queryData = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10
+  }
+});
+const { queryParams } = toRefs(queryData);
+const total = ref(0);
+
 // ===== 状态 =====
 const loading = ref(false);
 const scoreList = ref([]);
@@ -456,11 +476,13 @@ function loadPhaseStatus() {
 function handleCourseChange(courseId) {
   if (courseId) {
     selectedCourse.value = teacherCourses.value.find(c => c.id === courseId) || null;
+    queryParams.value.pageNum = 1;
     importResult.value = null;
     getList();
   } else {
     selectedCourse.value = null;
     scoreList.value = [];
+    total.value = 0;
     stats.value = { enteredCount: 0, total: 0, avgScore: '-', passRate: '0.0', excellentRate: '0.0' };
   }
 }
@@ -471,10 +493,13 @@ function getList() {
   listCourseStudents({
     courseId: selectedCourseId.value,
     keyword: searchKeyword.value || undefined,
-    grade: queryGrade.value || undefined
+    grade: queryGrade.value || undefined,
+    pageNum: queryParams.value.pageNum,
+    pageSize: queryParams.value.pageSize
   }).then(res => {
     const data = res.data;
     scoreList.value = data.rows || [];
+    total.value = data.total || 0;
     stats.value = {
       enteredCount: data.enteredCount || 0,
       total: data.total || 0,
@@ -483,14 +508,17 @@ function getList() {
       excellentRate: data.excellentRate || '0.0'
     };
     loading.value = false;
-  }).catch(() => {
+  }).catch((err) => {
+    console.error('课程学生列表查询失败:', err);
     loading.value = false;
   });
 }
 
 function handleSearch() {
+  queryParams.value.pageNum = 1;
   getList();
 }
+const debouncedHandleSearch = debounce(handleSearch, 300);
 
 // ===== 编辑 =====
 function handleUpdate(row) {
@@ -654,7 +682,10 @@ function submitImport() {
     } else {
       proxy.$modal.msgSuccess('导入完成，全部成功');
     }
-    if (importResult.value.successCount > 0) getList();
+    if (importResult.value.successCount > 0) {
+      queryParams.value.pageNum = 1;
+      getList();
+    }
   }).catch(() => {
     importing.value = false;
     proxy.$modal.msgError('导入失败，请检查文件格式');

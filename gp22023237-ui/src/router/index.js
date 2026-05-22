@@ -384,6 +384,12 @@ export const constantRoutes = [
         component: () => import('@/views/degree/degree-approval/index'),
         name: 'DegreeApprovalNew',
         meta: { title: '学位审批', icon: 'approval' }
+      },
+      {
+        path: 'degree-grant',
+        component: () => import('@/views/degree/degree-grant/index'),
+        name: 'DegreeGrant',
+        meta: { title: '学位授予', icon: 'education' }
       }
     ]
   },
@@ -514,6 +520,12 @@ export const constantRoutes = [
         component: () => import('@/views/selection/round-manage/index'),
         name: 'RoundChange',
         meta: { title: '双选轮次管理', icon: 'build' }
+      },
+      {
+        path: 'manual-assign',
+        component: () => import('@/views/selection/manual-assign/index'),
+        name: 'ManualAssign',
+        meta: { title: '手动分配导师', icon: 'user' }
       },
       {
         path: 'quota-manage',

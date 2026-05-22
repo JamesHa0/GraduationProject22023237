@@ -43,6 +43,18 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean submitApplication(MentorChangeApplication application) {
+        // 防重复提交校验：同一学生不能有待审批的申请
+        Long studentId = application.getStudentId();
+        if (studentId != null) {
+            LambdaQueryWrapper<MentorChangeApplication> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(MentorChangeApplication::getStudentId, studentId)
+                    .in(MentorChangeApplication::getOverallStatus, 0, 1);
+            long pendingCount = this.count(checkWrapper);
+            if (pendingCount > 0) {
+                throw new IllegalArgumentException("您已有待审批的导师更换申请，不能重复提交");
+            }
+        }
+
         // 设置申请时间
         Date now = new Date();
         application.setApplyTime(now);

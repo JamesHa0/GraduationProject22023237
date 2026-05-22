@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -207,5 +208,25 @@ public class ScoreServiceImpl extends ServiceImpl<ScoreMapper, Score>
             result.setFailDetails(failDetails);
             return result;
         }
+    }
+
+    @Override
+    public Map<String, Object> calculatePassRate(Long courseId) {
+        LambdaQueryWrapper<Score> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Score::getCourseId, courseId)
+               .isNotNull(Score::getTotalScore);
+        List<Score> scores = list(wrapper);
+
+        long total = scores.size();
+        long passCount = scores.stream()
+                .filter(s -> s.getTotalScore() != null && s.getTotalScore() >= 60.0)
+                .count();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", total);
+        result.put("passCount", passCount);
+        result.put("failCount", total - passCount);
+        result.put("passRate", total > 0 ? Math.round(passCount * 10000.0 / total) / 100.0 : 0);
+        return result;
     }
 }

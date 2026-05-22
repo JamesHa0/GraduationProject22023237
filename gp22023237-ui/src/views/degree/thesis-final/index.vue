@@ -31,9 +31,23 @@
       <el-empty v-else description="暂未提交最终稿" />
 
       <el-dialog v-model="dialogVisible" title="提交最终稿" width="600px">
-        <el-form ref="formRef" :model="form" label-width="100px">
-          <el-form-item label="论文文件">
-            <el-input v-model="form.thesisVersionUrl" placeholder="请输入论文文件地址" />
+        <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+          <el-form-item label="论文文件" prop="thesisVersionUrl">
+            <el-upload
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :before-upload="handleBeforeUpload"
+              :on-success="handleUploadSuccess"
+              :on-error="handleUploadError"
+              :file-list="fileList"
+              :limit="1"
+              :on-exceed="handleExceed"
+            >
+              <el-button type="primary" plain size="small">选取文件</el-button>
+              <template #tip>
+                <div class="el-upload__tip">支持 doc/docx/pdf 等格式，单文件不超过20MB</div>
+              </template>
+            </el-upload>
           </el-form-item>
         </el-form>
         <template #footer>
@@ -51,6 +65,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { getCurrentInstance } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getToken } from '@/utils/auth'
 import { getThesisMainByStudent, listProcess, submitProcess } from '@/api/degree'
 import { buildSubmitData } from '@/views/degree/processConfig'
 import { getProcessStatusText, getProcessStatusType, parseDate } from '@/composables/useDegreeStatus'
@@ -58,28 +74,73 @@ import { onRoleInfoReady, getStudentId } from '@/composables/useRoleInfoReady'
 
 const { proxy } = getCurrentInstance()
 
+const uploadUrl = import.meta.env.VITE_APP_BASE_API + '/file/upload-academic'
+const uploadHeaders = ref({ Token: getToken() })
 const dialogVisible = ref(false)
 const formRef = ref(null)
 const currentRecord = ref(null)
 const thesisId = ref(null)
+const fileList = ref([])
 
 const form = ref({ thesisVersionUrl: undefined })
+const rules = {
+  thesisVersionUrl: [{ required: true, message: '请上传论文文件', trigger: 'change' }]
+}
 const statusText = computed(() => getProcessStatusText(currentRecord.value?.processStatus))
 const statusType = computed(() => getProcessStatusType(currentRecord.value?.processStatus))
 const isLocked = computed(() => currentRecord.value?.processStatus === 3 || currentRecord.value?.processStatus === 5)
 const canSubmit = computed(() => !currentRecord.value || currentRecord.value.processStatus === 4)
 
+function handleBeforeUpload(file) {
+  const allowedExt = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf', 'txt', 'zip', 'rar', '7z', 'jpg', 'jpeg', 'png', 'gif']
+  const ext = file.name.split('.').pop().toLowerCase()
+  if (!allowedExt.includes(ext)) {
+    ElMessage.error('不支持的文件类型')
+    return false
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过20MB')
+    return false
+  }
+  return true
+}
+
+function handleUploadSuccess(response) {
+  const isSuccess = response.result === 'success' || response.code === 200
+  if (isSuccess && response.data && response.data.url) {
+    form.value.thesisVersionUrl = response.data.url
+    ElMessage.success('文件上传成功')
+  } else {
+    ElMessage.error(response.error || response.msg || '上传失败')
+    fileList.value = []
+  }
+}
+
+function handleUploadError() {
+  ElMessage.error('上传失败，请重试')
+  fileList.value = []
+}
+
+function handleExceed() {
+  ElMessage.warning('只能上传一个文件，请先移除已有文件')
+}
+
 function handleSubmit() {
   form.value = { thesisVersionUrl: undefined }
+  fileList.value = []
   dialogVisible.value = true
 }
 
 function doSubmit() {
-  const data = buildSubmitData({ ...form.value, thesisId: thesisId.value }, 7)
-  submitProcess(data).then(() => {
-    proxy.$modal.msgSuccess('提交成功')
-    dialogVisible.value = false
-    loadData()
+  formRef.value.validate((valid) => {
+    if (!valid) return
+    const data = buildSubmitData({ ...form.value, thesisId: thesisId.value }, 7)
+    submitProcess(data).then(() => {
+      proxy.$modal.msgSuccess('提交成功')
+      dialogVisible.value = false
+      fileList.value = []
+      loadData()
+    })
   })
 }
 

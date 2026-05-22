@@ -63,7 +63,7 @@
                 AND ssc.mentor_id = #{mentorId}
             </if>
         </where>
-        ORDER BY ssc.create_time DESC
+        ORDER BY CASE WHEN ssc.status = 0 THEN 0 ELSE 1 END, ssc.create_time DESC
     </select>
 
     <!-- 查询学籍异动详情，关联学生信息 -->

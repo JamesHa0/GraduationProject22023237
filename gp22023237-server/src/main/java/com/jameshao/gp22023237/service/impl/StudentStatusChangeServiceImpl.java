@@ -80,16 +80,19 @@ public class StudentStatusChangeServiceImpl extends ServiceImpl<StudentStatusCha
             throw new RuntimeException("无法确定学生身份，请检查学号信息");
         }
 
-        // 查询学生的已确认导师，自动填充 mentorId
+        // 查询学生的已确认导师，自动填充 mentorId（优先第一导师）
         if (application.getMentorId() == null) {
             LambdaQueryWrapper<MentorStudent> mentorWrapper = new LambdaQueryWrapper<>();
             mentorWrapper.eq(MentorStudent::getStudentId, application.getStudentId())
                     .eq(MentorStudent::getStudentStatus, 1)
                     .eq(MentorStudent::getTeacherStatus, 1)
+                    .orderByAsc(MentorStudent::getMentorType)
                     .last("LIMIT 1");
             MentorStudent mentorStudent = mentorStudentService.getOne(mentorWrapper);
             if (mentorStudent != null) {
                 application.setMentorId(mentorStudent.getMentorId());
+            } else {
+                logger.warn("学生ID={}未找到已确认的导师关系，学籍异动申请将没有导师审批人", application.getStudentId());
             }
         }
 

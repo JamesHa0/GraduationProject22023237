@@ -18,7 +18,7 @@ public interface MentorStudentService extends IService<MentorStudent> {
     /**
      * 分页查询导师学生关系（关联学生和导师信息）
      */
-    IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId, Boolean onlyUndetermined);
+    IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId, Boolean onlyUndetermined, String studentName, String teacherName);
 
     /**
      * 创建导师学生关系

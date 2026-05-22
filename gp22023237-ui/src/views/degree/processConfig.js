@@ -153,7 +153,9 @@ const DRAFT_RULES = {}
 
 const DEFENSE_DRAFT_RULES = {}
 
-const FINAL_THESIS_RULES = {}
+const FINAL_THESIS_RULES = {
+  thesisVersionUrl: [{ required: true, message: '请上传论文文件', trigger: 'change' }]
+}
 
 // ==================== 提交数据处理 ====================
 

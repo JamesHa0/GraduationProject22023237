@@ -148,7 +148,7 @@
 
 <script setup name="MentorChangeApplication">
 import { listMentorChange, getMentorChangeDetail, submitMentorChange, getStudentCurrentMentor, listAvailableMentors } from "@/api/student/mentorChange";
-import { getCurrentInstance, ref, reactive, toRefs, onMounted, watch } from "vue";
+import { getCurrentInstance, ref, reactive, toRefs, watch } from "vue";
 import useUserStore from '@/store/modules/user';
 import { saveAs } from 'file-saver';
 import axios from 'axios';
@@ -219,25 +219,19 @@ function parseDate(dateStr) {
 }
 
 // 获取当前学生信息
+// 后端getRoleInfo对学生角色(6)返回Student对象，字段为: id, studentNo, studentName等
 function getCurrentStudentInfo() {
-  console.log('userStore:', userStore);
-  console.log('userStore.roleInfo:', userStore.roleInfo);
-  console.log('userStore.name:', userStore.name);
-
   if (userStore.roleInfo && userStore.roleInfo[0]) {
     const roleInfo = userStore.roleInfo[0];
-    form.value.studentNo = roleInfo.studentNo || roleInfo.userName || '';
-    form.value.studentName = roleInfo.studentName || roleInfo.nickname || userStore.name || '';
-    currentStudentId.value = roleInfo.studentId || roleInfo.id || userStore.userId;
+    // roleInfo.id 是 student 表主键，即学生ID
+    form.value.studentNo = roleInfo.studentNo || '';
+    form.value.studentName = roleInfo.studentName || userStore.name || '';
+    currentStudentId.value = roleInfo.id || userStore.userId;
     form.value.studentId = currentStudentId.value;
-    console.log('从roleInfo获取学生信息:', { studentId: currentStudentId.value, studentNo: form.value.studentNo, studentName: form.value.studentName });
   } else if (userStore.name) {
     form.value.studentName = userStore.name;
     currentStudentId.value = userStore.userId;
     form.value.studentId = currentStudentId.value;
-    console.log('从userStore获取学生信息:', { studentId: currentStudentId.value, studentName: form.value.studentName });
-  } else {
-    console.warn('未能获取到学生信息');
   }
 }
 
@@ -341,22 +335,16 @@ const handleExport = (row) => {
   }).catch(() => {});
 };
 
-onMounted(async () => {
-  getCurrentStudentInfo();
-  await loadMentorList();
-  await loadCurrentMentor();
-  getList();
-});
-
-// 监听 roleInfo 变化，确保学生信息能正确加载
+// 监听 roleInfo 变化，统一处理初始化和数据更新
+// immediate:true 会在组件创建时立即触发，无需 onMounted 重复加载
 watch(
   () => userStore.roleInfo,
   async (newVal) => {
-    console.log('监听到 roleInfo 变化:', newVal);
     if (newVal && newVal[0]) {
       getCurrentStudentInfo();
+      await loadMentorList();
       await loadCurrentMentor();
-      if (form.value.studentNo) {
+      if (currentStudentId.value) {
         getList();
       }
     }

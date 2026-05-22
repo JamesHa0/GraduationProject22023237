@@ -16,7 +16,7 @@
             <el-option v-for="opt in PROCESS_TYPE_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
-        <el-form-item><el-button type="primary" @click="loadData">查询</el-button></el-form-item>
+        <el-form-item><el-button type="primary" @click="handleQuery">查询</el-button></el-form-item>
       </el-form>
 
       <!-- 批量进度表格 -->
@@ -32,6 +32,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <el-pagination
+          v-model:current-page="pagination.pageNum"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -45,6 +58,7 @@ import { getProcessStatusText, getProcessStatusType } from '@/composables/useDeg
 const loading = ref(false)
 const queryForm = ref({ major: '', processType: null })
 const studentProgress = ref([])
+const pagination = ref({ pageNum: 1, pageSize: 10, total: 0 })
 
 function getStatusText(status) {
   if (status === undefined || status === null) return '未提交'
@@ -56,11 +70,31 @@ function getStatusType(status) {
   return getProcessStatusType(status)
 }
 
+function handleQuery() {
+  pagination.value.pageNum = 1
+  loadData()
+}
+
+function handleSizeChange(val) {
+  pagination.value.pageSize = val
+  pagination.value.pageNum = 1
+  loadData()
+}
+
+function handleCurrentChange(val) {
+  pagination.value.pageNum = val
+  loadData()
+}
+
 async function loadData() {
   loading.value = true
   try {
-    const thesisRes = await listThesisMain({ pageSize: 100 })
+    const thesisRes = await listThesisMain({
+      pageNum: pagination.value.pageNum,
+      pageSize: pagination.value.pageSize
+    })
     const thesisList = thesisRes.data || thesisRes.rows || []
+    pagination.value.total = thesisRes.pagination?.total ?? 0
 
     const results = []
     for (const thesis of thesisList) {

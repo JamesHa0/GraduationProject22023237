@@ -95,6 +95,12 @@ public class User {
     @TableField(exist = false)
     private String token;
 
+    @TableField(exist = false)
+    private String code;
+
+    @TableField(exist = false)
+    private String uuid;
+
     @Override
     public boolean equals(Object that) {
         if (this == that) {

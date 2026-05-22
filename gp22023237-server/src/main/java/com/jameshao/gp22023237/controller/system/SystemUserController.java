@@ -384,19 +384,39 @@ public class SystemUserController {
                 return jsonReturn.returnFailed("用户不存在");
             }
 
-            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
+            // 记录旧签名URL，先上传新文件再删旧文件，防止并发时产生孤儿文件
+            String oldSignature = dbUser.getSignature();
+
+            // 先上传新签名到七牛云
+            String signatureUrl = qiniuUploadUtil.uploadBase64Image(base64Data, loginUser.getId());
+
+            // 再次读取用户，检查是否被其他并发请求抢先更新
+            User recheckUser = userService.getById(loginUser.getId());
+            if (recheckUser != null && !ObjectUtils.isEmpty(recheckUser.getSignature())
+                    && !recheckUser.getSignature().equals(oldSignature == null ? "" : oldSignature)) {
+                // 已有其他请求抢先更新了签名，删除本次上传的冗余文件
                 try {
-                    qiniuUploadUtil.deleteFile(dbUser.getSignature());
+                    qiniuUploadUtil.deleteFile(signatureUrl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+                Map<String, Object> result = new HashMap<>();
+                result.put("signatureUrl", recheckUser.getSignature());
+                return jsonReturn.returnSuccess(result);
             }
-
-            String signatureUrl = qiniuUploadUtil.uploadBase64Image(base64Data, loginUser.getId());
 
             boolean updated = userService.updateSignature(loginUser.getId(), signatureUrl, new Date());
             if (!updated) {
                 return jsonReturn.returnFailed("签名保存失败");
+            }
+
+            // 更新成功后删除旧签名文件
+            if (!ObjectUtils.isEmpty(oldSignature)) {
+                try {
+                    qiniuUploadUtil.deleteFile(oldSignature);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
 
             Map<String, Object> result = new HashMap<>();
@@ -436,23 +456,43 @@ public class SystemUserController {
                 return jsonReturn.returnFailed("用户不存在");
             }
 
-            if (!ObjectUtils.isEmpty(dbUser.getSignature())) {
-                try {
-                    qiniuUploadUtil.deleteFile(dbUser.getSignature());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            // 记录旧签名URL，先上传新文件再删旧文件，防止并发时产生孤儿文件
+            String oldSignature = dbUser.getSignature();
 
+            // 先上传新签名到七牛云
             String signatureUrl = qiniuUploadUtil.uploadSignatureFile(
                     file.getBytes(),
                     file.getOriginalFilename(),
                     loginUser.getId()
             );
 
+            // 再次读取用户，检查是否被其他并发请求抢先更新
+            User recheckUser = userService.getById(loginUser.getId());
+            if (recheckUser != null && !ObjectUtils.isEmpty(recheckUser.getSignature())
+                    && !recheckUser.getSignature().equals(oldSignature == null ? "" : oldSignature)) {
+                // 已有其他请求抢先更新了签名，删除本次上传的冗余文件
+                try {
+                    qiniuUploadUtil.deleteFile(signatureUrl);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Map<String, Object> result = new HashMap<>();
+                result.put("signatureUrl", recheckUser.getSignature());
+                return jsonReturn.returnSuccess(result);
+            }
+
             boolean updated = userService.updateSignature(loginUser.getId(), signatureUrl, new Date());
             if (!updated) {
                 return jsonReturn.returnFailed("签名保存失败");
+            }
+
+            // 更新成功后删除旧签名文件
+            if (!ObjectUtils.isEmpty(oldSignature)) {
+                try {
+                    qiniuUploadUtil.deleteFile(oldSignature);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
 
             Map<String, Object> result = new HashMap<>();

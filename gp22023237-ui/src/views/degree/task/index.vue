@@ -17,9 +17,6 @@
           <el-descriptions-item label="下达时间">{{ parseDate(currentRecord.submitTime) }}</el-descriptions-item>
         </el-descriptions>
 
-        <div v-if="currentRecord.processStatus === 3" style="margin-top: 20px; text-align: center;">
-          <el-button type="success" @click="handleConfirm">确认已阅读</el-button>
-        </div>
       </div>
 
       <el-empty v-else description="导师尚未下达任务书" />
@@ -43,10 +40,6 @@ const thesisId = ref(null)
 const extendData = computed(() => parseContentExtend(currentRecord.value))
 const statusText = computed(() => getProcessStatusText(currentRecord.value?.processStatus))
 const statusType = computed(() => getProcessStatusType(currentRecord.value?.processStatus))
-
-function handleConfirm() {
-  proxy.$modal.msgSuccess('已确认阅读任务书')
-}
 
 async function loadData() {
   try {

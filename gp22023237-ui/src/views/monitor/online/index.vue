@@ -26,12 +26,12 @@
       </el-form>
       <el-table
          v-loading="loading"
-         :data="onlineList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
+         :data="onlineList"
          style="width: 100%;"
       >
          <el-table-column label="序号" width="50" type="index" align="center">
             <template #default="scope">
-               <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
+               <span>{{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}</span>
             </template>
          </el-table-column>
          <el-table-column label="会话编号" align="center" prop="tokenId" :show-overflow-tooltip="true" />
@@ -53,7 +53,7 @@
          </el-table-column>
       </el-table>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
    </div>
 </template>
 
@@ -65,12 +65,12 @@ const { proxy } = getCurrentInstance();
 const onlineList = ref([]);
 const loading = ref(true);
 const total = ref(0);
-const pageNum = ref(1);
-const pageSize = ref(10);
 
 const queryParams = ref({
   ipaddr: undefined,
-  userName: undefined
+  userName: undefined,
+  pageNum: 1,
+  pageSize: 10
 });
 
 /** 查询登录日志列表 */
@@ -80,12 +80,15 @@ function getList() {
     onlineList.value = response.rows;
     total.value = response.total;
     loading.value = false;
+  }).catch((err) => {
+    console.error('查询在线用户失败:', err);
+    loading.value = false;
   });
 }
 
 /** 搜索按钮操作 */
 function handleQuery() {
-  pageNum.value = 1;
+  queryParams.value.pageNum = 1;
   getList();
 }
 

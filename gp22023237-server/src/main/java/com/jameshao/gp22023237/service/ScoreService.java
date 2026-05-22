@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author test
@@ -45,4 +46,11 @@ public interface ScoreService extends IService<Score> {
      * @return 导入结果
      */
     ScoreImportResultDTO importScores(MultipartFile file, Long courseId, Long teacherId);
+
+    /**
+     * 计算课程及格率
+     * @param courseId 课程ID
+     * @return { total, passCount, failCount, passRate }
+     */
+    Map<String, Object> calculatePassRate(Long courseId);
 }

@@ -84,8 +84,8 @@
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="handwriteDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveHandwrite" :disabled="!hasDrawn">
+          <el-button @click="handwriteDialogVisible = false" :disabled="saving">取消</el-button>
+          <el-button type="primary" @click="saveHandwrite" :disabled="!hasDrawn || saving" :loading="saving">
             保存
           </el-button>
         </span>
@@ -122,8 +122,8 @@
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="closeUploadDialog">取消</el-button>
-          <el-button type="primary" @click="saveUpload" :disabled="!uploadFile">
+          <el-button @click="closeUploadDialog" :disabled="saving">取消</el-button>
+          <el-button type="primary" @click="saveUpload" :disabled="!uploadFile || saving" :loading="saving">
             保存
           </el-button>
         </span>
@@ -159,6 +159,7 @@ const uploadFile = ref(null)
 const uploadAction = ref('')
 const imageLoading = ref(true)
 const imageLoadFailed = ref(false)
+const saving = ref(false)
 
 let ctx = null
 let imageLoadTimer = null
@@ -302,6 +303,7 @@ async function saveHandwrite() {
     return
   }
 
+  saving.value = true
   try {
     const canvas = canvasRef.value
     const base64Data = canvas.toDataURL('image/png')
@@ -320,6 +322,8 @@ async function saveHandwrite() {
   } catch (error) {
     console.error('保存手写签名失败:', error)
     ElMessage.error('保存失败，请重试')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -356,6 +360,7 @@ async function saveUpload() {
     return
   }
 
+  saving.value = true
   try {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
@@ -374,6 +379,8 @@ async function saveUpload() {
   } catch (error) {
     console.error('上传签名失败:', error)
     ElMessage.error('上传失败，请重试')
+  } finally {
+    saving.value = false
   }
 }
 

@@ -16,6 +16,7 @@ import com.jameshao.gp22023237.service.GraduationAuditService;
 import com.jameshao.gp22023237.service.MentorStudentService;
 import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.AcademicSubmissionService;
 import com.jameshao.gp22023237.service.SystemConfigService;
 import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.ThesisMainService;
@@ -24,9 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +73,9 @@ public class ThesisManagementController {
 
     @Autowired
     private TeacherService teacherService;
+
+    @Autowired
+    private AcademicSubmissionService academicSubmissionService;
 
     // ==================== 论文主记录管理 ====================
 
@@ -285,7 +291,7 @@ public class ThesisManagementController {
     @GetMapping("/process/list")
     public String getProcessList(@RequestParam(defaultValue = "1") Integer pageNum,
                                  @RequestParam(defaultValue = "10") Integer pageSize,
-                                 @RequestParam(required = false) Long thesisId,
+                                 @RequestParam(required = false) String thesisId,
                                  @RequestParam(required = false) Integer processType,
                                  @RequestParam(required = false) Integer processStatus) {
         try {
@@ -293,8 +299,16 @@ public class ThesisManagementController {
             LambdaQueryWrapper<ThesisProcessRecord> wrapper = new LambdaQueryWrapper<>();
             wrapper.orderByDesc(ThesisProcessRecord::getSubmitTime);
 
-            if (thesisId != null) {
-                wrapper.eq(ThesisProcessRecord::getThesisId, thesisId);
+            // 支持单个 thesisId 或逗号分隔的多个 thesisId
+            if (thesisId != null && !thesisId.trim().isEmpty()) {
+                List<Long> thesisIdList = Arrays.stream(thesisId.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Long::valueOf)
+                        .collect(Collectors.toList());
+                if (!thesisIdList.isEmpty()) {
+                    wrapper.in(ThesisProcessRecord::getThesisId, thesisIdList);
+                }
             }
             if (processType != null) {
                 wrapper.eq(ThesisProcessRecord::getProcessType, processType);
@@ -401,6 +415,9 @@ public class ThesisManagementController {
             if (thesisMain == null) {
                 return jsonReturn.returnSuccess(Map.of(
                     "eligible", false,
+                    "creditsQualified", false,
+                    "thesisPassed", false,
+                    "practicePassed", false,
                     "conditions", Map.of(
                         "proposalPassed", false,
                         "midtermPassed", false,
@@ -432,8 +449,33 @@ public class ThesisManagementController {
                 creditsQualified = false;
             }
 
+            // 论文各环节综合是否全部通过
+            boolean thesisPassed = topicPassed && taskBookPassed && proposalPassed && midtermPassed && draftPassed && defenseDraftPassed;
+
+            // 实践条件检查（与 DegreeApplicationServiceImpl 保持一致）
+            boolean practicePassed = false;
+            try {
+                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.jameshao.gp22023237.po.AcademicSubmission> practiceWrapper =
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+                practiceWrapper.eq(com.jameshao.gp22023237.po.AcademicSubmission::getStudentId, studentId)
+                        .eq(com.jameshao.gp22023237.po.AcademicSubmission::getContentType, 3)
+                        .eq(com.jameshao.gp22023237.po.AcademicSubmission::getApprovalStatus, 4)
+                        .eq(com.jameshao.gp22023237.po.AcademicSubmission::getIsDeleted, 0);
+                long practiceCount = academicSubmissionService.count(practiceWrapper);
+                String requiredPracticeStr = systemConfigService.getConfigValue("graduation_required_practice");
+                int requiredPractice = requiredPracticeStr != null ? Integer.parseInt(requiredPracticeStr) : 1;
+                practicePassed = practiceCount >= requiredPractice;
+            } catch (Exception e) {
+                practicePassed = false;
+            }
+
             Map<String, Object> result = new HashMap<>();
-            result.put("eligible", topicPassed && taskBookPassed && proposalPassed && midtermPassed && draftPassed && defenseDraftPassed && creditsQualified);
+            result.put("eligible", thesisPassed && creditsQualified && practicePassed);
+            // 顶层字段供前端直接读取
+            result.put("creditsQualified", creditsQualified);
+            result.put("thesisPassed", thesisPassed);
+            result.put("practicePassed", practicePassed);
+            // 详细条件（保留兼容）
             result.put("conditions", Map.of(
                 "topicPassed", topicPassed,
                 "taskBookPassed", taskBookPassed,

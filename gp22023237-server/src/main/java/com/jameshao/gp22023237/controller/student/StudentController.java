@@ -1,9 +1,12 @@
 package com.jameshao.gp22023237.controller.student;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.common.enums.BusinessType;
+import com.jameshao.gp22023237.mapper.MentorStudentMapper;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.User;
 import com.jameshao.gp22023237.service.StudentService;
@@ -33,6 +36,9 @@ public class StudentController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private MentorStudentMapper mentorStudentMapper;
+
     /**
      * 查询学生列表
      * @param studentNo 学号（可选）
@@ -43,7 +49,9 @@ public class StudentController {
      * @return 学生列表
      */
     @GetMapping("/list")
-    public String list(String studentNo, String studentName, Integer status, String department, String major) {
+    public String list(String studentNo, String studentName, Integer status,
+                       String department, String major,
+                       Integer pageNum, Integer pageSize) {
         try {
             QueryWrapper<Student> wrapper = new QueryWrapper<>();
 
@@ -64,8 +72,18 @@ public class StudentController {
             }
 
             wrapper.orderByDesc("create_time");
-            List<Student> list = studentService.list(wrapper);
-            return jsonReturn.returnSuccess(list);
+
+            if (pageNum != null && pageSize != null) {
+                Page<Student> page = new Page<>(pageNum, pageSize);
+                IPage<Student> result = studentService.page(page, wrapper);
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", result.getRecords());
+                data.put("total", result.getTotal());
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<Student> list = studentService.list(wrapper);
+                return jsonReturn.returnSuccess(list);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -329,6 +347,14 @@ public class StudentController {
 
             if (student == null) {
                 return jsonReturn.returnFailed("学生信息不存在");
+            }
+
+            // 如果双选状态为"已确定"，查询导师姓名
+            if (student.getSelectionStatus() != null && student.getSelectionStatus() == 3) {
+                Map<String, Object> mentorInfo = mentorStudentMapper.getStudentCurrentMentor(student.getId());
+                if (mentorInfo != null && mentorInfo.get("teacherName") != null) {
+                    student.setMentorName((String) mentorInfo.get("teacherName"));
+                }
             }
 
             return jsonReturn.returnSuccess(student);

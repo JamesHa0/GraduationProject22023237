@@ -3,7 +3,9 @@ package com.jameshao.gp22023237.controller.student.selection;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jameshao.gp22023237.DTO.SelectionDTO;
 import com.jameshao.gp22023237.DTO.BatchSelectionDTO;
 import com.jameshao.gp22023237.annotation.Log;
@@ -23,12 +25,15 @@ import com.jameshao.gp22023237.utils.CurrentUserUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/student/selection")
@@ -51,7 +56,9 @@ public class StudentSelectionController {
 
     // 学生查询可选导师 - 补选阶段时，显示仍有名额的导师
     @RequestMapping("/listMentor")
-    public String listMentor(String name){
+    public String listMentor(String name,
+                             @RequestParam(required = false) Integer pageNum,
+                             @RequestParam(required = false) Integer pageSize){
         try{
             int currentRound = selectionRoundService.getQueryRound();
             System.out.println("学生查询可选导师，当前轮次: " + currentRound);
@@ -67,8 +74,17 @@ public class StudentSelectionController {
                 queryWrapper.gt(Teacher::getQuota, 0);
             }
 
-            List<Teacher> list = teacherService.list(queryWrapper);
-            return jsonReturn.returnSuccess(list);
+            if (pageNum != null && pageSize != null) {
+                Page<Teacher> page = new Page<>(pageNum, pageSize);
+                IPage<Teacher> result = teacherService.page(page, queryWrapper);
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", result.getRecords());
+                data.put("total", result.getTotal());
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<Teacher> list = teacherService.list(queryWrapper);
+                return jsonReturn.returnSuccess(list);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());

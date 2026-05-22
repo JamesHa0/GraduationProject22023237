@@ -144,10 +144,11 @@ function handleRegister() {
 
 function getCode() {
   getCodeImg().then(res => {
-    captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled;
+    const data = res.data || res;
+    captchaEnabled.value = data.captchaEnabled === undefined ? true : data.captchaEnabled;
     if (captchaEnabled.value) {
-      codeUrl.value = "data:image/gif;base64," + res.img;
-      registerForm.value.uuid = res.uuid;
+      codeUrl.value = "data:image/gif;base64," + data.img;
+      registerForm.value.uuid = data.uuid;
     }
   });
 }

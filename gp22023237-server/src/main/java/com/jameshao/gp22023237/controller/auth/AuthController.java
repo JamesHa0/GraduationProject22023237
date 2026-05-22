@@ -30,6 +30,22 @@ public class AuthController {
     public String login(@RequestBody User user){
         System.out.println(user);
         try {
+            // 验证码校验
+            String captchaCode = user.getCode();
+            String captchaUuid = user.getUuid();
+            if (captchaUuid != null && !captchaUuid.isEmpty()) {
+                String redisKey = "captcha:" + captchaUuid;
+                Object storedCode = redisUtils.get(redisKey);
+                if (storedCode == null) {
+                    return jsonReturn.returnFailed(FLAGS.CAPTCHA_EXPIRED);
+                }
+                if (!storedCode.toString().equalsIgnoreCase(captchaCode)) {
+                    return jsonReturn.returnFailed(FLAGS.CAPTCHA_ERROR);
+                }
+                // 验证通过，删除已使用的验证码
+                redisUtils.del(redisKey);
+            }
+
             // 根据用户名查询用户
             LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(User::getUsername, user.getUsername());

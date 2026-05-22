@@ -25,8 +25,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -63,10 +65,49 @@ public class CourseSelectionController {
     private ScheduleMapper scheduleMapper;
 
     @GetMapping("/list")
-    public String list(Long studentId, Long courseId, Integer status, String semester) {
+    public String list(Long studentId, Long courseId, Integer status, String semester,
+                       Integer pageNum, Integer pageSize) {
         try {
-            List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper.listSelectionWithCourseDetails(studentId, courseId, status, semester);
-            return jsonReturn.returnSuccess(list);
+            if (pageNum != null && pageSize != null) {
+                int offset = (pageNum - 1) * pageSize;
+                List<CourseSelectionWithDetailsDTO> rows = courseSelectionMapper
+                        .listSelectionWithCourseDetailsPage(studentId, courseId, status, semester, offset, pageSize);
+                int total = courseSelectionMapper
+                        .countSelectionWithCourseDetails(studentId, courseId, status, semester);
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper
+                        .listSelectionWithCourseDetails(studentId, courseId, status, semester);
+                return jsonReturn.returnSuccess(list);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 批量查询课程已选人数（解决学生选课页面 N+1 查询问题）
+     */
+    @PostMapping("/batchGetSelectedCount")
+    public String batchGetSelectedCount(@RequestBody List<Long> courseIds) {
+        try {
+            if (courseIds == null || courseIds.isEmpty()) {
+                Map<String, Object> empty = new HashMap<>();
+                return jsonReturn.returnSuccess(empty);
+            }
+            List<Map<String, Object>> rows = courseSelectionMapper.batchCountSelectedByCourseIds(courseIds);
+            Map<String, Object> result = new HashMap<>();
+            for (Map<String, Object> row : rows) {
+                Object courseIdObj = row.get("courseId");
+                Object cntObj = row.get("cnt");
+                String key = courseIdObj != null ? courseIdObj.toString() : "null";
+                result.put(key, cntObj);
+            }
+            return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -175,6 +216,21 @@ public class CourseSelectionController {
             String timeConflict = checkTimeConflictViaSchedule(studentClassId, courseIds, batchDTO.getStudentId());
             if (timeConflict != null) {
                 return jsonReturn.returnError(timeConflict);
+            }
+
+            // 选课上限检查：校验每门课程容量
+            for (Long courseId : courseIds) {
+                String capacityError = courseSelectionService.checkCourseCapacity(courseId);
+                if (capacityError != null) {
+                    return jsonReturn.returnError(capacityError);
+                }
+            }
+
+            // 选课上限检查：校验学生选课数量上限
+            String limitError = courseSelectionService.checkStudentCourseLimit(
+                    batchDTO.getStudentId(), batchDTO.getChoices().size());
+            if (limitError != null) {
+                return jsonReturn.returnError(limitError);
             }
 
             LambdaQueryWrapper<CourseSelection> deleteWrapper = new LambdaQueryWrapper<>();
