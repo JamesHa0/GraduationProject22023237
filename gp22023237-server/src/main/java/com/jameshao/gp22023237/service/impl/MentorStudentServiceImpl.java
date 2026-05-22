@@ -43,9 +43,9 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
     private boolean hasModifyPermission() {
         Integer roleId = CurrentUserUtil.getCurrentRoleId();
         System.out.println("Current roleId for modify check: " + roleId);
-        // 如果获取不到角色ID，默认允许（为了兼容）
+        // 如果获取不到角色ID，默认拒绝（安全原则）
         if (roleId == null) {
-            return true;
+            return false;
         }
         return roleId == 1 || roleId == 4 || roleId == 5;
     }
@@ -56,19 +56,19 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
     private boolean hasViewPermission() {
         Integer roleId = CurrentUserUtil.getCurrentRoleId();
         System.out.println("Current roleId for view check: " + roleId);
-        // 如果获取不到角色ID，默认允许（为了兼容）
+        // 如果获取不到角色ID，默认拒绝（安全原则）
         if (roleId == null) {
-            return true;
+            return false;
         }
         return roleId != 6 && roleId != 7 && roleId != 8;
     }
 
     @Override
-    public IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId, Boolean onlyUndetermined) {
+    public IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page, Long studentId, Long mentorId, Boolean onlyUndetermined, String studentName, String teacherName) {
         if (!hasViewPermission()) {
             throw new IllegalStateException("您没有查看权限");
         }
-        return baseMapper.pageRelationship(page, studentId, mentorId, onlyUndetermined);
+        return baseMapper.pageRelationship(page, studentId, mentorId, onlyUndetermined, studentName, teacherName);
     }
 
     @Override
@@ -108,13 +108,13 @@ public class MentorStudentServiceImpl extends ServiceImpl<MentorStudentMapper, M
 
         boolean saved = save(mentorStudent);
         if (saved && mentorStudent.getMentorId() != null) {
-            // 更新导师已确认名额
+            // 更新导师已确认名额（处理null值）
             Teacher teacher = teacherService.getById(mentorStudent.getMentorId());
-            if (teacher != null && teacher.getConfirmedQuota() != null) {
-                teacher.setConfirmedQuota(teacher.getConfirmedQuota() + 1);
-                if (teacher.getRemainingQuota() != null && teacher.getRemainingQuota() > 0) {
-                    teacher.setRemainingQuota(teacher.getRemainingQuota() - 1);
-                }
+            if (teacher != null) {
+                int currentQuota = teacher.getConfirmedQuota() != null ? teacher.getConfirmedQuota() : 0;
+                int currentRemaining = teacher.getRemainingQuota() != null ? teacher.getRemainingQuota() : 0;
+                teacher.setConfirmedQuota(currentQuota + 1);
+                teacher.setRemainingQuota(Math.max(0, currentRemaining - 1));
                 teacherService.updateById(teacher);
             }
 

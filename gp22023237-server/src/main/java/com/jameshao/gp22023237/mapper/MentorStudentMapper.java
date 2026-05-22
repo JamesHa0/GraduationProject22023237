@@ -23,7 +23,9 @@ public interface MentorStudentMapper extends BaseMapper<MentorStudent> {
     IPage<Map<String, Object>> pageRelationship(Page<Map<String, Object>> page,
                                                    @Param("studentId") Long studentId,
                                                    @Param("mentorId") Long mentorId,
-                                                   @Param("onlyUndetermined") Boolean onlyUndetermined);
+                                                   @Param("onlyUndetermined") Boolean onlyUndetermined,
+                                                   @Param("studentName") String studentName,
+                                                   @Param("teacherName") String teacherName);
 
     /**
      * 获取可选学生列表（还没有确定导师的学生）

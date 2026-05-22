@@ -63,9 +63,10 @@ public class MenuServiceImpl extends ServiceImpl<MenuMapper, Menu>
                 .collect(Collectors.toList());
 
         // 4. 按 parent_id 分组，构建菜单树
-        // 先找出所有一级菜单（parent_id = 0）
+        // 先找出所有一级菜单（parent_id = 0），并按 sort 排序
         List<Menu> rootMenus = completeMenus.stream()
                 .filter(menu -> menu.getParentId() == null || menu.getParentId() == 0)
+                .sorted(Comparator.comparingInt(m -> m.getSort() != null ? m.getSort() : 0))
                 .collect(Collectors.toList());
 
         // 把子菜单分配给对应的父菜单

@@ -11,22 +11,29 @@ import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.SelectionRoundService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/mentor/selection")
 public class MentorSelectionController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MentorSelectionController.class);
 
     @Autowired
     private StudentService studentService;
@@ -37,11 +44,17 @@ public class MentorSelectionController {
     @Autowired
     private SelectionRoundService selectionRoundService;
     @Autowired
+    private NoticeService noticeService;
+    @Autowired
     private JSONReturn jsonReturn;
 
     // 导师查询可选学生 - 增加轮次过滤，过滤已被接受的学生，增加归属年级过滤
     @RequestMapping("/listStudents")
-    public String listStudents(@RequestBody MentorStudent mentorStudent){
+    public String listStudents(@RequestBody MentorStudent mentorStudent,
+                               @RequestParam(required = false) String name,
+                               @RequestParam(required = false) Boolean onlyUnselected,
+                               @RequestParam(required = false) Integer pageNum,
+                               @RequestParam(required = false) Integer pageSize){
         try{
             System.out.println("导师查询可选学生:"+mentorStudent);
 
@@ -59,7 +72,6 @@ public class MentorSelectionController {
                     .eq(MentorStudent::getStudentStatus, 1)
                     .eq(MentorStudent::getRound, currentRound); // 只查询当前轮次的学生
             List<MentorStudent> list = mentorStudentService.list(queryWrapper);
-            List<SelectionDTO> result = new ArrayList<>();
 
             // 先查询所有已被接受的学生ID
             LambdaQueryWrapper<MentorStudent> acceptedWrapper = new LambdaQueryWrapper<>();
@@ -73,6 +85,8 @@ public class MentorSelectionController {
                 }
             }
             System.out.println("已被接受的学生ID列表: " + acceptedStudentIds);
+
+            List<SelectionDTO> result = new ArrayList<>();
 
             for (MentorStudent ms : list) {
                 // 如果该学生已被某个导师接受，则跳过（仅当查询非已确认状态时才应用此过滤）
@@ -115,7 +129,32 @@ public class MentorSelectionController {
                 System.out.println("返回记录: id=" + ms.getId() + ", mentorId=" + ms.getMentorId() + ", studentId=" + ms.getStudentId() + ", round=" + ms.getRound());
                 result.add(dto);
             }
-            return jsonReturn.returnSuccess(result);
+
+            // 前端搜索/过滤：按姓名 + 仅未选
+            if (name != null && !name.isEmpty()) {
+                result = result.stream()
+                        .filter(s -> s.getStudentName() != null && s.getStudentName().contains(name))
+                        .collect(Collectors.toList());
+            }
+            if (Boolean.TRUE.equals(onlyUnselected)) {
+                result = result.stream()
+                        .filter(s -> s.getTeacherStatus() == null || s.getTeacherStatus() == 0)
+                        .collect(Collectors.toList());
+            }
+
+            // 分页
+            if (pageNum != null && pageSize != null) {
+                int total = result.size();
+                int offset = (pageNum - 1) * pageSize;
+                int toIndex = Math.min(offset + pageSize, total);
+                List<SelectionDTO> rows = offset < total ? result.subList(offset, toIndex) : new ArrayList<>();
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                return jsonReturn.returnSuccess(result);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -251,6 +290,25 @@ public class MentorSelectionController {
                     student.setUpdateTime(new Date());
                     studentService.updateById(student);
                 }
+            }
+
+            // 1.4/1.5 通知：导师同意/拒绝 → 通知学生
+            try {
+                Student notifyStudent = studentService.getById(originalRecord.getStudentId());
+                Teacher notifyTeacher = teacherService.getById(originalRecord.getMentorId());
+                if (notifyStudent != null && notifyStudent.getUserId() != null && notifyTeacher != null) {
+                    if (mentorStudent.getTeacherStatus() == 1) {
+                        noticeService.createAndPush("双选结果通知",
+                            "导师" + notifyTeacher.getTeacherName() + "已同意您的选择，双选匹配成功",
+                            "1", notifyStudent.getUserId());
+                    } else if (mentorStudent.getTeacherStatus() == 2) {
+                        noticeService.createAndPush("双选结果通知",
+                            "导师" + notifyTeacher.getTeacherName() + "暂未接受您的选择",
+                            "1", notifyStudent.getUserId());
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("导师选择结果通知推送失败: {}", e.getMessage());
             }
 
             return jsonReturn.returnSuccess();

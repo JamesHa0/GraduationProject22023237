@@ -7,6 +7,8 @@ import com.jameshao.gp22023237.annotation.Log;
 import com.jameshao.gp22023237.common.JSONReturn;
 import com.jameshao.gp22023237.common.enums.BusinessType;
 import com.jameshao.gp22023237.service.CoursePhaseService;
+import com.jameshao.gp22023237.service.NoticeService;
+import com.jameshao.gp22023237.service.TeacherService;
 import com.jameshao.gp22023237.service.TeachingEvaluationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,12 @@ public class TeachingEvaluationController {
     @Autowired
     private CoursePhaseService coursePhaseService;
 
+    @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
+    private TeacherService teacherService;
+
     /**
      * 提交教学评价
      */
@@ -52,6 +60,17 @@ public class TeachingEvaluationController {
             }
             boolean success = evaluationService.submitEvaluation(studentId, dto);
             if (success) {
+                // 5.5 通知：教学评价提交 → 通知教师
+                try {
+                    if (dto.getTeacherId() != null) {
+                        Long teacherUserId = noticeService.getTeacherUserId(dto.getTeacherId());
+                        if (teacherUserId != null) {
+                            noticeService.createAndPush("教学评价通知", "您收到一条新的教学评价", "1", teacherUserId);
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn("教学评价通知推送失败: {}", ex.getMessage());
+                }
                 return jsonReturn.returnSuccess("评价提交成功");
             } else {
                 return jsonReturn.returnFailed("评价提交失败");

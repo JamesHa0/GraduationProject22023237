@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jameshao.gp22023237.mapper.GraduationAuditMapper">
+
+    <!-- 查询毕业审核列表，关联学生信息与学分汇总 -->
+    <select id="listWithDetails" resultType="com.jameshao.gp22023237.DTO.GraduationAuditWithDetailsDTO">
+        SELECT
+            gq.id,
+            gq.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            st.department,
+            st.major,
+            st.admission_year AS admissionYear,
+            gq.credit_check AS creditCheck,
+            gq.thesis_check AS thesisCheck,
+            gq.practice_check AS practiceCheck,
+            gq.overall_result AS auditStatus,
+            gq.reviewer_id AS auditorId,
+            u.name AS auditorName,
+            gq.review_time AS auditTime,
+            gq.comment,
+            gq.create_time AS createTime,
+            gq.update_time AS updateTime,
+            COALESCE(credit_sum.total_credits, 0) AS totalCredits,
+            COALESCE(cfg.config_value, '30') AS requiredCredits
+        FROM graduation_qualification gq
+        LEFT JOIN student st ON gq.student_id = st.id
+        LEFT JOIN `user` u ON gq.reviewer_id = u.id
+        LEFT JOIN (
+            SELECT s.student_id, SUM(c.credit) AS total_credits
+            FROM score s
+            LEFT JOIN course c ON s.course_id = c.id
+            WHERE s.grade IS NOT NULL AND s.grade != 'E'
+            GROUP BY s.student_id
+        ) credit_sum ON gq.student_id = credit_sum.student_id
+        LEFT JOIN (
+            SELECT config_value FROM system_config WHERE config_key = 'graduation_required_credits'
+        ) cfg ON 1=1
+        <where>
+            <if test="studentNo != null and studentNo != ''">
+                AND st.student_no LIKE CONCAT('%', #{studentNo}, '%')
+            </if>
+            <if test="studentName != null and studentName != ''">
+                AND st.student_name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+            <if test="auditStatus != null">
+                AND gq.overall_result = #{auditStatus}
+            </if>
+            <if test="cohortYear != null">
+                AND st.admission_year = #{cohortYear}
+            </if>
+            <if test="department != null and department != ''">
+                AND st.department = #{department}
+            </if>
+            <if test="major != null and major != ''">
+                AND st.major = #{major}
+            </if>
+        </where>
+        ORDER BY gq.create_time DESC
+    </select>
+
+    <!-- 查询毕业审核详情，关联学生信息与学分汇总 -->
+    <select id="getDetailWithDetails" resultType="com.jameshao.gp22023237.DTO.GraduationAuditWithDetailsDTO">
+        SELECT
+            gq.id,
+            gq.student_id AS studentId,
+            st.student_no AS studentNo,
+            st.student_name AS studentName,
+            st.department,
+            st.major,
+            st.admission_year AS admissionYear,
+            gq.credit_check AS creditCheck,
+            gq.thesis_check AS thesisCheck,
+            gq.practice_check AS practiceCheck,
+            gq.overall_result AS auditStatus,
+            gq.reviewer_id AS auditorId,
+            u.name AS auditorName,
+            gq.review_time AS auditTime,
+            gq.comment,
+            gq.create_time AS createTime,
+            gq.update_time AS updateTime,
+            COALESCE(credit_sum.total_credits, 0) AS totalCredits,
+            COALESCE(cfg.config_value, '30') AS requiredCredits
+        FROM graduation_qualification gq
+        LEFT JOIN student st ON gq.student_id = st.id
+        LEFT JOIN `user` u ON gq.reviewer_id = u.id
+        LEFT JOIN (
+            SELECT s.student_id, SUM(c.credit) AS total_credits
+            FROM score s
+            LEFT JOIN course c ON s.course_id = c.id
+            WHERE s.grade IS NOT NULL AND s.grade != 'E'
+            GROUP BY s.student_id
+        ) credit_sum ON gq.student_id = credit_sum.student_id
+        LEFT JOIN (
+            SELECT config_value FROM system_config WHERE config_key = 'graduation_required_credits'
+        ) cfg ON 1=1
+        WHERE gq.id = #{id}
+    </select>
+
+    <!-- 计算学生已修总学分（JOIN查询，替代N+1循环） -->
+    <select id="calculateStudentCredits" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(c.credit), 0)
+        FROM score s
+        JOIN course c ON s.course_id = c.id
+        WHERE s.student_id = #{studentId}
+          AND s.grade IS NOT NULL
+          AND s.grade != 'E'
+    </select>
+
+</mapper>

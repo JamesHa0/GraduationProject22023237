@@ -54,8 +54,11 @@ export function useAcademicApproval(proxy) {
 
   function getCurrentUserRoleId() {
     const userStore = useUserStore()
-    if (userStore.roles && userStore.roles.length > 0) {
-      return userStore.roles[0]
+    if (userStore.roles) {
+      if (Array.isArray(userStore.roles)) {
+        return userStore.roles.length > 0 ? userStore.roles[0] : null
+      }
+      return userStore.roles
     }
     return null
   }
@@ -97,8 +100,9 @@ export function useAcademicApproval(proxy) {
     }
     const roleId = getCurrentUserRoleId()
     const approveApi = getApproveApiFn(roleId)
-    const status = approvalType.value === 'approve' ? 1 : 2
-    approveApi(approvalForm.value.id, status, approvalForm.value.comment).then(() => {
+    // 新统一API：action=2通过, action=3驳回（兼容旧status: 1=通过, 2=驳回）
+    const action = approvalType.value === 'approve' ? 2 : 3
+    approveApi(approvalForm.value.id, action, approvalForm.value.comment).then(() => {
       proxy.$modal.msgSuccess('审批成功')
       approvalDialogVisible.value = false
       if (onSuccess) onSuccess()

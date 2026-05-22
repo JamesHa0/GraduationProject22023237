@@ -208,7 +208,7 @@ const columns = ref([
 const data = reactive({
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 20,
     status: undefined,
     studentNo: undefined,
     studentName: undefined
@@ -275,8 +275,8 @@ function getList() {
   loading.value = true
   listStatusChange(queryParams.value).then(res => {
     loading.value = false
-    dataList.value = res.data.records || res.data || []
-    total.value = res.data.total || dataList.value.length
+    dataList.value = res.data || []
+    total.value = res.pagination?.total || res.data?.total || dataList.value.length
   }).catch(() => {
     loading.value = false
     proxy.$modal.msgError("获取审批列表失败")

@@ -99,13 +99,13 @@ public class CurrentUserUtil {
 
     /**
      * 判断当前用户是否是导师
-     * 角色ID: 7
+     * 角色ID: 7=导师, 8=教师
      *
-     * @return true: 是导师, false: 不是导师
+     * @return true: 是导师/教师, false: 不是
      */
     public static boolean isMentor() {
         Integer roleId = getCurrentRoleId();
-        return roleId != null && roleId == 7;
+        return roleId != null && (roleId == 7 || roleId == 8);
     }
 
     /**

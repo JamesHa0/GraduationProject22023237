@@ -3,6 +3,8 @@ package com.jameshao.gp22023237.po;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.util.Date;
 
@@ -105,6 +107,17 @@ public class DegreeApplication {
     private String committeeComment;
 
     /**
+     * 学位分委员会审批人ID
+     */
+    private Long committeeApproverId;
+
+    /**
+     * 学位分委员会审批时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date committeeApproveTime;
+
+    /**
      * 学位授予状态：0-未授予，1-已授予
      */
     private Integer degreeGranted;
@@ -143,4 +156,10 @@ public class DegreeApplication {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 乐观锁版本号
+     */
+    @Version
+    private Integer version;
 }

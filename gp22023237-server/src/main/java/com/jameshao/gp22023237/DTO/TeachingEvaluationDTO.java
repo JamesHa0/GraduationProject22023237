@@ -9,6 +9,8 @@ import lombok.Data;
 public class TeachingEvaluationDTO {
     /** 课程ID */
     private Long courseId;
+    /** 教师ID */
+    private Long teacherId;
     /** 教学态度评分(1-5) */
     private Integer attitudeScore;
     /** 教学内容评分(1-5) */

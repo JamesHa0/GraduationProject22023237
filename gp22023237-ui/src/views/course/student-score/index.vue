@@ -92,6 +92,7 @@
         </el-table-column>
         <el-table-column label="评语" prop="comment" min-width="150" show-overflow-tooltip />
       </el-table>
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getMyScoreList" />
     </el-card>
   </div>
 </template>
@@ -117,24 +118,21 @@ const semesterOptions = ref([]);
 // 成绩列表
 const scoreList = ref([]);
 
-// 计算统计数据
-const totalCourses = computed(() => scoreList.value.length);
-
-const avgScore = computed(() => {
-  if (scoreList.value.length === 0) return '-';
-  const total = scoreList.value.reduce((sum, item) => sum + (item.totalScore || 0), 0);
-  return (total / scoreList.value.length).toFixed(2);
+// 分页参数
+const data = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10
+  }
 });
+const { queryParams } = toRefs(data);
+const total = ref(0);
 
-const totalCredits = computed(() => {
-  return scoreList.value.reduce((sum, item) => sum + (item.credit || 0), 0);
-});
-
-const passRate = computed(() => {
-  if (scoreList.value.length === 0) return 0;
-  const passCount = scoreList.value.filter(item => item.totalScore != null && item.totalScore >= 60).length;
-  return ((passCount / scoreList.value.length) * 100).toFixed(1);
-});
+// 统计数据（全量查询）
+const totalCourses = ref(0);
+const avgScore = ref('-');
+const totalCredits = ref(0);
+const passRate = ref(0);
 
 // 成绩等级标签类型
 function getGradeTagType(grade) {
@@ -199,7 +197,7 @@ function generateSemesterOptions(admissionYear) {
   semesterOptions.value = options;
 }
 
-// 获取我的成绩
+// 获取我的成绩（分页）
 function getMyScoreList() {
   const roleInfo = getUserRoleInfo();
   if (!roleInfo || !roleInfo.id) {
@@ -208,21 +206,17 @@ function getMyScoreList() {
   }
 
   loading.value = true;
-
   const params = {
-    studentId: roleInfo.id
+    studentId: roleInfo.id,
+    pageNum: queryParams.value.pageNum,
+    pageSize: queryParams.value.pageSize
   };
-
-  if (currentSemester.value) {
-    params.semester = currentSemester.value;
-  }
-
-  if (queryGrade.value) {
-    params.grade = queryGrade.value;
-  }
+  if (currentSemester.value) params.semester = currentSemester.value;
+  if (queryGrade.value) params.grade = queryGrade.value;
 
   getMyScores(params).then(res => {
-    scoreList.value = res.data || [];
+    scoreList.value = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
     loading.value = false;
   }).catch((err) => {
     console.error('查询成绩失败:', err);
@@ -230,9 +224,34 @@ function getMyScoreList() {
   });
 }
 
+// 获取全量统计数据
+function getStats() {
+  const roleInfo = getUserRoleInfo();
+  if (!roleInfo || !roleInfo.id) return;
+  getMyScores({ studentId: roleInfo.id }).then(res => {
+    const rows = res.data && res.data.rows ? res.data.rows : (res.data || []);
+    totalCourses.value = rows.length;
+    if (rows.length === 0) {
+      avgScore.value = '-';
+      totalCredits.value = 0;
+      passRate.value = 0;
+      return;
+    }
+    const validScores = rows.filter(item => item.totalScore != null);
+    avgScore.value = validScores.length > 0
+      ? (validScores.reduce((sum, item) => sum + item.totalScore, 0) / validScores.length).toFixed(2)
+      : '-';
+    totalCredits.value = rows.reduce((sum, item) => sum + (item.credit || 0), 0);
+    const passCount = validScores.filter(item => item.totalScore >= 60).length;
+    passRate.value = validScores.length > 0 ? ((passCount / validScores.length) * 100).toFixed(1) : 0;
+  }).catch(() => {});
+}
+
 // 查询
 function handleQuery() {
+  queryParams.value.pageNum = 1;
   getMyScoreList();
+  getStats();
 }
 
 // 初始化
@@ -243,16 +262,15 @@ function init() {
     return;
   }
 
-  // 从roleInfo中获取入学年份并生成学期选项
   if (roleInfo.admissionYear) {
     generateSemesterOptions(roleInfo.admissionYear);
   } else {
-    // 如果没有入学年份，使用默认值（当前年份往前推3年）
     const defaultYear = new Date().getFullYear() - 3;
     generateSemesterOptions(defaultYear);
   }
 
   getMyScoreList();
+  getStats();
 }
 
 init();

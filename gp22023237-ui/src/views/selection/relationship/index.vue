@@ -184,8 +184,9 @@ const rules = {
 };
 
 const canModify = computed(() => {
-    if (userStore.roles && userStore.roles.length > 0) {
-        const roleId = userStore.roles[0];
+    const roles = userStore.roles
+    if (roles) {
+        const roleId = Array.isArray(roles) ? (roles.length > 0 ? roles[0] : null) : roles
         return roleId === 1 || roleId === 4 || roleId === 5;
     }
     return true;
@@ -219,20 +220,11 @@ const formatDate = (date) => {
 const loadData = () => {
     loading.value = true;
     listRelationship(queryForm.value).then(response => {
-        let records = response.data || [];
-        if (queryForm.value.studentName) {
-            records = records.filter(item =>
-                item.studentName && item.studentName.includes(queryForm.value.studentName)
-            );
-        }
-        if (queryForm.value.teacherName) {
-            records = records.filter(item =>
-                item.teacherName && item.teacherName.includes(queryForm.value.teacherName)
-            );
-        }
-        tableData.value = records;
+        // 响应拦截器已提取 IPage.records → response.data, IPage.total → response.pagination.total
+        tableData.value = response.data || [];
         total.value = response.pagination?.total || 0;
     }).catch((error) => {
+        console.error('获取关系列表失败:', error);
         proxy.$modal.msgError('获取数据失败');
     }).finally(() => {
         loading.value = false;

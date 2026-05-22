@@ -61,6 +61,9 @@
                         <el-descriptions-item label="院系">{{ finalResult.mentorDepartment || '-' }}</el-descriptions-item>
                         <el-descriptions-item label="研究领域">{{ finalResult.mentorResearchField || '-' }}</el-descriptions-item>
                     </el-descriptions>
+                    <div style="margin-top: 16px;">
+                        <el-button type="warning" plain icon="Switch" @click="$router.push('/selection/mentor-change')">申请更换导师</el-button>
+                    </div>
                 </template>
             </el-result>
         </el-card>

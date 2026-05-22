@@ -233,8 +233,8 @@ function getList() {
   };
   listStatusChange(params).then(res => {
     loading.value = false;
-    changeList.value = res.data.records || res.data || [];
-    total.value = res.data.total || changeList.value.length;
+    changeList.value = res.data || [];
+    total.value = res.pagination?.total || res.data?.total || changeList.value.length;
   }).catch(() => {
     loading.value = false;
     proxy.$modal.msgError("获取申请记录失败，请稍后重试");

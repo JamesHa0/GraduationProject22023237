@@ -13,7 +13,7 @@
           <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
         </el-input>
       </el-form-item>
-      <!-- <el-form-item prop="code" v-if="captchaEnabled">
+      <el-form-item prop="code" v-if="captchaEnabled">
         <el-input v-model="loginForm.code" size="large" auto-complete="off" placeholder="验证码" style="width: 63%"
           @keyup.enter="handleLogin">
           <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>
@@ -21,7 +21,7 @@
         <div class="login-code">
           <img :src="codeUrl" @click="getCode" class="login-code-img" />
         </div>
-      </el-form-item> -->
+      </el-form-item>
       <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 25px 0px;">记住密码</el-checkbox>
       <el-form-item style="width:100%;">
         <el-button :loading="loading" size="large" type="primary" style="width:100%;" @click.prevent="handleLogin">
@@ -69,7 +69,7 @@ const loginRules = {
 const codeUrl = ref("");
 const loading = ref(false);
 // 验证码开关
-const captchaEnabled = ref(false);
+const captchaEnabled = ref(true);
 // 注册开关
 const register = ref(false);
 const redirect = ref(undefined);
@@ -107,7 +107,7 @@ function handleLogin() {
         loading.value = false;
         // 重新获取验证码
         if (captchaEnabled.value) {
-          //getCode();
+          getCode();
         }
       });
     }
@@ -116,10 +116,11 @@ function handleLogin() {
 
 function getCode() {
   getCodeImg().then(res => {
-    captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled;
+    const data = res.data || res;
+    captchaEnabled.value = data.captchaEnabled === undefined ? true : data.captchaEnabled;
     if (captchaEnabled.value) {
-      codeUrl.value = "data:image/gif;base64," + res.img;
-      loginForm.value.uuid = res.uuid;
+      codeUrl.value = "data:image/gif;base64," + data.img;
+      loginForm.value.uuid = data.uuid;
     }
   });
 }
@@ -135,7 +136,7 @@ function getCookie() {
   };
 }
 
-//getCode();
+getCode();
 getCookie();
 </script>
 

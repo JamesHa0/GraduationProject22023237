@@ -562,23 +562,22 @@ function getList() {
   if (selectedClassId.value) {
     listStudentByClass(selectedClassId.value, queryParams.value).then(res => {
       loading.value = false;
-      studentList.value = res.data.rows || [];
+      studentList.value = res.data.rows || res.data || [];
       total.value = res.data.total || 0;
-    }).catch(() => {
+      totalStudentCount.value = total.value;
+    }).catch((err) => {
+      console.error('按班级查询学生失败:', err);
       loading.value = false;
-      studentList.value = [];
-      total.value = 0;
     });
   } else {
     listStudent(queryParams.value).then(res => {
       loading.value = false;
-      studentList.value = res.data || [];
-      total.value = studentList.value.length;
-      totalStudentCount.value = studentList.value.length;
-    }).catch(() => {
+      studentList.value = res.data.rows || res.data || [];
+      total.value = res.data.total || 0;
+      totalStudentCount.value = total.value;
+    }).catch((err) => {
+      console.error('查询学生列表失败:', err);
       loading.value = false;
-      studentList.value = [];
-      total.value = 0;
     });
   }
 }

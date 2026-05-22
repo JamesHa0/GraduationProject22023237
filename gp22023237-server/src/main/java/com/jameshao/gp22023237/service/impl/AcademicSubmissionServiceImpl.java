@@ -1,5 +1,6 @@
 package com.jameshao.gp22023237.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jameshao.gp22023237.DTO.ApprovalRecordDTO;
 import com.jameshao.gp22023237.DTO.SubmissionWithDetailsDTO;
@@ -10,7 +11,11 @@ import com.jameshao.gp22023237.mapper.*;
 import com.jameshao.gp22023237.po.*;
 import com.jameshao.gp22023237.service.AcademicApprovalRecordService;
 import com.jameshao.gp22023237.service.AcademicSubmissionService;
+import com.jameshao.gp22023237.service.MentorStudentService;
 import com.jameshao.gp22023237.service.NoticeService;
+import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.TeacherService;
+import com.jameshao.gp22023237.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AcademicSubmissionServiceImpl extends ServiceImpl<AcademicSubmissionMapper, AcademicSubmission>
@@ -41,6 +47,18 @@ public class AcademicSubmissionServiceImpl extends ServiceImpl<AcademicSubmissio
 
     @Autowired
     private NoticeService noticeService;
+
+    @Autowired
+    private StudentService studentService;
+
+    @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private MentorStudentService mentorStudentService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -74,6 +92,29 @@ public class AcademicSubmissionServiceImpl extends ServiceImpl<AcademicSubmissio
         if (submission.getSubmitTime() != null) {
             approvalRecordService.addRecord(submission.getId(), submission.getSubmitterId(),
                     submission.getSubmitterType(), ApprovalAction.SUBMIT.getCode(), null);
+
+            // 4.1 通知：学术内容提交 → 通知学生导师
+            try {
+                Student student = studentService.getById(submission.getStudentId());
+                String contentTypeText = getContentTypeText(submission.getContentType());
+                String studentName = student != null ? student.getStudentName() : "学生";
+                // 查找学生的已确认导师
+                LambdaQueryWrapper<MentorStudent> msWrapper = new LambdaQueryWrapper<>();
+                msWrapper.eq(MentorStudent::getStudentId, submission.getStudentId())
+                        .eq(MentorStudent::getStudentStatus, 1)
+                        .eq(MentorStudent::getTeacherStatus, 1)
+                        .last("LIMIT 1");
+                MentorStudent ms = mentorStudentService.getOne(msWrapper, false);
+                if (ms != null) {
+                    Long mentorUserId = noticeService.getTeacherUserId(ms.getMentorId());
+                    if (mentorUserId != null) {
+                        noticeService.createAndPush("学术提交通知",
+                            "学生" + studentName + "提交了" + contentTypeText, "1", mentorUserId);
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("学术提交通知推送失败: {}", e.getMessage());
+            }
         }
 
         return true;
@@ -197,10 +238,53 @@ public class AcademicSubmissionServiceImpl extends ServiceImpl<AcademicSubmissio
             if (comment != null && !comment.trim().isEmpty()) {
                 content += "，审批意见：" + comment;
             }
-            // 通知发给归属学生（getStudentId），而非提交人（getSubmitterId），因为导师可能代提交
-            noticeService.createAndPush(title, content, "1", submission.getStudentId());
+            // 通知发给归属学生，必须使用sys_user表的用户ID（而非学生实体ID）
+            Student student = studentService.getById(submission.getStudentId());
+            if (student != null && student.getUserId() != null) {
+                noticeService.createAndPush(title, content, "1", student.getUserId());
+            } else {
+                logger.warn("无法推送通知：学生ID {} 对应的用户ID不存在", submission.getStudentId());
+            }
         } catch (Exception e) {
             logger.warn("审批通知推送失败，不影响审批流程: {}", e.getMessage());
+        }
+
+        // 4.2 通知：审批通过时通知下一级审批人
+        if (action == ApprovalAction.APPROVE.getCode()) {
+            try {
+                String contentTypeText = getContentTypeText(submission.getContentType());
+                Student student = studentService.getById(submission.getStudentId());
+                String studentName = student != null ? student.getStudentName() : "学生";
+                OverallStatus newStatus = OverallStatus.fromCode(submission.getApprovalStatus());
+
+                if (newStatus == OverallStatus.SECRETARY_APPROVING) {
+                    // 通知教学秘书(roleId=5)
+                    List<com.jameshao.gp22023237.po.User> secretaries = userService.list(
+                        new LambdaQueryWrapper<com.jameshao.gp22023237.po.User>()
+                            .eq(com.jameshao.gp22023237.po.User::getRoleId, 5)
+                            .eq(com.jameshao.gp22023237.po.User::getStatus, 1));
+                    List<Long> userIds = secretaries.stream()
+                        .map(com.jameshao.gp22023237.po.User::getId).collect(Collectors.toList());
+                    if (!userIds.isEmpty()) {
+                        noticeService.createAndPushToUsers(userIds, "学术审批通知",
+                            "学生" + studentName + "的" + contentTypeText + "导师已通过，请审批", "1");
+                    }
+                } else if (newStatus == OverallStatus.DEAN_APPROVING) {
+                    // 通知分管院长(roleId=2)
+                    List<com.jameshao.gp22023237.po.User> deans = userService.list(
+                        new LambdaQueryWrapper<com.jameshao.gp22023237.po.User>()
+                            .eq(com.jameshao.gp22023237.po.User::getRoleId, 2)
+                            .eq(com.jameshao.gp22023237.po.User::getStatus, 1));
+                    List<Long> userIds = deans.stream()
+                        .map(com.jameshao.gp22023237.po.User::getId).collect(Collectors.toList());
+                    if (!userIds.isEmpty()) {
+                        noticeService.createAndPushToUsers(userIds, "学术审批通知",
+                            "学生" + studentName + "的" + contentTypeText + "教学秘书已通过，请审批", "1");
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("审批流转通知推送失败: {}", e.getMessage());
+            }
         }
 
         return true;
@@ -448,7 +532,11 @@ public class AcademicSubmissionServiceImpl extends ServiceImpl<AcademicSubmissio
         Object value = map.get(key);
         if (value == null) return null;
         if (value instanceof java.math.BigDecimal) return (java.math.BigDecimal) value;
-        if (value instanceof Number) return java.math.BigDecimal.valueOf(((Number) value).doubleValue());
+        if (value instanceof Number) {
+            // 避免浮点数精度丢失：优先使用toString再解析
+            try { return new java.math.BigDecimal(value.toString()); }
+            catch (NumberFormatException e) { return java.math.BigDecimal.valueOf(((Number) value).doubleValue()); }
+        }
         try { return new java.math.BigDecimal(value.toString()); }
         catch (NumberFormatException e) { return null; }
     }

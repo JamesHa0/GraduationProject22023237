@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author test
@@ -23,4 +24,27 @@ public interface CourseSelectionMapper extends BaseMapper<CourseSelection> {
                                                                        @Param("courseId") Long courseId,
                                                                        @Param("status") Integer status,
                                                                        @Param("semester") String semester);
+
+    /**
+     * 分页查询选课记录列表
+     */
+    List<CourseSelectionWithDetailsDTO> listSelectionWithCourseDetailsPage(@Param("studentId") Long studentId,
+                                                                            @Param("courseId") Long courseId,
+                                                                            @Param("status") Integer status,
+                                                                            @Param("semester") String semester,
+                                                                            @Param("offset") Integer offset,
+                                                                            @Param("pageSize") Integer pageSize);
+
+    /**
+     * 统计选课记录总数
+     */
+    int countSelectionWithCourseDetails(@Param("studentId") Long studentId,
+                                         @Param("courseId") Long courseId,
+                                         @Param("status") Integer status,
+                                         @Param("semester") String semester);
+
+    /**
+     * 批量查询课程已选人数（status=1 已通过）
+     */
+    List<Map<String, Object>> batchCountSelectedByCourseIds(@Param("courseIds") List<Long> courseIds);
 }

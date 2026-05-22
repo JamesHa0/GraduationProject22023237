@@ -8,7 +8,7 @@
           <el-table :data="thesisList" v-loading="loading" stripe>
             <el-table-column prop="studentName" label="学生" width="100" />
             <el-table-column prop="thesisTitle" label="论文题目" min-width="160" />
-            <el-table-column label="评分" width="120">
+            <el-table-column label="评分" min-width="50">
               <template #default="{ row }">
                 <el-input-number v-model="row.supervisorScore" :min="0" :max="100" :precision="1" size="small" :disabled="row.scored" />
               </template>
@@ -103,6 +103,8 @@
           </el-table>
         </el-tab-pane>
       </el-tabs>
+
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="loadData" />
     </el-card>
   </div>
 </template>
@@ -113,6 +115,16 @@ import { getCurrentInstance } from 'vue'
 import { listThesisMain, getThesisGrade, supervisorGrade, reviewerGrade, defenseGrade, calculateTotalGrade } from '@/api/degree'
 
 const { proxy } = getCurrentInstance()
+
+// 分页参数
+const queryData = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10
+  }
+})
+const { queryParams } = toRefs(queryData)
+const total = ref(0)
 
 const loading = ref(false)
 const activeTab = ref('supervisor')
@@ -147,8 +159,14 @@ async function calculateTotal(row) {
 async function loadData() {
   loading.value = true
   try {
-    const res = await listThesisMain({ pageSize: 100 })
-    const list = res.data?.records || res.rows || []
+    const res = await listThesisMain({
+      pageNum: queryParams.value.pageNum,
+      pageSize: queryParams.value.pageSize
+    })
+    // MyBatis-Plus IPage 经拦截器转换后：res.data = records[], res.pagination = { total, current, ... }
+    const list = res.data || res.rows || []
+    total.value = (res.pagination && res.pagination.total) || list.length
+
     thesisList.value = list.map(t => ({
       ...t,
       supervisorScore: null, supervisorComment: '', scored: false,
@@ -157,10 +175,9 @@ async function loadData() {
       totalScore: null, gradeLevel: null
     }))
 
-    // 加载已有成绩
-    for (const t of thesisList.value) {
-      try {
-        const gradeRes = await getThesisGrade(t.id)
+    // 并行加载已有成绩（替代 N+1 串行查询）
+    const gradePromises = thesisList.value.map(t =>
+      getThesisGrade(t.id).then(gradeRes => {
         const grade = gradeRes.data || gradeRes
         if (grade && grade.id) {
           t.supervisorScore = grade.supervisorScore
@@ -175,9 +192,12 @@ async function loadData() {
           t.totalScore = grade.totalScore
           t.gradeLevel = grade.gradeLevel
         }
-      } catch { /* no grade yet */ }
-    }
-  } catch (e) { console.error(e) }
+      }).catch(() => { /* no grade yet */ })
+    )
+    await Promise.allSettled(gradePromises)
+  } catch (e) {
+    console.error('加载论文评定列表失败:', e)
+  }
   loading.value = false
 }
 

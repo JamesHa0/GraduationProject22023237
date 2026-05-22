@@ -43,9 +43,9 @@ public enum ProcessStatus {
             case NOT_SUBMITTED:
                 return target == APPROVING;
             case APPROVING:
-                return target == REVIEWING || target == REJECTED;
+                return target == REVIEWING || target == REJECTED || target == PASSED;
             case REVIEWING:
-                return target == PASSED || target == REJECTED;
+                return target == PASSED || target == COMPLETED || target == REJECTED;
             case PASSED:
                 return target == COMPLETED;
             case REJECTED:

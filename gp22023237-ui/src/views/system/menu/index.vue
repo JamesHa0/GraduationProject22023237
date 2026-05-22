@@ -33,59 +33,32 @@
           @click="toggleExpandAll"
         >展开/折叠</el-button>
       </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Check"
-          :disabled="!sortChanged"
-          @click="handleSaveSort"
-        >保存排序</el-button>
-      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
-    <el-table
-      v-if="refreshTable"
-      v-loading="loading"
-      :data="menuList"
-      row-key="id"
-      :default-expand-all="isExpandAll"
-      :tree-props="{ children: 'children' }"
-    >
-      <el-table-column prop="title" label="菜单标题" :show-overflow-tooltip="true" width="200"></el-table-column>
-      <el-table-column prop="icon" label="图标" align="center" width="100">
-        <template #default="scope">
-          <svg-icon v-if="scope.row.icon" :icon-class="scope.row.icon" />
-          <span v-else>{{ scope.row.icon }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="sort" label="排序" align="center" width="120">
-        <template #default="scope">
-          <span v-if="!scope.row.parentId || scope.row.parentId === 0" style="color: #909399; font-weight: 500;">{{ scope.row.sort }}</span>
-          <el-input-number
-            v-else
-            v-model="scope.row.sort"
-            :min="0"
-            :max="9999"
-            controls-position="right"
-            size="small"
-            style="width: 90px"
-            @change="onSortChange"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column prop="menusIndex" label="菜单索引" width="100"></el-table-column>
-      <el-table-column prop="path" label="路径" :show-overflow-tooltip="true"></el-table-column>
-      <el-table-column prop="parentId" label="父级索引" width="100"></el-table-column>
-      <el-table-column label="操作" align="center" width="210" class-name="small-padding fixed-width">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
-          <!-- <el-button link type="primary" icon="Plus" @click="handleAdd(scope.row)">新增</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button> -->
-        </template>
-      </el-table-column>
-    </el-table>
+    <!-- 表头 -->
+    <div v-if="menuList.length" class="menu-tree-header">
+      <span class="header-drag"></span>
+      <span class="header-expand"></span>
+      <span class="col col-sort">排序</span>
+      <span class="col col-title" style="flex: 1; min-width: 160px;">菜单标题</span>
+      <span class="col col-icon">图标</span>
+      <span class="col col-index">菜单索引</span>
+      <span class="col col-path">路径</span>
+      <span class="col col-parent">父级索引</span>
+      <span class="col col-actions">操作</span>
+    </div>
+
+    <!-- 拖拽排序树 -->
+    <div v-loading="loading" class="menu-tree-body">
+      <MenuTreeItem
+        :items="menuList"
+        :level="0"
+        @sort-change="handleSortChange"
+        @edit="handleUpdate"
+      />
+      <el-empty v-if="!loading && !menuList.length" description="暂无菜单数据" />
+    </div>
 
     <!-- 添加或修改菜单对话框 -->
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
@@ -149,8 +122,10 @@
 </template>
 
 <script setup name="Menu">
+import { provide, reactive, ref, toRefs, getCurrentInstance } from 'vue'
 import request from '@/utils/request'
 import iconOptions from '@/components/IconSelect/requireIcons'
+import MenuTreeItem from './MenuTreeItem.vue'
 
 const { proxy } = getCurrentInstance()
 
@@ -159,11 +134,15 @@ const menuOptions = ref([])
 const open = ref(false)
 const loading = ref(true)
 const showSearch = ref(true)
-const isExpandAll = ref(true)
-const refreshTable = ref(true)
 const title = ref('')
-const sortChanged = ref(false)
-const originalSortMap = ref({})
+
+// 拖拽排序相关：展开状态管理
+const expandedIds = reactive(new Set())
+const expandAllFlag = ref(true)
+
+// 提供展开状态给子组件
+provide('expandedIds', expandedIds)
+provide('expandAllFlag', expandAllFlag)
 
 const data = reactive({
   form: {},
@@ -232,48 +211,37 @@ function updateSort(data) {
   })
 }
 
-// 收集所有菜单项（扁平化树结构）
-function flattenMenus(menus) {
-  const result = []
-  for (const menu of menus) {
-    result.push(menu)
-    if (menu.children && menu.children.length) {
-      result.push(...flattenMenus(menu.children))
-    }
-  }
-  return result
-}
-
-// 保存原始排序值
-function saveOriginalSort(menus) {
-  const flat = flattenMenus(menus)
-  originalSortMap.value = {}
-  for (const menu of flat) {
-    originalSortMap.value[menu.id] = menu.sort
-  }
-  sortChanged.value = false
-}
-
-// 排序号变更检测
-function onSortChange() {
-  const flat = flattenMenus(menuList.value)
-  for (const menu of flat) {
-    if (menu.sort !== originalSortMap.value[menu.id]) {
-      sortChanged.value = true
-      return
-    }
-  }
-  sortChanged.value = false
-}
-
 // 查询菜单列表 - 使用 treeselect 接口直接获取树形结构
 function getList() {
   loading.value = true
   treeselect().then(res => {
     loading.value = false
     menuList.value = res.data || []
-    saveOriginalSort(menuList.value)
+    // 默认全部展开
+    expandAllNodes(menuList.value)
   })
+}
+
+// 收集所有节点 ID 以展开全部
+function expandAllNodes(menus) {
+  for (const menu of menus) {
+    expandedIds.add(menu.id)
+    if (menu.children && menu.children.length) {
+      expandAllNodes(menu.children)
+    }
+  }
+}
+
+// 收集所有节点 ID
+function collectAllIds(menus) {
+  const ids = []
+  for (const menu of menus) {
+    ids.push(menu.id)
+    if (menu.children && menu.children.length) {
+      ids.push(...collectAllIds(menu.children))
+    }
+  }
+  return ids
 }
 
 // 获取菜单下拉树结构
@@ -294,13 +262,17 @@ function resetQuery() {
   handleQuery()
 }
 
-// 展开/折叠
+// 展开/折叠全部
 function toggleExpandAll() {
-  refreshTable.value = false
-  isExpandAll.value = !isExpandAll.value
-  nextTick(() => {
-    refreshTable.value = true
-  })
+  expandAllFlag.value = !expandAllFlag.value
+  if (expandAllFlag.value) {
+    // 展开全部
+    const allIds = collectAllIds(menuList.value)
+    allIds.forEach(id => expandedIds.add(id))
+  } else {
+    // 折叠全部
+    expandedIds.clear()
+  }
 }
 
 // 新增按钮操作
@@ -337,22 +309,16 @@ function handleDelete(row) {
   }).catch(() => {})
 }
 
-// 批量保存排序
-function handleSaveSort() {
-  const flat = flattenMenus(menuList.value)
-  const changedItems = flat.filter(menu => menu.sort !== originalSortMap.value[menu.id])
-  if (changedItems.length === 0) {
-    proxy.$modal.msgSuccess('排序未变更')
-    return
-  }
-  const sortData = changedItems.map(item => ({ id: item.id, sort: item.sort }))
+// 拖拽排序变更后自动保存
+function handleSortChange(sortData) {
   updateSort(sortData).then(() => {
-    proxy.$modal.msgSuccess('排序保存成功')
-    sortChanged.value = false
-    saveOriginalSort(menuList.value)
+    proxy.$modal.msgSuccess('排序已保存')
+    // 刷新下拉树，确保新增/编辑时的菜单树顺序一致
     getTreeselect()
   }).catch(() => {
     proxy.$modal.msgError('排序保存失败')
+    // 排序保存失败时重新加载列表恢复原顺序
+    getList()
   })
 }
 
@@ -402,3 +368,76 @@ function reset() {
 getList()
 getTreeselect()
 </script>
+
+<style scoped>
+/* 表头 */
+.menu-tree-header {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  min-height: 40px;
+  background: var(--el-fill-color);
+  border-bottom: 2px solid var(--el-border-color);
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+}
+
+.header-drag {
+  flex-shrink: 0;
+  width: 24px;
+}
+
+.header-expand {
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.menu-tree-header .col {
+  flex-shrink: 0;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.menu-tree-header .col-title {
+  flex: 1;
+  min-width: 160px;
+}
+
+.menu-tree-header .col-icon {
+  width: 80px;
+  text-align: center;
+}
+
+.menu-tree-header .col-sort {
+  width: 80px;
+  text-align: center;
+}
+
+.menu-tree-header .col-index {
+  width: 80px;
+  text-align: center;
+}
+
+.menu-tree-header .col-path {
+  width: 150px;
+}
+
+.menu-tree-header .col-parent {
+  width: 80px;
+  text-align: center;
+}
+
+.menu-tree-header .col-actions {
+  width: 80px;
+  text-align: center;
+}
+
+/* 树体容器 */
+.menu-tree-body {
+  border: 1px solid var(--el-border-color);
+  border-top: none;
+  min-height: 100px;
+  background: #fff;
+}
+</style>

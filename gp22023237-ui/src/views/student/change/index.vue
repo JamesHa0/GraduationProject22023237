@@ -244,8 +244,8 @@ function getList() {
   loading.value = true;
   listStatusChange(queryParams.value).then(res => {
     loading.value = false;
-    changeList.value = res.data.records || res.data || [];
-    total.value = res.data.total || changeList.value.length;
+    changeList.value = res.data || [];
+    total.value = res.pagination?.total || res.data?.total || changeList.value.length;
   });
 }
 

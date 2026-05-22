@@ -85,3 +85,11 @@ export function getSubmitStatus(query) {
     params: query
   })
 }
+
+export function batchGetSelectedCount(courseIds) {
+  return request({
+    url: '/course/selection/batchGetSelectedCount',
+    method: 'post',
+    data: courseIds
+  })
+}

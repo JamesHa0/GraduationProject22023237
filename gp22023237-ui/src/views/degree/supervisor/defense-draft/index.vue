@@ -64,7 +64,7 @@ function handleComment(row, status) {
 }
 
 function doSubmit() {
-  commentDefenseDraft(currentRow.value.id, currentStatus.value, comment.value, userStore?.id).then(() => {
+  commentDefenseDraft(currentRow.value.id, currentStatus.value, comment.value, userStore?.roleInfo?.[0]?.id || userStore?.userId).then(() => {
     proxy.$modal.msgSuccess('操作成功')
     dialogVisible.value = false
     loadData()
@@ -74,9 +74,9 @@ function doSubmit() {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getSupervisorDefenseDraft({ supervisorId: userStore?.id, pageNum: pageNum.value, pageSize: pageSize.value })
-    records.value = res.data?.records || res.rows || []
-    total.value = res.data?.total || res.total || 0
+    const res = await getSupervisorDefenseDraft({ supervisorId: userStore?.roleInfo?.[0]?.id || userStore?.userId, pageNum: pageNum.value, pageSize: pageSize.value })
+    records.value = res.data || res.rows || []
+    total.value = res.pagination?.total || res.total || 0
   } catch (e) { console.error(e) }
   loading.value = false
 }

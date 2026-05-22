@@ -72,14 +72,14 @@
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px" @submit.native.prevent>
       <el-form-item label="课程名称" prop="name">
         <el-input v-model="queryParams.name" placeholder="请输入课程名称" clearable style="width: 200px"
-          @keyup.enter="handleQuery" />
+          @keyup.enter="debouncedHandleQuery" />
       </el-form-item>
       <el-form-item label="学期" prop="semester">
         <el-input v-model="queryParams.semester" placeholder="请输入学期" clearable style="width: 150px"
-          @keyup.enter="handleQuery" />
+          @keyup.enter="debouncedHandleQuery" />
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button type="primary" icon="Search" @click="debouncedHandleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
       </el-form-item>
     </el-form>
@@ -124,18 +124,28 @@
           </template>
         </el-table-column>
       </el-table>
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getAvailableCourses" />
     </el-card>
   </div>
 </template>
 
 <script setup name="StudentCourseSelect">
 import { listCourse } from "@/api/course/course";
-import { listCourseSelection, getStudentCourseChoices, saveCourseSelections, getSubmitStatus } from "@/api/course/selection";
+import { listCourseSelection, getStudentCourseChoices, saveCourseSelections, getSubmitStatus, batchGetSelectedCount } from "@/api/course/selection";
 import { isSelectionOpen } from "@/api/course/phase";
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 
 const { proxy } = getCurrentInstance();
+
+// 防抖工具函数
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
 
 const studentId = ref(null);
 const courseTableRef = ref(null);
@@ -150,13 +160,19 @@ const getStudentId = () => {
   }
 };
 
-const queryParams = ref({
-  name: undefined,
-  semester: undefined
+const data = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10,
+    name: undefined,
+    semester: undefined
+  }
 });
+const { queryParams } = toRefs(data);
 
 const loading = ref(true);
 const showSearch = ref(true);
+const total = ref(0);
 
 const maxCourseCount = ref(3);
 const availableCourses = ref([]);
@@ -299,16 +315,26 @@ const getStudentChoices = () => {
 const getAvailableCourses = () => {
   loading.value = true;
   listCourse(queryParams.value).then(res => {
-    const allCourses = res.data || [];
+    const allCourses = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
 
-    Promise.all(allCourses.map(course => {
-      return listCourseSelection({ courseId: course.id, status: 1 }).then(selectionRes => {
-        course.selectedCount = selectionRes.data ? selectionRes.data.length : 0;
+    // 过滤已开课的课程
+    const openCourses = allCourses.filter(course => course.status === 1);
+
+    if (openCourses.length === 0) {
+      availableCourses.value = [];
+      loading.value = false;
+      return;
+    }
+
+    // 批量查询已选人数（替代 N+1 查询）
+    const courseIds = openCourses.map(c => c.id);
+    batchGetSelectedCount(courseIds).then(countRes => {
+      const countMap = countRes.data || {};
+      openCourses.forEach(course => {
+        course.selectedCount = countMap[String(course.id)] || 0;
       });
-    })).then(() => {
-      availableCourses.value = allCourses.filter(course => {
-        return course.status === 1;
-      });
+      availableCourses.value = openCourses;
 
       nextTick(() => {
         getStudentChoices().then(() => {
@@ -317,7 +343,17 @@ const getAvailableCourses = () => {
       });
 
       loading.value = false;
+    }).catch((err) => {
+      console.error('批量查询课程已选人数失败:', err);
+      openCourses.forEach(course => {
+        course.selectedCount = 0;
+      });
+      availableCourses.value = openCourses;
+      loading.value = false;
     });
+  }).catch((err) => {
+    console.error('可选课程列表查询失败:', err);
+    loading.value = false;
   });
 };
 
@@ -330,12 +366,16 @@ const restoreSelections = () => {
 };
 
 const handleQuery = () => {
+  queryParams.value.pageNum = 1;
   getAvailableCourses();
 };
+
+const debouncedHandleQuery = debounce(handleQuery, 300);
 
 const resetQuery = () => {
   queryParams.value.name = undefined;
   queryParams.value.semester = undefined;
+  queryParams.value.pageNum = 1;
   handleQuery();
 };
 

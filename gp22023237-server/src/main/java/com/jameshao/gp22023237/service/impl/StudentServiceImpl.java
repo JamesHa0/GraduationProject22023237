@@ -184,7 +184,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
                 Date now = new Date();
                 User user = new User();
                 user.setUsername(dto.getStudentNo());
-                user.setPassword(dto.getStudentNo());
+                user.setPassword(com.jameshao.gp22023237.service.impl.UserServiceImpl.hashPassword(dto.getStudentNo()));
                 user.setName(dto.getStudentName());
                 user.setRoleId(6); // 6-学生角色
                 user.setStatus(1);
@@ -433,5 +433,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    @Override
+    public Student getByUserId(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return lambdaQuery().eq(Student::getUserId, userId).one();
     }
 }

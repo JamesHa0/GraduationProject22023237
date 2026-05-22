@@ -23,6 +23,12 @@ public class FLAGS {
     //登陆失败提示语
     public static final String LOGIN_FAIL = "wrong username or password!";
 
+    //验证码错误提示语
+    public static final String CAPTCHA_ERROR = "验证码错误";
+
+    //验证码已过期提示语
+    public static final String CAPTCHA_EXPIRED = "验证码已过期";
+
     //token关键词
     public static final String TOKEN = "token";
 

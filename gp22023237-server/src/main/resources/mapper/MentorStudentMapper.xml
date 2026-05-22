@@ -58,6 +58,12 @@
             <if test="mentorId != null">
                 AND ms.mentor_id = #{mentorId}
             </if>
+            <if test="studentName != null and studentName != ''">
+                AND s.student_name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+            <if test="teacherName != null and teacherName != ''">
+                AND t.teacher_name LIKE CONCAT('%', #{teacherName}, '%')
+            </if>
             <if test="onlyUndetermined != null and onlyUndetermined == true">
                 AND ms.student_id NOT IN (
                     SELECT DISTINCT student_id FROM mentor_student

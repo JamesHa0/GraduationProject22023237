@@ -18,7 +18,7 @@
         <el-table-column label="提交时间" width="160">
           <template #default="{ row }">{{ parseDate(row.submitTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button v-if="row.supervisorStatus === 0" type="success" size="small" @click="handleApprove(row, 1)">通过</el-button>
             <el-button v-if="row.supervisorStatus === 0" type="danger" size="small" @click="handleApprove(row, 2)">退回</el-button>
@@ -36,6 +36,18 @@
         <template #footer>
           <el-button @click="assignVisible = false">取消</el-button>
           <el-button type="primary" @click="doAssign">确定</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="rejectVisible" title="退回原因" width="500px">
+        <el-form label-width="80px">
+          <el-form-item label="退回原因">
+            <el-input v-model="rejectComment" type="textarea" :rows="3" placeholder="请输入退回原因" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="rejectVisible = false">取消</el-button>
+          <el-button type="danger" @click="doReject">确认退回</el-button>
         </template>
       </el-dialog>
     </el-card>
@@ -59,12 +71,31 @@ const pageSize = ref(10)
 const total = ref(0)
 const assignVisible = ref(false)
 const assignForm = ref({ thesisId: null, topicName: '', topicDesc: '' })
+const rejectVisible = ref(false)
+const rejectComment = ref('')
+const rejectRow = ref(null)
 
 function handleApprove(row, status) {
-  const comment = status === 2 ? prompt('请输入退回原因') : ''
-  if (status === 2 && !comment) return
-  approveProcessSupervisor(row.id, status, comment, userStore?.id).then(() => {
+  if (status === 2) {
+    rejectRow.value = row
+    rejectComment.value = ''
+    rejectVisible.value = true
+    return
+  }
+  approveProcessSupervisor(row.id, status, '', userStore?.roleInfo?.[0]?.id || userStore?.userId).then(() => {
     proxy.$modal.msgSuccess('操作成功')
+    loadData()
+  })
+}
+
+function doReject() {
+  if (!rejectComment.value.trim()) {
+    proxy.$modal.msgWarning('请输入退回原因')
+    return
+  }
+  approveProcessSupervisor(rejectRow.value.id, 2, rejectComment.value, userStore?.roleInfo?.[0]?.id || userStore?.userId).then(() => {
+    proxy.$modal.msgSuccess('已退回')
+    rejectVisible.value = false
     loadData()
   })
 }
@@ -85,9 +116,9 @@ function doAssign() {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getSupervisorTopic({ supervisorId: userStore?.id, pageNum: pageNum.value, pageSize: pageSize.value })
-    records.value = res.data?.records || res.rows || []
-    total.value = res.data?.total || res.total || 0
+    const res = await getSupervisorTopic({ supervisorId: userStore?.roleInfo?.[0]?.id || userStore?.userId, pageNum: pageNum.value, pageSize: pageSize.value })
+    records.value = res.data || res.rows || []
+    total.value = res.pagination?.total || res.total || 0
   } catch (e) { console.error(e) }
   loading.value = false
 }

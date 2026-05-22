@@ -25,6 +25,18 @@
         </el-table-column>
       </el-table>
       <el-pagination style="margin-top: 16px;" v-model:current-page="pageNum" v-model:page-size="pageSize" :total="total" @current-change="loadData" />
+
+      <el-dialog v-model="rejectVisible" title="拒绝原因" width="500px">
+        <el-form label-width="80px">
+          <el-form-item label="拒绝原因">
+            <el-input v-model="rejectComment" type="textarea" :rows="3" placeholder="请输入拒绝原因" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="rejectVisible = false">取消</el-button>
+          <el-button type="danger" @click="doReject">确认拒绝</el-button>
+        </template>
+      </el-dialog>
     </el-card>
   </div>
 </template>
@@ -44,11 +56,31 @@ const records = ref([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const rejectVisible = ref(false)
+const rejectComment = ref('')
+const rejectRow = ref(null)
 
 function handleApprove(row, status) {
-  const comment = status === 2 ? prompt('请输入拒绝原因') : ''
-  approveTopicModification(row.id, status, comment, userStore?.id).then(() => {
+  if (status === 2) {
+    rejectRow.value = row
+    rejectComment.value = ''
+    rejectVisible.value = true
+    return
+  }
+  approveTopicModification(row.id, status, '', userStore?.roleInfo?.[0]?.id || userStore?.userId).then(() => {
     proxy.$modal.msgSuccess('操作成功')
+    loadData()
+  })
+}
+
+function doReject() {
+  if (!rejectComment.value.trim()) {
+    proxy.$modal.msgWarning('请输入拒绝原因')
+    return
+  }
+  approveTopicModification(rejectRow.value.id, 2, rejectComment.value, userStore?.roleInfo?.[0]?.id || userStore?.userId).then(() => {
+    proxy.$modal.msgSuccess('已拒绝')
+    rejectVisible.value = false
     loadData()
   })
 }
@@ -56,9 +88,9 @@ function handleApprove(row, status) {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getTopicModifications({ supervisorId: userStore?.id, pageNum: pageNum.value, pageSize: pageSize.value })
-    records.value = res.data?.records || res.rows || []
-    total.value = res.data?.total || res.total || 0
+    const res = await getTopicModifications({ supervisorId: userStore?.roleInfo?.[0]?.id || userStore?.userId, pageNum: pageNum.value, pageSize: pageSize.value })
+    records.value = res.data || res.rows || []
+    total.value = res.pagination?.total || res.total || 0
   } catch (e) { console.error(e) }
   loading.value = false
 }

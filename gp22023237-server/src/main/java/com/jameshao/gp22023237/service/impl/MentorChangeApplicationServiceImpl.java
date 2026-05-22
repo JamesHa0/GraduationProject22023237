@@ -8,7 +8,11 @@ import com.jameshao.gp22023237.po.MentorStudent;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.service.MentorChangeApplicationService;
 import com.jameshao.gp22023237.service.MentorStudentService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
+import com.jameshao.gp22023237.service.TeacherService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,15 +26,35 @@ import java.util.Map;
 public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChangeApplicationMapper, MentorChangeApplication>
         implements MentorChangeApplicationService {
 
+    private static final Logger logger = LoggerFactory.getLogger(MentorChangeApplicationServiceImpl.class);
+
     @Autowired
     private MentorStudentService mentorStudentService;
 
     @Autowired
     private StudentService studentService;
 
+    @Autowired
+    private TeacherService teacherService;
+
+    @Autowired
+    private NoticeService noticeService;
+
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean submitApplication(MentorChangeApplication application) {
+        // 防重复提交校验：同一学生不能有待审批的申请
+        Long studentId = application.getStudentId();
+        if (studentId != null) {
+            LambdaQueryWrapper<MentorChangeApplication> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(MentorChangeApplication::getStudentId, studentId)
+                    .in(MentorChangeApplication::getOverallStatus, 0, 1);
+            long pendingCount = this.count(checkWrapper);
+            if (pendingCount > 0) {
+                throw new IllegalArgumentException("您已有待审批的导师更换申请，不能重复提交");
+            }
+        }
+
         // 设置申请时间
         Date now = new Date();
         application.setApplyTime(now);
@@ -46,7 +70,7 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean originalMentorApprove(Long id, Integer status, String comment) {
         MentorChangeApplication application = getById(id);
         if (application == null) {
@@ -67,11 +91,27 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
             application.setOverallStatus(3);
         }
 
-        return updateById(application);
+        boolean result = updateById(application);
+
+        // 1.7 通知：导师变更审批结果 → 通知申请学生
+        if (result) {
+            try {
+                Student student = studentService.getById(application.getStudentId());
+                if (student != null && student.getUserId() != null) {
+                    String statusText = (status == 1) ? "原导师已通过，等待新导师审批" : "原导师已拒绝";
+                    noticeService.createAndPush("导师变更审批通知",
+                        "您的导师变更申请" + statusText, "1", student.getUserId());
+                }
+            } catch (Exception e) {
+                logger.warn("导师变更审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return result;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean newMentorApprove(Long id, Integer status, String comment) {
         MentorChangeApplication application = getById(id);
         if (application == null) {
@@ -93,26 +133,76 @@ public class MentorChangeApplicationServiceImpl extends ServiceImpl<MentorChange
             application.setOverallStatus(3);
         }
 
-        return updateById(application);
+        boolean result = updateById(application);
+
+        // 1.7 通知：导师变更审批结果 → 通知申请学生
+        if (result) {
+            try {
+                Student student = studentService.getById(application.getStudentId());
+                if (student != null && student.getUserId() != null) {
+                    String statusText = (status == 1) ? "已通过，导师已变更" : "新导师已拒绝";
+                    noticeService.createAndPush("导师变更审批通知",
+                        "您的导师变更申请" + statusText, "1", student.getUserId());
+                }
+            } catch (Exception e) {
+                logger.warn("导师变更审批通知推送失败: {}", e.getMessage());
+            }
+        }
+
+        return result;
     }
 
     private void updateMentorStudentRelationship(MentorChangeApplication application) {
-        // 1. 删除学生与原导师的关系
-        LambdaQueryWrapper<MentorStudent> deleteWrapper = new LambdaQueryWrapper<>();
-        deleteWrapper.eq(MentorStudent::getStudentId, application.getStudentId())
-                .eq(MentorStudent::getMentorId, application.getOriginalMentorId());
-        mentorStudentService.remove(deleteWrapper);
+        // 1. 恢复原导师名额：找到原关系并删除，同时恢复原导师的confirmed_quota和remaining_quota
+        LambdaQueryWrapper<MentorStudent> findWrapper = new LambdaQueryWrapper<>();
+        findWrapper.eq(MentorStudent::getStudentId, application.getStudentId())
+                .eq(MentorStudent::getMentorId, application.getOriginalMentorId())
+                .eq(MentorStudent::getStudentStatus, 1)
+                .eq(MentorStudent::getTeacherStatus, 1);
+        MentorStudent oldRelation = mentorStudentService.getOne(findWrapper);
+        if (oldRelation != null) {
+            mentorStudentService.removeById(oldRelation.getId());
+            // 恢复原导师名额
+            com.jameshao.gp22023237.po.Teacher originalTeacher = teacherService.getById(application.getOriginalMentorId());
+            if (originalTeacher != null) {
+                int currentQuota = originalTeacher.getConfirmedQuota() != null ? originalTeacher.getConfirmedQuota() : 0;
+                int currentRemaining = originalTeacher.getRemainingQuota() != null ? originalTeacher.getRemainingQuota() : 0;
+                if (currentQuota > 0) {
+                    originalTeacher.setConfirmedQuota(currentQuota - 1);
+                }
+                originalTeacher.setRemainingQuota(currentRemaining + 1);
+                teacherService.updateById(originalTeacher);
+            }
+        } else {
+            // 旧关系不存在时仍尝试清理
+            LambdaQueryWrapper<MentorStudent> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(MentorStudent::getStudentId, application.getStudentId())
+                    .eq(MentorStudent::getMentorId, application.getOriginalMentorId());
+            mentorStudentService.remove(deleteWrapper);
+        }
 
         // 2. 添加学生与新导师的关系
         MentorStudent newRelationship = new MentorStudent();
         newRelationship.setStudentId(application.getStudentId());
         newRelationship.setMentorId(application.getNewMentorId());
         newRelationship.setMentorType(1); // 第一导师
+        newRelationship.setStudentStatus(1);
+        newRelationship.setTeacherStatus(1);
         newRelationship.setCreateTime(new Date());
         newRelationship.setUpdateTime(new Date());
         mentorStudentService.save(newRelationship);
 
-        // 3. 更新学生selection_status为3（已确定）
+        // 3. 更新新导师已确认名额
+        com.jameshao.gp22023237.po.Teacher newTeacher = teacherService.getById(application.getNewMentorId());
+        if (newTeacher != null) {
+            int currentQuota = newTeacher.getConfirmedQuota() != null ? newTeacher.getConfirmedQuota() : 0;
+            int currentRemaining = newTeacher.getRemainingQuota() != null ? newTeacher.getRemainingQuota() : 0;
+            newTeacher.setConfirmedQuota(currentQuota + 1);
+            newTeacher.setRemainingQuota(Math.max(0, currentRemaining - 1));
+            teacherService.updateById(newTeacher);
+        }
+
+        // 4. 更新学生selection_status为3（已确定）
         Student student = studentService.getById(application.getStudentId());
         if (student != null) {
             student.setSelectionStatus(3);

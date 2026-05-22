@@ -83,6 +83,12 @@ public class Student {
     private Integer status;
 
     /**
+     * 导师姓名（非数据库字段，仅用于前端展示）
+     */
+    @TableField(exist = false)
+    private String mentorName;
+
+    /**
      * 创建时间 - 记录学生信息创建的时间
      */
     private Date createTime;

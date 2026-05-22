@@ -1,11 +1,19 @@
-import {
-  listActivity, submitActivity, getActivityDetail,
-  approveActivityMentor, approveActivitySecretary, approveActivityDean,
-  listInnovation, submitInnovation, getInnovationDetail,
-  approveInnovationMentor, approveInnovationSecretary, approveInnovationDean,
-  listAchievement, submitAchievement, getAchievementDetail,
-  approveAchievementMentor, approveAchievementSecretary, approveAchievementDean
-} from '@/api/academic'
+import { listSubmissions, submitContent, getSubmissionDetail, approveSubmission } from '@/api/academic'
+
+function makeListApi(contentType) {
+  return (params) => listSubmissions({ ...params, contentType })
+}
+function makeSubmitApi(contentType) {
+  return (data) => submitContent({ ...data, contentType })
+}
+function makeApproveApi() {
+  return (submissionId, action, comment) => approveSubmission({ submissionId, action, comment })
+}
+// 统一审批包装：旧签名 (roleId) → approveApi → (id, status, comment)
+// 新签名 getApproveApi(roleId) 始终返回同一个 approveSubmission 包装
+function makeGetApproveApi() {
+  return (_roleId) => makeApproveApi()
+}
 
 // --- Activity helpers ---
 function getActivityTypeName(type) {
@@ -65,12 +73,6 @@ function getProjectRoleName(role) {
   return m[role] || '-'
 }
 
-function getApproveApi(roleId, apiMap) {
-  if (roleId === 7 || roleId === 8) return apiMap.mentor
-  if (roleId === 5 || roleId === 4) return apiMap.secretary
-  return apiMap.dean
-}
-
 // 内容类型下拉选项（供表单和查询使用）
 // typeValue对齐后端ContentType编码：1=ACTIVITY, 2=ACHIEVEMENT, 3=INNOVATION
 export const TYPE_OPTIONS = [
@@ -112,9 +114,9 @@ export const TYPE_CONFIG = {
     typeName: '活动',
     typeValue: 1,
     titleField: 'activityName',
-    listApi: listActivity,
-    submitApi: submitActivity,
-    detailApi: getActivityDetail,
+    listApi: makeListApi(1),
+    submitApi: makeSubmitApi(1),
+    detailApi: getSubmissionDetail,
     subTypeLabel: '活动类型',
     subTypeField: 'activityType',
     subTypeOptions: [
@@ -143,15 +145,11 @@ export const TYPE_CONFIG = {
       content: [{ required: true, message: '请输入活动内容', trigger: 'blur' }]
     },
     approveApiMap: {
-      mentor: approveActivityMentor,
-      secretary: approveActivitySecretary,
-      dean: approveActivityDean
+      mentor: makeApproveApi(),
+      secretary: makeApproveApi(),
+      dean: makeApproveApi()
     },
-    getApproveApi: (roleId) => getApproveApi(roleId, {
-      mentor: approveActivityMentor,
-      secretary: approveActivitySecretary,
-      dean: approveActivityDean
-    }),
+    getApproveApi: makeGetApproveApi(),
     helpers: {
       getTypeName: getActivityTypeName,
       getTypeTagType: getActivityTypeTagType
@@ -163,9 +161,9 @@ export const TYPE_CONFIG = {
     typeName: '项目',
     typeValue: 3,
     titleField: 'projectName',
-    listApi: listInnovation,
-    submitApi: submitInnovation,
-    detailApi: getInnovationDetail,
+    listApi: makeListApi(3),
+    submitApi: makeSubmitApi(3),
+    detailApi: getSubmissionDetail,
     subTypeLabel: '项目类型',
     subTypeField: 'projectType',
     subTypeOptions: [
@@ -204,15 +202,11 @@ export const TYPE_CONFIG = {
       fundingAmount: [{ required: true, message: '请输入资助金额', trigger: 'blur' }]
     },
     approveApiMap: {
-      mentor: approveInnovationMentor,
-      secretary: approveInnovationSecretary,
-      dean: approveInnovationDean
+      mentor: makeApproveApi(),
+      secretary: makeApproveApi(),
+      dean: makeApproveApi()
     },
-    getApproveApi: (roleId) => getApproveApi(roleId, {
-      mentor: approveInnovationMentor,
-      secretary: approveInnovationSecretary,
-      dean: approveInnovationDean
-    }),
+    getApproveApi: makeGetApproveApi(),
     helpers: {
       getTypeName: getInnovationTypeName,
       getTypeTagType: getInnovationTypeTagType,
@@ -226,9 +220,9 @@ export const TYPE_CONFIG = {
     typeName: '成果',
     typeValue: 2,
     titleField: 'title',
-    listApi: listAchievement,
-    submitApi: submitAchievement,
-    detailApi: getAchievementDetail,
+    listApi: makeListApi(2),
+    submitApi: makeSubmitApi(2),
+    detailApi: getSubmissionDetail,
     subTypeLabel: '成果类型',
     subTypeField: 'achievementType',
     subTypeOptions: [
@@ -282,15 +276,11 @@ export const TYPE_CONFIG = {
       projectRole: [{ required: true, message: '请选择项目角色', trigger: 'change' }]
     },
     approveApiMap: {
-      mentor: approveAchievementMentor,
-      secretary: approveAchievementSecretary,
-      dean: approveAchievementDean
+      mentor: makeApproveApi(),
+      secretary: makeApproveApi(),
+      dean: makeApproveApi()
     },
-    getApproveApi: (roleId) => getApproveApi(roleId, {
-      mentor: approveAchievementMentor,
-      secretary: approveAchievementSecretary,
-      dean: approveAchievementDean
-    }),
+    getApproveApi: makeGetApproveApi(),
     helpers: {
       getTypeName: getAchievementTypeName,
       getTypeTagType: getAchievementTypeTagType,

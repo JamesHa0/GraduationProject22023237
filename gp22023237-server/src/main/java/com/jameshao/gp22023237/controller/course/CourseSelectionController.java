@@ -17,6 +17,7 @@ import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.service.CourseSelectionService;
 import com.jameshao.gp22023237.service.CoursePhaseService;
 import com.jameshao.gp22023237.service.CourseService;
+import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +25,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RestController
 @RequestMapping("/course/selection")
 public class CourseSelectionController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CourseSelectionController.class);
 
     @Autowired
     private JSONReturn jsonReturn;
@@ -45,6 +50,9 @@ public class CourseSelectionController {
     private StudentService studentService;
 
     @Autowired
+    private NoticeService noticeService;
+
+    @Autowired
     private CourseSelectionMapper courseSelectionMapper;
 
     @Autowired
@@ -57,10 +65,49 @@ public class CourseSelectionController {
     private ScheduleMapper scheduleMapper;
 
     @GetMapping("/list")
-    public String list(Long studentId, Long courseId, Integer status, String semester) {
+    public String list(Long studentId, Long courseId, Integer status, String semester,
+                       Integer pageNum, Integer pageSize) {
         try {
-            List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper.listSelectionWithCourseDetails(studentId, courseId, status, semester);
-            return jsonReturn.returnSuccess(list);
+            if (pageNum != null && pageSize != null) {
+                int offset = (pageNum - 1) * pageSize;
+                List<CourseSelectionWithDetailsDTO> rows = courseSelectionMapper
+                        .listSelectionWithCourseDetailsPage(studentId, courseId, status, semester, offset, pageSize);
+                int total = courseSelectionMapper
+                        .countSelectionWithCourseDetails(studentId, courseId, status, semester);
+                Map<String, Object> data = new HashMap<>();
+                data.put("rows", rows);
+                data.put("total", total);
+                return jsonReturn.returnSuccess(data);
+            } else {
+                List<CourseSelectionWithDetailsDTO> list = courseSelectionMapper
+                        .listSelectionWithCourseDetails(studentId, courseId, status, semester);
+                return jsonReturn.returnSuccess(list);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return jsonReturn.returnError(e.getMessage());
+        }
+    }
+
+    /**
+     * 批量查询课程已选人数（解决学生选课页面 N+1 查询问题）
+     */
+    @PostMapping("/batchGetSelectedCount")
+    public String batchGetSelectedCount(@RequestBody List<Long> courseIds) {
+        try {
+            if (courseIds == null || courseIds.isEmpty()) {
+                Map<String, Object> empty = new HashMap<>();
+                return jsonReturn.returnSuccess(empty);
+            }
+            List<Map<String, Object>> rows = courseSelectionMapper.batchCountSelectedByCourseIds(courseIds);
+            Map<String, Object> result = new HashMap<>();
+            for (Map<String, Object> row : rows) {
+                Object courseIdObj = row.get("courseId");
+                Object cntObj = row.get("cnt");
+                String key = courseIdObj != null ? courseIdObj.toString() : "null";
+                result.put(key, cntObj);
+            }
+            return jsonReturn.returnSuccess(result);
         } catch (Exception e) {
             e.printStackTrace();
             return jsonReturn.returnError(e.getMessage());
@@ -171,6 +218,21 @@ public class CourseSelectionController {
                 return jsonReturn.returnError(timeConflict);
             }
 
+            // 选课上限检查：校验每门课程容量
+            for (Long courseId : courseIds) {
+                String capacityError = courseSelectionService.checkCourseCapacity(courseId);
+                if (capacityError != null) {
+                    return jsonReturn.returnError(capacityError);
+                }
+            }
+
+            // 选课上限检查：校验学生选课数量上限
+            String limitError = courseSelectionService.checkStudentCourseLimit(
+                    batchDTO.getStudentId(), batchDTO.getChoices().size());
+            if (limitError != null) {
+                return jsonReturn.returnError(limitError);
+            }
+
             LambdaQueryWrapper<CourseSelection> deleteWrapper = new LambdaQueryWrapper<>();
             deleteWrapper.eq(CourseSelection::getStudentId, batchDTO.getStudentId());
             courseSelectionService.remove(deleteWrapper);
@@ -193,6 +255,15 @@ public class CourseSelectionController {
                 }
             }
 
+            // 5.2 通知：选课提交 → 通知学生
+            try {
+                Student stu = studentService.getById(batchDTO.getStudentId());
+                if (stu != null && stu.getUserId() != null) {
+                    noticeService.createAndPush("选课通知", "选课已提交，共选" + batchDTO.getChoices().size() + "门课程", "1", stu.getUserId());
+                }
+            } catch (Exception ex) {
+                logger.warn("选课提交通知推送失败: {}", ex.getMessage());
+            }
             return jsonReturn.returnSuccess("保存成功");
         } catch (Exception e) {
             e.printStackTrace();
@@ -270,8 +341,26 @@ public class CourseSelectionController {
     @DeleteMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
         try {
+            // 先获取记录信息用于通知
+            CourseSelection cs = courseSelectionService.getById(id);
+            if (cs == null) {
+                return jsonReturn.returnError("记录不存在");
+            }
+            Long studentId = cs.getStudentId();
+            Long courseId = cs.getCourseId();
             boolean success = courseSelectionService.removeById(id);
             if (success) {
+                // 5.3 通知：退课 → 通知学生
+                try {
+                    Long studentUserId = noticeService.getStudentUserId(studentId);
+                    if (studentUserId != null) {
+                        Course course = courseService.getById(courseId);
+                        String courseName = course != null ? course.getName() : "课程";
+                        noticeService.createAndPush("退课通知", "已退选课程：" + courseName, "1", studentUserId);
+                    }
+                } catch (Exception ex) {
+                    logger.warn("退课通知推送失败: {}", ex.getMessage());
+                }
                 return jsonReturn.returnSuccess("删除成功");
             } else {
                 return jsonReturn.returnFailed("删除失败");

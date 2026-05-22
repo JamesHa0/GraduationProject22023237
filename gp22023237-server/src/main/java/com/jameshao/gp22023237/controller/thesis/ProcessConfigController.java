@@ -50,13 +50,7 @@ public class ProcessConfigController {
     @PostMapping("/save")
     public String save(@RequestBody List<ProcessConfig> configs) {
         try {
-            for (ProcessConfig config : configs) {
-                if (config.getId() != null) {
-                    processConfigService.updateById(config);
-                } else {
-                    processConfigService.save(config);
-                }
-            }
+            processConfigService.batchSaveConfigs(configs);
             return jsonReturn.returnSuccess("保存成功");
         } catch (Exception e) {
             e.printStackTrace();

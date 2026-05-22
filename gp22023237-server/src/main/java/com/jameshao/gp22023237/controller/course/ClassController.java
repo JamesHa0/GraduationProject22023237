@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -106,7 +107,20 @@ public class ClassController {
     public String listAll() {
         try {
             List<ClassEntity> list = classService.list(new QueryWrapper<ClassEntity>().orderByAsc("class_name"));
-            return jsonReturn.returnSuccess(list);
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (ClassEntity entity : list) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", entity.getId());
+                row.put("className", entity.getClassName());
+                row.put("department", entity.getDepartment());
+                row.put("major", entity.getMajor());
+                row.put("admissionYear", entity.getAdmissionYear());
+                row.put("createTime", entity.getCreateTime());
+                row.put("updateTime", entity.getUpdateTime());
+                row.put("studentCount", scheduleMapper.countStudentsByClassId(entity.getId()));
+                rows.add(row);
+            }
+            return jsonReturn.returnSuccess(rows);
         } catch (Exception e) {
             log.error("查询所有班级失败", e);
             return jsonReturn.returnError("查询班级失败，请稍后重试");

@@ -1,8 +1,8 @@
 /**
- * 学位模块审批逻辑 composable
- * 封装三级流程审批（导师/秘书/院长）+ 学位分委审批 + 学位授予
- * 参照 useAcademicApproval 的模式
- */
+* 学位模块审批逻辑 composable
+* 封装三级流程审批（导师/秘书/院长）+ 学位分委审批 + 学位授予
+* 参照 useAcademicApproval 的模式
+*/
 import { ref, reactive, toRefs } from 'vue'
 import useUserStore from '@/store/modules/user'
 import {
@@ -10,19 +10,54 @@ import {
   approveProcessSecretary,
   approveProcessDean,
   committeeApprove,
-  grantDegree
+  grantDegree,
+  listProcessConfig
 } from '@/api/degree'
 
+// ==================== 角色常量定义 ====================
+// 与后端角色表保持一致，避免硬编码
+export const ROLE = {
+  SUPER_ADMIN: 1,      // 超级管理员
+  DEAN: 2,             // 分管院长
+  COMMITTEE_MEMBER: 3,  // 学位分委成员/综合管理员
+  SECRETARY: 4,        // 综合管理员（原标注教学秘书，实际role_id=4为综合管理员）
+  DEPT_SECRETARY: 5,   // 教学秘书（实际role_id=5为教学秘书）
+  MENTOR: 7,           // 导师
+  CO_MENTOR: 8         // 副导师
+}
+
+// 可进行导师审批的角色
+const SUPERVISOR_ROLES = [ROLE.MENTOR, ROLE.CO_MENTOR]
+// 可进行秘书审批的角色
+const SECRETARY_ROLES = [ROLE.DEPT_SECRETARY, ROLE.SECRETARY]
+// 可进行院长审批的角色
+const DEAN_ROLES = [ROLE.DEAN, ROLE.SUPER_ADMIN]
+// 可录入评审结果的角色
+const RESULT_RECORDER_ROLES = [ROLE.DEPT_SECRETARY, ROLE.DEAN, ROLE.SUPER_ADMIN]
+
 /**
- * 获取当前用户角色ID
- * @returns {number|null}
- */
+* 获取当前用户角色ID
+* @returns {number|null}
+*/
 export function getCurrentUserRoleId() {
   const userStore = useUserStore()
-  if (userStore.roles && userStore.roles.length > 0) {
-    return userStore.roles[0]
+  if (userStore.roles) {
+    // roles 可能是数字（如5）或数组（如[5]），统一处理
+    if (Array.isArray(userStore.roles)) {
+      return userStore.roles.length > 0 ? userStore.roles[0] : null
+    }
+    return userStore.roles
   }
   return null
+}
+
+/**
+* 获取当前用户ID
+* @returns {string|number|null}
+*/
+export function getCurrentUserId() {
+  const userStore = useUserStore()
+  return userStore.userId || null
 }
 
 /**
@@ -37,7 +72,7 @@ export function hasRole(...roleIds) {
 
 /**
  * 流程审批 composable（导师/秘书/院长三级审批）
- * 用于 progress/index.vue
+ * 用于 progress/index.vue 及 supervisor/task/index.vue 等
  */
 export function useProcessApproval(proxy) {
   const approvalDialogVisible = ref(false)
@@ -53,23 +88,59 @@ export function useProcessApproval(proxy) {
 
   const { approvalForm } = toRefs(approvalData)
 
+  // 流程配置缓存：processType → { needSupervisorApproval, needSecretaryApproval, needDeanApproval }
+  const processConfigMap = reactive({})
+  let configLoaded = false
+
+  /** 加载流程配置 */
+  function loadProcessConfig() {
+    if (configLoaded) return Promise.resolve()
+    return listProcessConfig().then(res => {
+      const configs = res.data || []
+      configs.forEach(c => {
+        processConfigMap[c.processType] = {
+          needSupervisorApproval: c.needSupervisorApproval === 1,
+          needSecretaryApproval: c.needSecretaryApproval === 1,
+          needDeanApproval: c.needDeanApproval === 1
+        }
+      })
+      configLoaded = true
+    }).catch(() => {
+      configLoaded = true // 即使失败也标记，避免重复请求
+    })
+  }
+
   /**
    * 判断当前用户是否可审批该流程记录
-   * 规则：导师→supervisorStatus===0, 秘书→supervisor通过且secretary===0, 院长→全部通过且dean===0
+   * 根据流程配置动态判断前置条件：
+   * - 导师：supervisorStatus===0 且流程需要导师审批
+   * - 秘书：secretaryStatus===0 且（不需要导师审批 或 导师已通过）
+   * - 院长：deanStatus===0 且（不需要导师审批 或 导师已通过）且（不需要秘书审批 或 秘书已通过）
    */
   function canApprove(row) {
     if (!row) return false
     const roleId = getCurrentUserRoleId()
     if (!roleId) return false
 
-    if (roleId === 7 || roleId === 8) {
+    const config = processConfigMap[row.processType]
+
+    if (SUPERVISOR_ROLES.includes(roleId)) {
+      // 导师审批：流程需要导师审批 且 导师未审批
+      if (config && !config.needSupervisorApproval) return false
       return row.supervisorStatus === 0
     }
-    if (roleId === 5 || roleId === 4) {
-      return row.supervisorStatus === 1 && row.secretaryStatus === 0
+    if (SECRETARY_ROLES.includes(roleId)) {
+      // 秘书审批：流程需要秘书审批 且 秘书未审批 且（不需要导师审批 或 导师已通过）
+      if (config && !config.needSecretaryApproval) return false
+      const supervisorOk = !config || !config.needSupervisorApproval || row.supervisorStatus === 1
+      return supervisorOk && row.secretaryStatus === 0
     }
-    if (roleId === 2 || roleId === 1) {
-      return row.supervisorStatus === 1 && row.secretaryStatus === 1 &&
+    if (DEAN_ROLES.includes(roleId)) {
+      // 院长审批：流程需要院长审批 且 院长未审批 且（不需要导师审批 或 导师已通过）且（不需要秘书审批 或 秘书已通过）
+      if (config && !config.needDeanApproval) return false
+      const supervisorOk = !config || !config.needSupervisorApproval || row.supervisorStatus === 1
+      const secretaryOk = !config || !config.needSecretaryApproval || row.secretaryStatus === 1
+      return supervisorOk && secretaryOk &&
         (row.deanStatus === 0 || row.deanStatus === null || row.deanStatus === undefined)
     }
     return false
@@ -77,15 +148,16 @@ export function useProcessApproval(proxy) {
 
   /**
    * 判断当前用户是否可录入评审/答辩结果
-   * 仅外审(4)和答辩(5,6)环节可录入，需评审中状态
+   * 仅论文答辩稿(6)和毕业论文(7)环节可录入，需评审中状态
    */
   function canRecordResult(row, processType) {
     if (!row) return false
     const roleId = getCurrentUserRoleId()
     if (!roleId) return false
-    if (processType < 4) return false
+    // 只有答辩稿和毕业论文环节可录入评审结果
+    if (processType < 6) return false
     if (row.processStatus !== 2) return false
-    return roleId === 5 || roleId === 2 || roleId === 1
+    return RESULT_RECORDER_ROLES.includes(roleId)
   }
 
   /** 打开通过对话框 */
@@ -111,11 +183,12 @@ export function useProcessApproval(proxy) {
     }
 
     const roleId = getCurrentUserRoleId()
+    const approverId = getCurrentUserId()
     let approveApi
 
-    if (roleId === 7 || roleId === 8) {
+    if (SUPERVISOR_ROLES.includes(roleId)) {
       approveApi = approveProcessSupervisor
-    } else if (roleId === 5 || roleId === 4) {
+    } else if (SECRETARY_ROLES.includes(roleId)) {
       approveApi = approveProcessSecretary
     } else {
       approveApi = approveProcessDean
@@ -123,7 +196,7 @@ export function useProcessApproval(proxy) {
 
     const status = approvalType.value === 'approve' ? 1 : 2
 
-    approveApi(approvalForm.value.id, status, approvalForm.value.comment).then(() => {
+    approveApi(approvalForm.value.id, status, approvalForm.value.comment, approverId).then(() => {
       proxy.$modal.msgSuccess('审批成功')
       approvalDialogVisible.value = false
       if (onSuccess) onSuccess()
@@ -141,7 +214,8 @@ export function useProcessApproval(proxy) {
     canRecordResult,
     openApproveDialog,
     openRejectDialog,
-    submitApproval
+    submitApproval,
+    loadProcessConfig
   }
 }
 
@@ -178,7 +252,7 @@ export function useDegreeCommitteeApproval(proxy) {
   function canApprove(row) {
     if (!row) return false
     const roleId = getCurrentUserRoleId()
-    return (roleId === 3 || roleId === 1) && row.committeeStatus === 0
+    return (roleId === ROLE.COMMITTEE_MEMBER || roleId === ROLE.SUPER_ADMIN) && row.committeeStatus === 0
   }
 
   /**
@@ -188,7 +262,7 @@ export function useDegreeCommitteeApproval(proxy) {
   function canGrant(row) {
     if (!row) return false
     const roleId = getCurrentUserRoleId()
-    return (roleId === 2 || roleId === 1) && row.committeeStatus === 1 && row.degreeGranted === 0
+    return (roleId === ROLE.DEAN || roleId === ROLE.SUPER_ADMIN) && row.committeeStatus === 1 && row.degreeGranted === 0
   }
 
   /** 打开通过对话框 */
@@ -214,7 +288,8 @@ export function useDegreeCommitteeApproval(proxy) {
       return
     }
     const status = approvalType.value === 'approve' ? 1 : 2
-    committeeApprove(approvalForm.value.id, status, approvalForm.value.comment).then(() => {
+    const approverId = getCurrentUserId()
+    committeeApprove(approvalForm.value.id, status, approvalForm.value.comment, approverId).then(() => {
       proxy.$modal.msgSuccess('审批成功')
       approvalDialogVisible.value = false
       if (onSuccess) onSuccess()
@@ -233,7 +308,7 @@ export function useDegreeCommitteeApproval(proxy) {
 
   /** 提交学位授予 */
   function submitGrant(onSuccess) {
-    grantDegree(grantForm.value).then(() => {
+    grantDegree(grantForm.value.id, grantForm.value.certificateNo).then(() => {
       proxy.$modal.msgSuccess('学位授予成功')
       grantDialogVisible.value = false
       if (onSuccess) onSuccess()

@@ -510,7 +510,7 @@ function handleViewDetail(row) {
   // 并行加载各环节记录
   const promises = processSteps.map(step =>
     listProcess({ thesisId: row.id, processType: step.type, pageSize: 100 }).then(res => {
-      const list = res.data.records || res.data || []
+      const list = res.data || []
       detailProcessMap.value[step.type] = list.map(item => {
         if (item.contentExtend) {
           try {

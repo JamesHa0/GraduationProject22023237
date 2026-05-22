@@ -11,6 +11,9 @@
                     学生选择截止时间：{{ deadlineTime }}
                 </el-tag>
             </el-col>
+            <el-col :span="12" style="text-align: right;">
+                <el-button type="warning" plain icon="Switch" @click="goToMentorChange">申请更换导师</el-button>
+            </el-col>
         </el-row>
 
         <el-alert v-if="!isStudentSelectRound" title="当前不是学生选择轮次，无法进行志愿选择" type="warning" :closable="false" class="alert-warning" show-icon />
@@ -72,11 +75,11 @@
                 </el-form-item>
             </el-form>
 
-            <el-table v-loading="loading" :data="mentorList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
+            <el-table v-loading="loading" :data="mentorList"
                 style="width: 100%;">
                 <el-table-column label="序号" width="50" type="index" align="center">
                     <template #default="scope">
-                        <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
+                        <span>{{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column label="姓名" align="center" prop="teacherName" :show-overflow-tooltip="true" />
@@ -104,7 +107,7 @@
                 </el-table-column>
             </el-table>
 
-            <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
+            <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="handleQuery" />
         </el-dialog>
     </div>
 </template>
@@ -114,8 +117,14 @@ import { listMentor as initData, submitBatchSelection, studentChoices } from "@/
 import useUserStore from '@/store/modules/user';
 import { getConfigKey } from '@/api/system/config';
 import { getCurrentRound, canStudentSelect } from "@/api/selection/round";
+import { useRouter } from 'vue-router';
 
 const { proxy } = getCurrentInstance();
+const router = useRouter();
+
+function goToMentorChange() {
+    router.push('/selection/mentor-change');
+}
 
 const mentorList = ref([]);
 
@@ -202,8 +211,6 @@ const selectingChoiceIndex = ref(0);
 
 const loading = ref(true);
 const total = ref(0);
-const pageNum = ref(1);
-const pageSize = ref(10);
 
 const studentId = ref(null);
 const getStudentId = () => {
@@ -235,7 +242,9 @@ const canSubmitAll = computed(() => {
 });
 
 let queryParams = ref({
-    name: undefined
+    name: undefined,
+    pageNum: 1,
+    pageSize: 10
 });
 
 // 打开导师选择对话框
@@ -421,7 +430,9 @@ function getList() {
     getStudentChoices().then(() => {
         return initData(queryParams.value);
     }).then(response => {
-        mentorList.value = response.data.map(mentor => {
+        const rows = response.data.rows || response.data || [];
+        const totalCount = response.data.total || 0;
+        mentorList.value = rows.map(mentor => {
             const isSubmitted = submittedChoices.value.some(choice => choice.mentorId === mentor.id);
             if (isSubmitted) {
                 mentor.status = 3;
@@ -432,9 +443,7 @@ function getList() {
             }
             return mentor;
         });
-        console.log(response);
-
-        total.value = response.data.length;
+        total.value = totalCount || rows.length;
         loading.value = false;
     }).catch(error => {
         console.error("获取数据失败:", error);
@@ -447,10 +456,12 @@ function getList() {
 
 // 搜索按钮操作
 function handleQuery() {
-    pageNum.value = 1;
+    queryParams.value.pageNum = 1;
     loading.value = true;
     initData(queryParams.value).then(response => {
-        mentorList.value = response.data.map(mentor => {
+        const rows = response.data.rows || response.data || [];
+        const totalCount = response.data.total || 0;
+        mentorList.value = rows.map(mentor => {
             const isSubmitted = submittedChoices.value.some(choice => choice.mentorId === mentor.id);
             if (isSubmitted) {
                 mentor.status = 3;
@@ -461,7 +472,10 @@ function handleQuery() {
             }
             return mentor;
         });
-        total.value = response.data.length;
+        total.value = totalCount || rows.length;
+        loading.value = false;
+    }).catch((err) => {
+        console.error('查询导师列表失败:', err);
         loading.value = false;
     });
 }

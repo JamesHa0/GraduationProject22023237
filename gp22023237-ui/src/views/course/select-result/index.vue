@@ -20,11 +20,13 @@
         </el-table-column>
       </el-table>
 
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getSelectedCourses" />
+
       <el-empty v-if="!loading && selectedCourses.length === 0" description="暂无选课记录" />
     </el-card>
 
     <!-- 最终结果展示 -->
-    <el-card class="mt20" shadow="never" v-if="selectedCourses.length > 0">
+    <el-card class="mt20" shadow="never" v-if="totalCourseCount > 0">
       <template #header>
         <div class="card-header">
           <span class="card-title">选课统计</span>
@@ -32,11 +34,11 @@
       </template>
       <el-result icon="success" title="选课成功">
         <template #sub-title>
-          您已选择 {{ selectedCourses.length }} 门课程，共 {{ totalCredits }} 学分
+          您已选择 {{ totalCourseCount }} 门课程，共 {{ totalCredits }} 学分
         </template>
         <template #extra>
           <el-descriptions :column="2" border style="width: 600px; margin: 0 auto;">
-            <el-descriptions-item label="已选课程">{{ selectedCourses.length }} 门</el-descriptions-item>
+            <el-descriptions-item label="已选课程">{{ totalCourseCount }} 门</el-descriptions-item>
             <el-descriptions-item label="总学分">{{ totalCredits }} 学分</el-descriptions-item>
           </el-descriptions>
         </template>
@@ -63,48 +65,73 @@ const getStudentId = () => {
   }
 };
 
+// 分页参数
+const data = reactive({
+  queryParams: {
+    pageNum: 1,
+    pageSize: 10
+  }
+});
+const { queryParams } = toRefs(data);
+
+const total = ref(0);
+
 // 加载状态
 const loading = ref(true);
 
 // 已选课程
 const selectedCourses = ref([]);
 
-// 统计信息
+// 统计信息（分页后 totalCredits 通过单独查询全量数据计算）
 const totalCredits = ref(0);
+const totalCourseCount = ref(0);
 
-// 获取已选课程
+// 获取已选课程（分页）
 function getSelectedCourses() {
-  const id = getStudentId();
-  if (!id) {
+  const sid = getStudentId();
+  if (!sid) {
     loading.value = false;
     return;
   }
+  studentId.value = sid;
 
   loading.value = true;
-  listCourseSelection({ studentId: id, status: 1 }).then(res => {
-    selectedCourses.value = res.data || [];
-    updateStatistics();
+  listCourseSelection({
+    studentId: sid,
+    status: 1,
+    pageNum: queryParams.value.pageNum,
+    pageSize: queryParams.value.pageSize
+  }).then(res => {
+    selectedCourses.value = res.data.rows || res.data || [];
+    total.value = res.data.total || 0;
     loading.value = false;
-  }).catch(() => {
+  }).catch((err) => {
+    console.error('选课结果查询失败:', err);
     loading.value = false;
   });
 }
 
-// 更新统计信息
-function updateStatistics() {
-  totalCredits.value = selectedCourses.value.reduce((sum, course) => {
-    return sum + (course.credit || 0);
-  }, 0);
+// 获取全量统计数据（不分页，仅用于统计卡片）
+function getStats() {
+  const sid = getStudentId();
+  if (!sid) return;
+  listCourseSelection({ studentId: sid, status: 1 }).then(res => {
+    const rows = res.data && res.data.rows ? res.data.rows : (res.data || []);
+    totalCourseCount.value = rows.length;
+    totalCredits.value = rows.reduce((sum, c) => sum + (c.credit || 0), 0);
+  }).catch(() => {});
 }
 
 // 初始化
 function init() {
-  const id = getStudentId();
-  if (!id) {
+  const sid = getStudentId();
+  if (!sid) {
+    loading.value = false;
     return;
   }
-  studentId.value = id;
+  studentId.value = sid;
   getSelectedCourses();
+  getStats();
 }
 
 init();

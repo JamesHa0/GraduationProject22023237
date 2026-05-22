@@ -39,35 +39,3 @@ export function approveStatusChangeSecretary(id, status, comment) {
     params: { id, status, comment }
   })
 }
-
-// 毕业资格审核相关API
-export function listGraduationAudit(params) {
-  return request({
-    url: '/student/status/graduation/list',
-    method: 'get',
-    params: params
-  })
-}
-
-export function autoAuditGraduation(studentId) {
-  return request({
-    url: '/student/status/graduation/autoAudit',
-    method: 'post',
-    data: { studentId }
-  })
-}
-
-export function manualAuditGraduation(id, status, comment, auditorId, auditorName) {
-  return request({
-    url: '/student/status/graduation/manualAudit',
-    method: 'post',
-    data: { id, status, comment, auditorId, auditorName }
-  })
-}
-
-export function getGraduationStats() {
-  return request({
-    url: '/student/status/graduation/stats',
-    method: 'get'
-  })
-}
