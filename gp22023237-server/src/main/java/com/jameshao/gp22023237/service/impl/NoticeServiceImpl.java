@@ -8,11 +8,11 @@ import com.jameshao.gp22023237.po.Notice;
 import com.jameshao.gp22023237.po.NoticeRead;
 import com.jameshao.gp22023237.po.Student;
 import com.jameshao.gp22023237.po.Teacher;
+import com.jameshao.gp22023237.service.AsyncNoticePushService;
 import com.jameshao.gp22023237.service.NoticeReadService;
 import com.jameshao.gp22023237.service.NoticeService;
 import com.jameshao.gp22023237.service.StudentService;
 import com.jameshao.gp22023237.service.TeacherService;
-import com.jameshao.gp22023237.utils.SseMessageUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,13 +35,13 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice>
     private NoticeReadService noticeReadService;
 
     @Autowired
-    private SseMessageUtils sseMessageUtils;
-
-    @Autowired
     private StudentService studentService;
 
     @Autowired
     private TeacherService teacherService;
+
+    @Autowired
+    private AsyncNoticePushService asyncNoticePushService;
 
     @Override
     public int getUnreadCount(Long userId, Integer roleId) {
@@ -114,16 +114,12 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice>
             }
         }
 
-        // 通过SSE推送给目标用户
-        try {
-            sseMessageUtils.sendToUser(targetUserId, "notice",
-                "{\"noticeId\":" + notice.getNoticeId()
-                + ",\"title\":\"" + escapeJson(title) + "\""
-                + ",\"content\":\"" + escapeJson(content) + "\""
-                + ",\"type\":\"" + type + "\"}");
-        } catch (Exception e) {
-            logger.warn("SSE推送失败，用户可能不在线，不影响业务: {}", e.getMessage());
-        }
+        // 异步SSE推送（不阻塞业务线程和数据库事务）
+        asyncNoticePushService.pushToUserAsync(targetUserId,
+            "{\"noticeId\":" + notice.getNoticeId()
+            + ",\"title\":\"" + escapeJson(title) + "\""
+            + ",\"content\":\"" + escapeJson(content) + "\""
+            + ",\"type\":\"" + type + "\"}");
     }
 
     @Override
@@ -158,19 +154,12 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice>
             }
         }
 
-        // 逐条SSE推送（异常隔离）
+        // 异步逐条SSE推送（不阻塞业务线程和数据库事务）
         String sseData = "{\"noticeId\":" + notice.getNoticeId()
             + ",\"title\":\"" + escapeJson(title) + "\""
             + ",\"content\":\"" + escapeJson(content) + "\""
             + ",\"type\":\"" + type + "\"}";
-        for (Long userId : userIds) {
-            if (userId == null) continue;
-            try {
-                sseMessageUtils.sendToUser(userId, "notice", sseData);
-            } catch (Exception e) {
-                // 单条推送失败不影响其他用户
-            }
-        }
+        asyncNoticePushService.pushToUsersAsync(userIds, sseData);
     }
 
     @Override
@@ -209,16 +198,12 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice>
             }
         }
 
-        // 通过SSE推送给目标用户
-        try {
-            sseMessageUtils.sendToUser(targetUserId, "notice",
-                "{\"noticeId\":" + notice.getNoticeId()
-                + ",\"title\":\"" + escapeJson(title) + "\""
-                + ",\"content\":\"" + escapeJson(content) + "\""
-                + ",\"type\":\"" + type + "\"}");
-        } catch (Exception e) {
-            logger.warn("SSE推送失败，用户可能不在线，不影响业务: {}", e.getMessage());
-        }
+        // 异步SSE推送
+        asyncNoticePushService.pushToUserAsync(targetUserId,
+            "{\"noticeId\":" + notice.getNoticeId()
+            + ",\"title\":\"" + escapeJson(title) + "\""
+            + ",\"content\":\"" + escapeJson(content) + "\""
+            + ",\"type\":\"" + type + "\"}");
         return true;
     }
 
@@ -265,19 +250,12 @@ public class NoticeServiceImpl extends ServiceImpl<NoticeMapper, Notice>
             }
         }
 
-        // 逐条SSE推送（异常隔离）
+        // 异步逐条SSE推送
         String sseData = "{\"noticeId\":" + notice.getNoticeId()
             + ",\"title\":\"" + escapeJson(title) + "\""
             + ",\"content\":\"" + escapeJson(content) + "\""
             + ",\"type\":\"" + type + "\"}";
-        for (Long userId : userIds) {
-            if (userId == null) continue;
-            try {
-                sseMessageUtils.sendToUser(userId, "notice", sseData);
-            } catch (Exception e) {
-                // 单条推送失败不影响其他用户
-            }
-        }
+        asyncNoticePushService.pushToUsersAsync(userIds, sseData);
         return true;
     }
 
