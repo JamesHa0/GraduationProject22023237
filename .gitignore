@@ -49,7 +49,6 @@ Thumbs.db
 /.mvn/
 /mvnw.cmd
 /mvnw
-sql/
 temp_summary/
 temp_unpack/
 temp_volunteer/
