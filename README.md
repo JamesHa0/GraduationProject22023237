@@ -188,31 +188,34 @@ GraduationProject22023237-openclaw/
 │           ├── application.properties  # 数据库 / Redis / 七牛云配置
 │           └── mapper/                 # 22 个 MyBatis XML 映射
 │
-└── 📁 gp22023237-ui/                   # ★ 前端 Vue3 项目
-    ├── package.json                    # 依赖配置
-    ├── vite.config.js                  # Vite 构建配置（端口 89）
-    └── src/
-        ├── main.js                     # 入口文件
-        ├── permission.js               # 路由守卫
-        ├── api/                        # 43 个 API 模块
-        ├── assets/                     # 静态资源（样式/图标/图片）
-        ├── components/                 # 公共组件
-        ├── layout/                     # 布局组件（侧边栏/导航/标签页）
-        ├── router/                     # 路由配置（常量+动态路由）
-        ├── store/modules/              # Pinia 状态管理（6 个模块）
-        ├── utils/                      # 工具函数
-        └── views/                      # 页面视图
-            ├── index.vue               # 首页仪表盘
-            ├── login.vue               # 登录页
-            ├── register.vue            # 注册页
-            ├── academic/               # 学术管理页面
-            ├── course/                 # 课程管理页面
-            ├── degree/                 # 学位/论文管理页面（19 个子目录）
-            ├── selection/              # 师生双选页面（10 个子目录）
-            ├── student/                # 学籍管理页面（5 个子目录）
-            ├── system/                 # 系统管理页面
-            ├── monitor/                # 系统监控页面
-            └── tool/                   # 工具页面
+├── 📁 gp22023237-ui/                   # ★ 前端 Vue3 项目
+│   ├── package.json                    # 依赖配置
+│   ├── vite.config.js                  # Vite 构建配置（端口 89）
+│   └── src/
+│       ├── main.js                     # 入口文件
+│       ├── permission.js               # 路由守卫
+│       ├── api/                        # 43 个 API 模块
+│       ├── assets/                     # 静态资源（样式/图标/图片）
+│       ├── components/                 # 公共组件
+│       ├── layout/                     # 布局组件（侧边栏/导航/标签页）
+│       ├── router/                     # 路由配置（常量+动态路由）
+│       ├── store/modules/              # Pinia 状态管理（6 个模块）
+│       ├── utils/                      # 工具函数
+│       └── views/                      # 页面视图
+│           ├── index.vue               # 首页仪表盘
+│           ├── login.vue               # 登录页
+│           ├── register.vue            # 注册页
+│           ├── academic/               # 学术管理页面
+│           ├── course/                 # 课程管理页面
+│           ├── degree/                 # 学位/论文管理页面（19 个子目录）
+│           ├── selection/              # 师生双选页面（10 个子目录）
+│           ├── student/                # 学籍管理页面（5 个子目录）
+│           ├── system/                 # 系统管理页面
+│           ├── monitor/                # 系统监控页面
+│           └── tool/                   # 工具页面
+└── 📁 sql/                             # 数据库脚本
+    ├── gp22023237.sql                  # 完整数据库（含示例数据）
+    └── gp22023237（仅结构）.sql         # 仅表结构
 ```
 
 ---
@@ -235,8 +238,8 @@ GraduationProject22023237-openclaw/
 ### 1. 克隆项目
 
 ```bash
-git clone <your-repo-url>
-cd GraduationProject22023237-openclaw
+git clone https://github.com/JamesHa0/GraduationProject22023237.git
+cd GraduationProject22023237
 ```
 
 ### 2. 初始化数据库
@@ -368,8 +371,8 @@ npm run dev
 
 ## ⚠️ 注意事项
 
-1. **数据库配置**：`application.properties` 中包含真实云数据库连接信息，部署前请务必修改为自有数据库地址。
-2. **密钥安全**：七牛云 AccessKey/SecretKey 等敏感信息请勿提交至公共仓库，生产环境建议使用环境变量或配置中心管理。
+1. **数据库配置**：`application.properties` 部署前请务必修改为自有数据库地址。
+2. **密钥安全**：七牛云 AccessKey/SecretKey 等敏感信息需自行配置。
 3. **端口占用**：后端默认 8088，前端默认 89，如端口冲突请修改对应配置文件。
 4. **前端代理**：开发环境下 `/dev-api` 代理到后端 8088，生产环境需配置 Nginx 反向代理。
 5. **若依框架**：前端基于 RuoYi 3.8.9 开发，部分组件和工具函数来自框架，详细信息请参考 [若依官方文档](http://doc.ruoyi.vip/)。
