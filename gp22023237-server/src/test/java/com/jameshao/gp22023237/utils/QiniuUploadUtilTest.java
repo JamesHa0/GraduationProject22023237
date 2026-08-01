@@ -14,8 +14,10 @@ class QiniuUploadUtilTest {
     void setUp() {
         qiniuUploadUtil = new QiniuUploadUtil();
         
-        ReflectionTestUtils.setField(qiniuUploadUtil, "accessKey", "t8xic32RbPgy_z9EYXo1r4tVgWiuRSEuyENM7XlV");
-        ReflectionTestUtils.setField(qiniuUploadUtil, "secretKey", "uK1x-sju3aAmVgzsE4Qwp4VdokFg4sNAfplCMeIJ");
+        ReflectionTestUtils.setField(qiniuUploadUtil, "accessKey",
+            System.getenv("QINIU_ACCESS_KEY") != null ? System.getenv("QINIU_ACCESS_KEY") : "test-ak");
+        ReflectionTestUtils.setField(qiniuUploadUtil, "secretKey",
+            System.getenv("QINIU_SECRET_KEY") != null ? System.getenv("QINIU_SECRET_KEY") : "test-sk");
         ReflectionTestUtils.setField(qiniuUploadUtil, "bucket", "test-bucket");
         ReflectionTestUtils.setField(qiniuUploadUtil, "domain", "http://td6c50lms.hd-bkt.clouddn.com");
         ReflectionTestUtils.setField(qiniuUploadUtil, "signaturePrefix", "asset/signature/");

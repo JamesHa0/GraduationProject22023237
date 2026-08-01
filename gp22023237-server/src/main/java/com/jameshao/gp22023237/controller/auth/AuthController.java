@@ -23,6 +23,8 @@ public class AuthController {
     private JSONReturn jsonReturn;
     @Autowired
     private RedisUtils redisUtils;
+    @Autowired
+    private TokenUtil tokenUtil;
 
     //登录验证
     @Log(title = "用户登录", businessType = BusinessType.LOGIN)
@@ -58,7 +60,7 @@ public class AuthController {
                     dbUser = userService.getById(dbUser.getId());
                 }
                 //生成Token
-                String token = TokenUtil.createToken();
+                String token = tokenUtil.createToken();
                 redisUtils.set(token, dbUser, 60*60*3);
                 redisUtils.set(dbUser.getUsername(), dbUser, 60*60*3);
 

@@ -6,11 +6,11 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.alibaba.fastjson.JSONObject;
 import com.jameshao.gp22023237.po.User;
-import com.jameshao.gp22023237.utils.FLAGS;
 import com.jameshao.gp22023237.utils.RedisUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -37,6 +37,9 @@ public class SseController {
     @Autowired
     private RedisUtils redisUtils;
 
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
     /**
      * SSE 订阅端点
      * 通过URL参数传递token进行认证（EventSource不支持自定义请求头）
@@ -57,7 +60,7 @@ public class SseController {
 
         // 3. JWT 签名校验
         try {
-            JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(FLAGS.SECRET)).build();
+            JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(jwtSecret)).build();
             jwtVerifier.verify(token);
         } catch (JWTVerificationException e) {
             logger.debug("SSE连接失败：JWT校验不通过 - {}", e.getMessage());

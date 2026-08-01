@@ -53,6 +53,7 @@ temp_summary/
 temp_unpack/
 temp_volunteer/
 .codebuddy/
+.qoder/
 docs/
 gp22023237-server/src/main/resources/db/
 PlantUML/
